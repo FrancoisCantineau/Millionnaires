@@ -86,24 +86,3 @@ void AWeaponBase::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 }
-
-#pragma region WeaponsUse
-
-
-
-/**
- * Attacking starting routine
- */
-void AWeaponBase::StartAttacking()
-{
-	
-}
-
-/**
- * Clears all the attacking related variables & ends the attack cycle
- */
-void AWeaponBase::StopAttacking()
-{
-	
-}
-#pragma endregion

@@ -62,6 +62,11 @@ protected:
 	
 	// Timer to handle full auto attack
 	FTimerHandle ReattackTimer;
+
+	//Cooldown based of attack speed
+	float CooldownBetweenAttacks = 0.f;
+
+	float DamagesMultiplier = 1.f;
 	
 
 public:	

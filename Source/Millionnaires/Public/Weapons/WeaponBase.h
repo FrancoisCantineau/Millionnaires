@@ -52,12 +52,14 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent, Category = "Weapon")
 	void Attack();
 
-	UFUNCTION(BlueprintCallable, Category = "Weapon")
-	virtual void StartAttacking();
+	UFUNCTION(BlueprintCallable,BlueprintImplementableEvent, Category = "Weapon")
+	void StartAttacking();
 
-	UFUNCTION(BlueprintCallable, Category = "Weapon")
-	virtual void StopAttacking();
-	
+	UFUNCTION(BlueprintCallable,BlueprintImplementableEvent, Category = "Weapon")
+	void StopAttacking();
+
+	UFUNCTION(BlueprintCallable,BlueprintImplementableEvent, Category = "Weapon")
+	void PerformAttack(float DamagesMultiplicator);
 	
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetDamage() const { return WeaponData ? WeaponData->BaseDamage : 0.f; }
@@ -68,6 +70,8 @@ public:
 	virtual void OnConstruction(const FTransform& Transform) override;
 
 	virtual void ApplyWeaponData();
+
+	USkeletalMeshComponent* GetWeaponMesh(){return WeaponMesh;};
 
 protected:
 	// Called when the game starts or when spawned

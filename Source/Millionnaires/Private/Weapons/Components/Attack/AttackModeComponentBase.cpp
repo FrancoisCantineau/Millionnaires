@@ -1,7 +1,20 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+/* 
+ * Millionaire Project, 2025
+ * Created by:  "Francois"
+ * Last Updated by: "Francois"
+ * Class: "AttackModeComponentBase" Source
+ * Notes: Used as the basic implementation for weapons attack.
+ * This will mainly allow to choose an attack mode easily.
+ */
+
 
 #include "Weapons/Components/Attack/AttackModeComponentBase.h"
+
+#include <gsl/pointers>
+
+#include "Weapons/Components/AmmoBaseComponent.h"
 
 // Sets default values for this component's properties
 UAttackModeComponentBase::UAttackModeComponentBase()
@@ -45,26 +58,19 @@ void UAttackModeComponentBase::StartAttacking()
 	// raise the attacking flag
 	bIsAttacking = true;
 
-	// check how much time has passed since we last attack
-	const float TimeSinceLastAttack = GetWorld()->GetTimeSeconds() - TimeOfLastAttack;
-
-	const float AttacksPerSecond = OwnerWeapon->BuffComponent->GetFireRate();
-	const float CooldownBetweenAttacks = 1.f / AttacksPerSecond;
-	GEngine->AddOnScreenDebugMessage(-1, 8.f, FColor::Blue, FString::Printf(TEXT("FFFFFF %f "), OwnerWeapon->BuffComponent->GetFireRate()));
-	if (TimeSinceLastAttack > CooldownBetweenAttacks)
+	if (CanAttack())
 	{
-		// use the weapon right away
 		Attack();
-
-	} else {
-
+	}
+	else
+	{
 		// if we're full auto, schedule the next attack
 		if (OwnerWeapon->WeaponData->bFullAuto)
 		{
 			GetWorld()->GetTimerManager().SetTimer(ReattackTimer, this, &UAttackModeComponentBase::Attack, CooldownBetweenAttacks, false);
 		}
-
 	}
+	
 }
 
 void UAttackModeComponentBase::StopAttacking()
@@ -77,27 +83,21 @@ void UAttackModeComponentBase::StopAttacking()
 
 void UAttackModeComponentBase::Attack()
 {
-	if (!bIsAttacking)
+	
+	UAmmoBaseComponent*AmmoComponent = OwnerWeapon->FindComponentByClass<UAmmoBaseComponent>();
+	
+	if (!AmmoComponent->Consume())
 	{
 		return;
 	}
-	GEngine->AddOnScreenDebugMessage(-1, 8.f, FColor::Blue, FString::Printf(TEXT("aaaaFFF %f"), OwnerWeapon->BuffComponent->GetFireRate()));
-	// update the time of our last attack
-	TimeOfLastAttack = GetWorld()->GetTimeSeconds();
+	OwnerWeapon->PerformAttack(DamagesMultiplier);
 	
-	const float AttacksPerSecond = OwnerWeapon->BuffComponent->GetFireRate();
-	const float CooldownBetweenAttacks = 1.f / AttacksPerSecond;
-
-	if (OwnerWeapon->WeaponData->bFullAuto)
-	{
-		// schedule the next attack
-		GetWorld()->GetTimerManager().SetTimer(ReattackTimer, this, &UAttackModeComponentBase::Attack, CooldownBetweenAttacks, false);
-	}
 }
 
 bool UAttackModeComponentBase::CanAttack() const
 {
-	return false;
+	float TimeSinceLastAttack = GetWorld()->GetTimeSeconds() - TimeOfLastAttack;
+	return TimeSinceLastAttack >= CooldownBetweenAttacks;
 }
 
 
