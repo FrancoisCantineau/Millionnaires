@@ -1,5 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
-
+/* 
+* Millionaire Project, 2025
+ * Created by:  "Francois"
+ * Last Updated by: "Francois"
+ * Class: "AttackModeComponentBase" Header
+ * Notes: Base class for projectiles
+ */
 #pragma once
 
 #include "CoreMinimal.h"

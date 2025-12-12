@@ -1,5 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+/* 
+ * Millionaire Project, 2025
+ * Created by:  "Francois"
+ * Last Updated by: "Francois"
+ * Class: "WeaponBase" Header
+ * Notes: Attack mode implementation, focused on burst attack
+ */
+
 #pragma once
 
 #include "CoreMinimal.h"

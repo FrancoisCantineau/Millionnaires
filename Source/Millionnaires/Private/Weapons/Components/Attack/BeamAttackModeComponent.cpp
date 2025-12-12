@@ -1,5 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+/* 
+ * Millionaire Project, 2025
+ * Created by:  "Francois"
+ * Last Updated by: "Francois"
+ * Class: "WeaponBase" Source
+ * Notes: Attack mode implementation, focused on beam attack
+ */
 
 #include "Weapons/Components/Attack/BeamAttackModeComponent.h"
 

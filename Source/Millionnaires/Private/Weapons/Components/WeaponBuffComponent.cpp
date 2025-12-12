@@ -1,6 +1,14 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
+/* 
+ * Millionaire Project, 2025
+ * Created by:  "Francois"
+ * Last Updated by: "Francois"
+ * Class: "AttackModeComponentBase" Source
+ * Notes: Implements the logic for buffs/debuffs of the weapon.
+ */
+
 #include "Weapons/Components/WeaponBuffComponent.h"
 
 // Sets default values for this component's properties

@@ -1,6 +1,14 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
+/* 
+ * Millionaire Project, 2025
+ * Created by:  "Francois"
+ * Last Updated by: "Francois"
+ * Class: "AttackModeComponentBase" Source
+ * Notes: Implements the logic for ammos management (reload and uses of ammos).
+ */
+
 #include "Weapons/Components/AmmoBaseComponent.h"
 
 #include "Kismet/GameplayStatics.h"
@@ -43,7 +51,7 @@ bool UAmmoBaseComponent::Consume()
     
 	OnAmmoChanged.Broadcast();
     
-	// ⭐ EVENT si vide
+	
 	if (CurrentMagazine == 0)
 	{
 		OnAmmoEmpty.Broadcast();
@@ -70,7 +78,7 @@ void UAmmoBaseComponent::Reload()
     
 	bIsReloading = true;
     
-	// SFX
+	
 	if (ReloadSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(
@@ -81,10 +89,10 @@ void UAmmoBaseComponent::Reload()
 	}
 	CompleteReload();
   /*  
-	// ⭐ EVENT pour animation
+	
 	OnReloadStarted.Broadcast();
     
-	// ⭐ TIMER pour compléter le reload
+	
 	GetWorld()->GetTimerManager().SetTimer(
 		ReloadTimerHandle,
 		this,
@@ -101,11 +109,11 @@ bool UAmmoBaseComponent::CanReload()
 	if (bIsReloading)
 		return false;
     
-	// Chargeur pas plein
+	
 	if (CurrentMagazine >= MaxMagazineSize)
 		return false;
     
-	// A des munitions en réserve (ou réserve infinie)
+
 	if (MaxReserveAmmo != -1 && CurrentReserveAmmo <= 0)
 		return false;
     
@@ -120,12 +128,12 @@ void UAmmoBaseComponent::CompleteReload()
     
 	if (MaxReserveAmmo == -1)
 	{
-		// ⭐ RÉSERVE INFINIE
+		
 		CurrentMagazine = MaxMagazineSize;
 	}
 	else
 	{
-		// ⭐ RÉSERVE LIMITÉE
+	
 		int32 AmmoToReload = FMath::Min(AmmoNeeded, CurrentReserveAmmo);
 		CurrentMagazine += AmmoToReload;
 		CurrentReserveAmmo -= AmmoToReload;

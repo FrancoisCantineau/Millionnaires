@@ -1,5 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+/* 
+ * Millionaire Project, 2025
+ * Created by:  "Francois"
+ * Last Updated by: "Francois"
+ * Class: "AttackModeComponentBase" Source
+ * Notes: Implements the logic for attack execution, this one is used for projectile attacks.
+ */
 
 #include "Weapons/Components/Executor/ProjectileExecuterComponent.h"
 
@@ -13,7 +20,7 @@ void UProjectileExecuterComponent::ExecuteAttack(float DamageMultiplier)
 		return;
 	}
 
-	// 🎨 VFX/SFX
+	
 	if (MuzzleFlash)
 	{
 		UGameplayStatics::SpawnEmitterAttached(
@@ -32,11 +39,11 @@ void UProjectileExecuterComponent::ExecuteAttack(float DamageMultiplier)
 		);
 	}
 
-	// 📍 Spawn location/rotation
+
 	FVector SpawnLocation = OwnerWeapon->GetWeaponMesh()->GetSocketLocation(MuzzleSocketName);
 	FRotator SpawnRotation = OwnerWeapon->GetWeaponMesh()->GetSocketRotation(MuzzleSocketName);
     
-	// 🎯 Spread
+	
 	if (bUseSpread)
 	{
 		float RandomPitch = FMath::RandRange(-SpreadAngle, SpreadAngle);
@@ -45,7 +52,7 @@ void UProjectileExecuterComponent::ExecuteAttack(float DamageMultiplier)
 		SpawnRotation.Yaw += RandomYaw;
 	}
     
-	// 🚀 Spawn projectile
+
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = OwnerWeapon->GetOwner();
 	SpawnParams.Instigator = Cast<APawn>(OwnerWeapon->GetOwner());
