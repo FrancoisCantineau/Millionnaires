@@ -46,7 +46,18 @@ void AWeaponBase::BeginPlay()
 {
 	Super::BeginPlay();
 
+	TArray<UActorComponent*> Components;
+	GetComponents(Components);
 
+	for (UActorComponent* Comp : Components)
+	{
+		UWeaponEffectBaseComponent* Effect = Cast<UWeaponEffectBaseComponent>(Comp);
+		if (Effect)
+		{
+			Effects.Add(Effect);
+		}
+	}
+	
 	ApplyWeaponData();
 }
 
@@ -75,6 +86,14 @@ void AWeaponBase::ApplyWeaponData()
 		// Debug pour vérifier
 		UE_LOG(LogTemp, Warning, TEXT("✅ BuffComponent initialized - FireRate: %.2f"), 
 			   BuffComponent->GetFireRate());
+	}
+}
+
+void AWeaponBase::ApplyEffects(const FHitResult& Hit, AActor* Instigatorr)
+{
+	for (UWeaponEffectBaseComponent* Effect : Effects)
+	{
+		Effect->ApplyEffect(Hit, Instigatorr);
 	}
 }
 

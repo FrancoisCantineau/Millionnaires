@@ -13,6 +13,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/Effect/WeaponEffectBaseComponent.h"
 #include "GameFramework/Actor.h"
 
 #include "Weapons/Data/WeaponData.h"
@@ -71,11 +72,18 @@ public:
 
 	virtual void ApplyWeaponData();
 
+	virtual void ApplyEffects(const FHitResult& Hit, AActor* Instigatorr);
+
 	USkeletalMeshComponent* GetWeaponMesh(){return WeaponMesh;};
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	//** Properties */
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Components")
+	TArray<UWeaponEffectBaseComponent*> Effects;
 
 public:	
 	// Called every frame

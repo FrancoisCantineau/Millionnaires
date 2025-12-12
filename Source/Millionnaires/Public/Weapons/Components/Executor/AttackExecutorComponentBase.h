@@ -47,6 +47,9 @@ protected:
 	
 	UPROPERTY()
 	AWeaponBase* OwnerWeapon;
+	
+	UPROPERTY(EditAnywhere, Category = "Projectile")
+	FName MuzzleSocketName = TEXT("Muzzle");
 
 public:	
 	

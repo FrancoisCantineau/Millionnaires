@@ -21,9 +21,6 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Projectile")
 	TSubclassOf<AProjectileBase> ProjectileClass;
-	
-	UPROPERTY(EditAnywhere, Category = "Projectile")
-	FName MuzzleSocketName = TEXT("MuzzleSocket");
     
 	UPROPERTY(EditAnywhere, Category = "Projectile|Spread")
 	bool bUseSpread = false;
