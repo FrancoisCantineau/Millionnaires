@@ -13,7 +13,6 @@ void AEnnemyAIControllerBase::OnPossess(APawn* InPawn)
 	
 	if (BehaviorTreeAsset)
 	{
-		// Initialise le blackboard
 		RunBehaviorTree(BehaviorTreeAsset);
 	}
 }
