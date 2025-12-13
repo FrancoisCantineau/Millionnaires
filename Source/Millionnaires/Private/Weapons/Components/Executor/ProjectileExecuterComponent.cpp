@@ -12,8 +12,10 @@
 
 #include "Kismet/GameplayStatics.h"
 
-void UProjectileExecuterComponent::ExecuteAttack(float DamageMultiplier)
+void UProjectileExecuterComponent::ExecuteAttack(float m_DamageMultiplier)
 {
+	DamageMultiplier = m_DamageMultiplier;
+	
 	if (!OwnerWeapon || !ProjectileClass)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ProjectileExecutor: Missing weapon or projectile class"));
@@ -54,7 +56,7 @@ void UProjectileExecuterComponent::ExecuteAttack(float DamageMultiplier)
     
 
 	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = OwnerWeapon->GetOwner();
+	SpawnParams.Owner = OwnerWeapon;
 	SpawnParams.Instigator = Cast<APawn>(OwnerWeapon->GetOwner());
     
 	AProjectileBase* Projectile = GetWorld()->SpawnActor<AProjectileBase>(

@@ -15,3 +15,8 @@ ABaseCharacter::ABaseCharacter(const FObjectInitializer& ObjectInitializer)
 {
     StatsComponent = CreateDefaultSubobject<UCharacterStatsComponent>(TEXT("BPC_StatsComponent"));
 }
+
+void ABaseCharacter::ApplyDamage_Implementation(float Damage, AActor* DamageCauser)
+{
+    StatsComponent->ModifyHealth(Damage);
+}

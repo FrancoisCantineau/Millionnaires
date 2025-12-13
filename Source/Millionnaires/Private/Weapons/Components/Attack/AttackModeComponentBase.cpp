@@ -79,6 +79,9 @@ void UAttackModeComponentBase::StopAttacking()
 
 	//Clears auto attack timer
 	GetWorld()->GetTimerManager().ClearTimer(ReattackTimer);
+
+	OwnerWeapon->InterruptAttack();
+	
 }
 
 void UAttackModeComponentBase::Attack()
