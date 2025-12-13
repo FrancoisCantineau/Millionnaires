@@ -42,6 +42,13 @@ AProjectileBase::AProjectileBase()
 void AProjectileBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (AActor* Weapon = GetOwner())
+		CollisionComponent->IgnoreActorWhenMoving(Weapon, true);
+
+	// Ignore pawn using weapon
+	if (APawn* InstigatorPawn = GetInstigator())
+		CollisionComponent->IgnoreActorWhenMoving(InstigatorPawn, true);
 	
 }
 

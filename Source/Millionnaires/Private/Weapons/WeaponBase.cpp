@@ -46,18 +46,7 @@ void AWeaponBase::BeginPlay()
 {
 	Super::BeginPlay();
 
-	TArray<UActorComponent*> Components;
-	GetComponents(Components);
-
-	for (UActorComponent* Comp : Components)
-	{
-		UWeaponEffectBaseComponent* Effect = Cast<UWeaponEffectBaseComponent>(Comp);
-		if (Effect)
-		{
-			Effects.Add(Effect);
-		}
-	}
-	
+	GetComponents<UWeaponEffectBaseComponent>(Effects);
 	ApplyWeaponData();
 }
 
