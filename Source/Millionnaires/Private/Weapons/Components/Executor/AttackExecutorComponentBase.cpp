@@ -56,7 +56,7 @@ float UAttackExecutorComponentBase::GetFinalRange() const
 
 void UAttackExecutorComponentBase::ApplyDamage(AActor* AttackedActor)
 {
-	float DamageAmount = GetFinalDamage(DamageMultiplier);
+	float DamageAmount = -GetFinalDamage(DamageMultiplier);
 	
 	if (AttackedActor && AttackedActor->Implements<UDamageableInterface>())
 	{
