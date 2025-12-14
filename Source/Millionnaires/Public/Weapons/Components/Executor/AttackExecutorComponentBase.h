@@ -11,6 +11,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "NiagaraComponent.h"
 #include "Components/ActorComponent.h"
 #include "Weapons/WeaponBase.h"
 #include "AttackExecutorComponentBase.generated.h"
@@ -39,6 +40,9 @@ public:
 protected:
 
 	//** Functions */
+
+	UFUNCTION()
+	virtual void OnHit(const FHitResult& Hit) ;
 	
 	virtual void BeginPlay() override;
 	
@@ -46,7 +50,9 @@ protected:
 	
 	float GetFinalRange() const;
 
-	void ApplyDamage(AActor* AttackedActor);
+	void ApplyDamage(const FHitResult& Hit, AActor* AttackedActor);
+	
+	void ExplodeAtLocation(const FHitResult& Hit);
 
 	//** Properties */
 	
@@ -57,7 +63,20 @@ protected:
 	FName MuzzleSocketName = TEXT("Muzzle");
 
 	float DamageMultiplier = 1.f;
+	
+	UPROPERTY(EditAnywhere, Category="AOE")
+	EAttackAreaType AreaType = EAttackAreaType::Single;
 
+	UPROPERTY(EditAnywhere, Category="AOE", meta=(EditCondition="AreaType != EAttackAreaType::Single"))
+	float ExplosionRadius = 300.f;
+
+	UPROPERTY(EditAnywhere, Category="AOE", meta=(EditCondition="AreaType == EAttackAreaType::Cone"))
+	float ConeAngle = 45.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "FX")
+	UNiagaraSystem* ImpactVFX;
+
+	
 public:	
 	
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;

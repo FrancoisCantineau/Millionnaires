@@ -68,11 +68,6 @@ void UProjectileExecuterComponent::ExecuteAttack(float m_DamageMultiplier)
     
 	if (Projectile)
 	{
-		float FinalDamage = GetFinalDamage(DamageMultiplier);
-		
-		Projectile->SetDamage(FinalDamage);
-
-		GEngine->AddOnScreenDebugMessage(-1, 5, FColor::Red, FString::Printf(TEXT("Fired projectile with %.2f damage (multiplier: %.2f)"), 
-			   FinalDamage, DamageMultiplier));
+		Projectile->OnProjectileHit.AddDynamic(this, &UProjectileExecuterComponent::OnHit);
 	}
 }

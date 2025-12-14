@@ -10,7 +10,11 @@
 
 #include "Weapons/Components/Executor/AttackExecutorComponentBase.h"
 
+#include "NiagaraFunctionLibrary.h"
 #include "Interfaces/DamageableInterface.h"
+
+#include "Engine/OverlapResult.h"
+
 #include "ProfilingDebugging/CookStats.h"
 
 
@@ -54,8 +58,10 @@ float UAttackExecutorComponentBase::GetFinalRange() const
 	return OwnerWeapon->BuffComponent->GetRange();
 }
 
-void UAttackExecutorComponentBase::ApplyDamage(AActor* AttackedActor)
+void UAttackExecutorComponentBase::ApplyDamage(const FHitResult& Hit, AActor* AttackedActor)
 {
+	OwnerWeapon->ApplyEffects(Hit, OwnerWeapon);
+	
 	float DamageAmount = -GetFinalDamage(DamageMultiplier);
 	
 	if (AttackedActor && AttackedActor->Implements<UDamageableInterface>())
@@ -68,4 +74,59 @@ void UAttackExecutorComponentBase::ApplyDamage(AActor* AttackedActor)
 		);
 	}
 
+}
+
+void UAttackExecutorComponentBase::ExplodeAtLocation(const FHitResult& Hit)
+{
+	TArray<FOverlapResult> Overlaps;
+
+	FCollisionShape Sphere = FCollisionShape::MakeSphere(ExplosionRadius);
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(OwnerWeapon);
+	Params.AddIgnoredActor(OwnerWeapon->GetOwner());
+
+	
+	GetWorld()->OverlapMultiByChannel(
+		Overlaps,
+		Hit.ImpactPoint,
+		FQuat::Identity,
+		ECC_Pawn,
+		Sphere,
+		Params
+	);
+
+	for (const FOverlapResult& Result : Overlaps)
+	{
+		AActor* Actor = Result.GetActor();
+
+		if (!Actor || Actor == OwnerWeapon->GetOwner())
+			continue;
+
+		ApplyDamage(Hit, Actor);
+	}
+}
+
+void UAttackExecutorComponentBase::OnHit(const FHitResult& Hit)
+{
+	if (ImpactVFX)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		GetWorld(),      
+		ImpactVFX,       
+		Hit.ImpactPoint,
+		Hit.ImpactNormal.Rotation() 
+	);
+	}
+	
+	switch (AreaType)
+	{
+	case EAttackAreaType::Single : ApplyDamage(Hit, Hit.GetActor());
+		break;
+
+	case EAttackAreaType::Sphere : ExplodeAtLocation(Hit);
+		break;
+
+	default : break;
+	}
+	
 }

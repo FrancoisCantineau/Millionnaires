@@ -65,10 +65,8 @@ void AProjectileBase::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
 {
 	if (OtherActor && OtherActor != GetOwner())
 	{
-
-		UGameplayStatics::ApplyDamage(OtherActor, Damage, GetInstigatorController(), this, nullptr);
-
-
+		OnProjectileHit.Broadcast(Hit);
+		
 		if (ProjectileData->ImpactParticle)
 			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ProjectileData->ImpactParticle, Hit.ImpactPoint, FRotator::ZeroRotator);
 		if (ProjectileData->ImpactSound)

@@ -38,7 +38,6 @@ void UAttackModeComponentBase::BeginPlay()
 	
 }
 
-
 // Called every frame
 void UAttackModeComponentBase::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {

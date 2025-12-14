@@ -19,18 +19,22 @@ void ULineTraceAttackExecutorComponent::BeginPlay()
 
 	USkeletalMeshComponent* Mesh = OwnerWeapon->GetWeaponMesh();
 	
-	if (TraceParticle)
+	if (LaserBeamVFX && Mesh)
 	{
 		TraceParticle = UNiagaraFunctionLibrary::SpawnSystemAttached(
-	   LaserBeamVFX,           // Niagara System
-	   Mesh,                   // Parent
-	   FName("Muzzle"),        // Socket Name
-	   FVector::ZeroVector,    // Location Offset
-	   FRotator::ZeroRotator,  // Rotation Offset
-	   EAttachLocation::SnapToTarget, // Snap to socket
-	   false               // bAutoDestroy
-   );
-		TraceParticle->Deactivate();
+			LaserBeamVFX,           // Niagara System
+			Mesh,                   // Parent
+			FName("Muzzle"),        // Socket Name
+			FVector::ZeroVector,    // Location Offset
+			FRotator::ZeroRotator,  // Rotation Offset
+			EAttachLocation::SnapToTarget,
+			false                   // bAutoDestroy
+		);
+
+		if (TraceParticle)
+		{
+			TraceParticle->Deactivate();
+		}
 	}
 	
 	
@@ -87,18 +91,6 @@ void ULineTraceAttackExecutorComponent::ExecuteAttack(float m_DamageMultiplier)
 
 void ULineTraceAttackExecutorComponent::OnHit(const FHitResult& Hit)
 {
-	OwnerWeapon->ApplyEffects(Hit, OwnerWeapon);
-
-	if (ImpactVFX)
-	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-		GetWorld(),      
-		ImpactVFX,       
-		Hit.ImpactPoint,
-		Hit.ImpactNormal.Rotation() 
-	);
-	}
-	
 	if (ParticleVariable != "None")
 	{
 		if (TraceParticle)
@@ -110,7 +102,7 @@ void ULineTraceAttackExecutorComponent::OnHit(const FHitResult& Hit)
 		
 	}
 
-	ApplyDamage(Hit.GetActor());
+	Super::OnHit(Hit);
 }
 
 void ULineTraceAttackExecutorComponent::EndAttackExecution()

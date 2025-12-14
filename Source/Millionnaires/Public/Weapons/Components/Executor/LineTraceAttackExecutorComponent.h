@@ -35,7 +35,7 @@ public:
 
 	virtual void BeginPlay() override;
 
-	void OnHit(const FHitResult& Hit);
+	virtual void OnHit(const FHitResult& Hit) override;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Line Trace")
 	float TraceDistance = 20000.f;
@@ -49,8 +49,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "FX")
 	FString ParticleVariable = "None";
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "FX")
-	UNiagaraSystem* ImpactVFX;
+	
 	
 	
 };
