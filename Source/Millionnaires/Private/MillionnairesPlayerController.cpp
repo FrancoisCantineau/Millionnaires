@@ -17,8 +17,6 @@
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "Kismet/GameplayStatics.h"
 #include "Camera/CameraActor.h"
-
-#include "Systems/CharacterSelectionSubsystem.h"
 #include "Data/CharacterDefinition.h"
 #include "Characters/Player/PlayerCharacter.h"
 
@@ -39,15 +37,6 @@ void AMillionnairesPlayerController::BeginPlay()
 
     // Start in dispatch phase (top-down camera, mouse available).
     EnterDispatchPhase();
-
-    // Bind to character selection subsystem so we can react when a character is chosen.
-    if (UGameInstance* GameInstance = GetGameInstance())
-    {
-        if (UCharacterSelectionSubsystem* SelectionSubsystem = GameInstance->GetSubsystem<UCharacterSelectionSubsystem>())
-        {
-            SelectionSubsystem->OnSelectedCharacterChanged.AddDynamic(this, &AMillionnairesPlayerController::HandleSelectedCharacterChanged);
-        }
-    }
 }
 
 void AMillionnairesPlayerController::SetupInputComponent()

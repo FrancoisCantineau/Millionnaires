@@ -1,6 +1,6 @@
 /*
  * Millionaire Project, 2025
- * Created by:  "0nnen"
+ * Created by: "0nnen"
  * Last Updated by: "0nnen"
  * Class: "PlayerCharacter" - Header
  * Notes: Playable first-person character derived from BaseCharacter. Handles camera, input and applying character definitions.
