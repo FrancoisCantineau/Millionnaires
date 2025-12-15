@@ -24,6 +24,5 @@ void UBeamAttackModeComponent::StartAttacking()
 void UBeamAttackModeComponent::StopAttacking()
 {
 	Super::StopAttacking();
-
 	GetWorld()->GetTimerManager().ClearTimer(BeamTickTimer);
 }

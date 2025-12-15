@@ -61,6 +61,9 @@ public:
 
 	UFUNCTION(BlueprintCallable,BlueprintImplementableEvent, Category = "Weapon")
 	void PerformAttack(float DamagesMultiplicator);
+
+	UFUNCTION(BlueprintCallable,BlueprintImplementableEvent, Category = "Weapon")
+	void InterruptAttack();
 	
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetDamage() const { return WeaponData ? WeaponData->BaseDamage : 0.f; }

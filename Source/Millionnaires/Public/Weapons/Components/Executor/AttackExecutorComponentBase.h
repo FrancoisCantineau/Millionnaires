@@ -27,10 +27,13 @@ public:
 
 	/**
 	 * Executes the attack. Must be overrided by each child
-	 * @param DamageMultiplier , multiplies the damages (used for charging weapons, for exemple)
+	 * @param m_DamageMultiplier , multiplies the damages (used for charging weapons, for exemple)
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Attack")
-	virtual void ExecuteAttack(float DamageMultiplier = 1.f) PURE_VIRTUAL(UAttackExecutorComponentBase::ExecuteAttack, );
+	virtual void ExecuteAttack(float m_DamageMultiplier = 1.f) PURE_VIRTUAL(UAttackExecutorComponentBase::ExecuteAttack, );
+
+	UFUNCTION(BlueprintCallable, Category = "Attack")
+	virtual void EndAttackExecution();
 
 	
 protected:
@@ -43,6 +46,8 @@ protected:
 	
 	float GetFinalRange() const;
 
+	void ApplyDamage(AActor* AttackedActor);
+
 	//** Properties */
 	
 	UPROPERTY()
@@ -50,6 +55,8 @@ protected:
 	
 	UPROPERTY(EditAnywhere, Category = "Projectile")
 	FName MuzzleSocketName = TEXT("Muzzle");
+
+	float DamageMultiplier = 1.f;
 
 public:	
 	

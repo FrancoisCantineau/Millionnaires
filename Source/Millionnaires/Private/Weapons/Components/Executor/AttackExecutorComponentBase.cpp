@@ -10,12 +10,19 @@
 
 #include "Weapons/Components/Executor/AttackExecutorComponentBase.h"
 
+#include "Interfaces/DamageableInterface.h"
+#include "ProfilingDebugging/CookStats.h"
+
 
 UAttackExecutorComponentBase::UAttackExecutorComponentBase()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 }
 
+
+void UAttackExecutorComponentBase::EndAttackExecution()
+{
+}
 
 void UAttackExecutorComponentBase::BeginPlay()
 {
@@ -45,4 +52,20 @@ float UAttackExecutorComponentBase::GetFinalRange() const
 		return 1000.f;
     
 	return OwnerWeapon->BuffComponent->GetRange();
+}
+
+void UAttackExecutorComponentBase::ApplyDamage(AActor* AttackedActor)
+{
+	float DamageAmount = -GetFinalDamage(DamageMultiplier);
+	
+	if (AttackedActor && AttackedActor->Implements<UDamageableInterface>())
+	{
+		IDamageableInterface::Execute_ApplyDamage(
+			AttackedActor,
+			DamageAmount,
+			OwnerWeapon->GetOwner()
+			
+		);
+	}
+
 }
