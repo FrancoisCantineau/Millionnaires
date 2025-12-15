@@ -1,6 +1,6 @@
 /*
  * Millionaire Project, 2025
- * Created by:  "0nnen"
+ * Created by: "0nnen"
  * Last Updated by: "0nnen"
  * Class: "PlayerCharacter" - Source
  * Notes: Playable first-person character derived from BaseCharacter. Handles camera, input and applying character definitions.
@@ -15,7 +15,6 @@
 #include "InputActionValue.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Millionnaires.h"
-#include "Systems/CharacterSelectionSubsystem.h"
 #include "Components/Characters/CharacterStatsComponent.h"
 #include "Data/CharacterDefinition.h"
 #include "Engine/GameInstance.h"
@@ -73,14 +72,6 @@ void APlayerCharacter::BeginPlay()
     Super::BeginPlay();
 
     UCharacterDefinition* SelectedDefinition = nullptr;
-
-    if (UGameInstance* GameInstance = GetGameInstance())
-    {
-        if (UCharacterSelectionSubsystem* SelectionSubsystem = GameInstance->GetSubsystem<UCharacterSelectionSubsystem>())
-        {
-            SelectedDefinition = SelectionSubsystem->GetSelectedCharacter();
-        }
-    }
 
     if (SelectedDefinition)
     {
