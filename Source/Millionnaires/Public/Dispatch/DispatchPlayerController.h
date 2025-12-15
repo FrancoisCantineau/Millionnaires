@@ -1,31 +1,31 @@
-/**
+/* 
  * Millionnaires Project, 2025
- * Created by:  "0nnen"
+ * Created by: "0nnen"
  * Last Updated by: "0nnen"
- * Class: "DispatchPlayerController"
- * Notes: PlayerController specialised for the Dispatch (control room) gameplay.
+ * Class: "DispatchPlayerController" - Header
+ * Notes: Dispatch control room PlayerController (input orchestration only).
  */
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
-#include "Dispatch/DispatchTypes.h"
 #include "DispatchPlayerController.generated.h"
 
 class UInputMappingContext;
 class UInputAction;
+
 class UDispatchCameraManagerComponent;
 class UDispatchCursorComponent;
-class UDispatchCursorRadialWidget;
-class ADispatchCameraSpot;
+class UDispatchUIManagerComponent;
+class UDispatchMissionManagerComponent;
 
 /**
- * Player controller used while the player is in the Dispatch control room.
- * - Owns input bindings (Enhanced Input)
- * - Owns the camera manager + cursor component
- * - Owns camera switching fade (via PlayerCameraManager)
- *
+ * Dispatch PlayerController.
+ * - Binds input
+ * - Routes camera requests to CameraManager
+ * - Routes click to CursorComponent
+ * - Owns UI through UIManager (no direct widget calls)
+ * - Owns mission system through MissionManager (Day 1 start, offers, dispatch missions)
  */
 UCLASS()
 class MILLIONNAIRES_API ADispatchPlayerController : public APlayerController
@@ -33,158 +33,114 @@ class MILLIONNAIRES_API ADispatchPlayerController : public APlayerController
     GENERATED_BODY()
 
 public:
-    /** Default constructor. */
+#pragma region LIFECYCLE
+
+    /** Constructor. */
     ADispatchPlayerController();
+
+    /** BeginPlay. */
+    virtual void BeginPlay() override;
+
+    /** SetupInputComponent. */
+    virtual void SetupInputComponent() override;
+
+#pragma endregion LIFECYCLE
+
+#pragma region GETTERS
+
+    /** Camera manager accessor. */
+    UFUNCTION(BlueprintPure, Category="Dispatch|Camera")
+    UDispatchCameraManagerComponent* GetCameraManager() const { return cameraManagerComponent; }
+
+    /** Cursor component accessor. */
+    UFUNCTION(BlueprintPure, Category="Dispatch|Cursor")
+    UDispatchCursorComponent* GetCursorComponent() const { return cursorComponent; }
+
+    /** UI manager accessor. */
+    UFUNCTION(BlueprintPure, Category="Dispatch|UI")
+    UDispatchUIManagerComponent* GetUIManager() const { return uiManagerComponent; }
+
+    /** Mission manager accessor. */
+    UFUNCTION(BlueprintPure, Category="Dispatch|Missions")
+    UDispatchMissionManagerComponent* GetMissionManager() const { return missionManagerComponent; }
+
+#pragma endregion GETTERS
+
+protected:
+#pragma region INPUT_CALLBACKS
+
+    /** Next camera. */
+    void HandleNextCamera();
+
+    /** Previous camera. */
+    void HandlePrevCamera();
+
+    /** Zoom pressed. */
+    void HandleZoomPressed();
+
+    /** Zoom released. */
+    void HandleZoomReleased();
+
+    /** Click pressed. */
+    void HandleClick();
+
+    /** Toggle map input. */
+    void HandleToggleMap();
+
+    /** Close map input. */
+    void HandleCloseMap();
+
+#pragma endregion INPUT_CALLBACKS
 
 #pragma region COMPONENTS
 
-protected:
-    /** Component managing all Dispatch cameras and cycling between them. */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dispatch", meta = (AllowPrivateAccess = "true"))
-    UDispatchCameraManagerComponent* CameraManagerComponent;
+    /** Camera manager component. */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Components", meta=(AllowPrivateAccess="true"))
+    UDispatchCameraManagerComponent* cameraManagerComponent = nullptr;
 
-    /** Component handling cursor traces, hover logic and time dilation. */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dispatch", meta = (AllowPrivateAccess = "true"))
-    UDispatchCursorComponent* CursorComponent;
+    /** Cursor component. */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Components", meta=(AllowPrivateAccess="true"))
+    UDispatchCursorComponent* cursorComponent = nullptr;
+
+    /** UI manager component. */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Components", meta=(AllowPrivateAccess="true"))
+    UDispatchUIManagerComponent* uiManagerComponent = nullptr;
+
+    /** Mission manager component. */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Components", meta=(AllowPrivateAccess="true"))
+    UDispatchMissionManagerComponent* missionManagerComponent = nullptr;
 
 #pragma endregion COMPONENTS
 
 #pragma region INPUT
 
-protected:
-    /** Mapping context used for all Dispatch input (camera, zoom, click). */
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Dispatch|Input")
-    TObjectPtr<UInputMappingContext> DispatchIMC;
+    /** Dispatch input mapping context. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Input", meta=(AllowPrivateAccess="true"))
+    UInputMappingContext* dispatchIMC = nullptr;
 
-    /** InputAction used to cycle camera to the left. */
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Dispatch|Input")
-    TObjectPtr<UInputAction> CameraLeftAction;
+    /** Next camera action. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Input", meta=(AllowPrivateAccess="true"))
+    UInputAction* nextCameraAction = nullptr;
 
-    /** InputAction used to cycle camera to the right. */
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Dispatch|Input")
-    TObjectPtr<UInputAction> CameraRightAction;
+    /** Prev camera action. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Input", meta=(AllowPrivateAccess="true"))
+    UInputAction* prevCameraAction = nullptr;
 
-    /** InputAction used for zoom (pressed = zoom in, released = zoom out). */
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Dispatch|Input")
-    TObjectPtr<UInputAction> ZoomAction;
+    /** Zoom action (hold). */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Input", meta=(AllowPrivateAccess="true"))
+    UInputAction* zoomAction = nullptr;
 
-    /** InputAction used for clicking on interactables with the cursor. */
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Dispatch|Input")
-    TObjectPtr<UInputAction> ClickAction;
+    /** Click/interact action. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Input", meta=(AllowPrivateAccess="true"))
+    UInputAction* clickAction = nullptr;
+
+    /** Toggle map action (optional). */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Input", meta=(AllowPrivateAccess="true"))
+    UInputAction* toggleMapAction = nullptr;
+
+    /** Close map action (optional, e.g. Escape). */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Input", meta=(AllowPrivateAccess="true"))
+    UInputAction* closeMapAction = nullptr;
 
 #pragma endregion INPUT
-
-#pragma region UI
-
-protected:
-    /** Widget class used to display the radial cursor fill around the mouse. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dispatch|UI")
-    TSubclassOf<UDispatchCursorRadialWidget> CursorRadialWidgetClass;
-
-    /** Instance of the radial cursor widget. */
-    UPROPERTY(Transient)
-    UDispatchCursorRadialWidget* CursorRadialWidgetInstance;
-
-#pragma endregion UI
-
-#pragma region CAMERA_SWITCH_STATE
-
-protected:
-    /** Cached active Dispatch camera spot for convenience / debug. */
-    UPROPERTY(Transient)
-    TWeakObjectPtr<ADispatchCameraSpot> CurrentCameraSpot;
-
-    /** Currently pending camera switch (left/right) while the fade is playing. */
-    UPROPERTY(Transient)
-    EDispatchPendingCameraSwitch PendingCameraSwitch = EDispatchPendingCameraSwitch::None;
-
-    /** True while a fade sequence (out+switch+in) is running. */
-    UPROPERTY(Transient)
-    bool bIsCameraFading = false;
-
-    /** TimerHandle used to trigger camera switch and fade-in. */
-    FTimerHandle CameraFadeTimerHandle;
-
-    /** Duration of the fade-to-black when switching cameras. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dispatch|Camera|Fade")
-    float CameraFadeOutDuration = 0.35f;
-
-    /** Duration of the fade-in-from-black when switching cameras. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dispatch|Camera|Fade")
-    float CameraFadeInDuration = 0.35f;
-
-#pragma endregion CAMERA_SWITCH_STATE
-
-#pragma region LIFECYCLE
-
-protected:
-    /** Called when the game starts. */
-    virtual void BeginPlay() override;
-
-    /** Called to bind functionality to input. */
-    virtual void SetupInputComponent() override;
-
-#pragma endregion LIFECYCLE
-
-#pragma region CAMERA_API
-
-public:
-    /** Goes to the previous Dispatch camera (cycle left). */
-    UFUNCTION(BlueprintCallable, Category = "Dispatch|Camera")
-    void CycleCameraLeft();
-
-    /** Goes to the next Dispatch camera (cycle right). */
-    UFUNCTION(BlueprintCallable, Category = "Dispatch|Camera")
-    void CycleCameraRight();
-
-    /** Returns the Dispatch camera manager component. */
-    UFUNCTION(BlueprintPure, Category = "Dispatch|Camera")
-    UDispatchCameraManagerComponent* GetCameraManagerComponent() const { return CameraManagerComponent; }
-
-    /** Called when the zoom input is pressed (e.g. right mouse button down). */
-    UFUNCTION(BlueprintCallable, Category = "Dispatch|Camera")
-    void HandleZoomPressed();
-
-    /** Called when the zoom input is released. */
-    UFUNCTION(BlueprintCallable, Category = "Dispatch|Camera")
-    void HandleZoomReleased();
-
-#pragma endregion CAMERA_API
-
-#pragma region CURSOR_API
-
-public:
-    /** Returns the Dispatch cursor component. */
-    UFUNCTION(BlueprintPure, Category = "Dispatch|Cursor")
-    UDispatchCursorComponent* GetCursorComponent() const { return CursorComponent; }
-
-    /** Called by input to click on the current interactable object. */
-    UFUNCTION(BlueprintCallable, Category = "Dispatch|Interaction")
-    void HandleCursorClick();
-
-#pragma endregion CURSOR_API
-
-#pragma region INTERNAL_CALLBACKS
-
-protected:
-    /** Called whenever the active Dispatch camera changes. */
-    UFUNCTION()
-    void HandleActiveCameraChanged(ADispatchCameraSpot* NewCamera);
-
-    /** Callback fired by the CursorComponent when hover progress is updated. */
-    UFUNCTION()
-    void HandleHoverProgress(float Progress, bool bIsHoveringCharacter);
-
-    /** Internal: starts a fade sequence before switching camera. */
-    void StartCameraFadeSequence(EDispatchPendingCameraSwitch SwitchDirection);
-
-    /** Internal: called when the fade-to-black finishes, performs the camera switch and starts fade-in. */
-    UFUNCTION()
-    void HandleCameraFadeOutFinished();
-
-    /** Internal: called when fade-in back from black has finished. */
-    UFUNCTION()
-    void HandleCameraFadeInFinished();
-
-#pragma endregion INTERNAL_CALLBACKS
 };

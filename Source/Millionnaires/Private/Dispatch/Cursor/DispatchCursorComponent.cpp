@@ -1,44 +1,26 @@
-/**
+/* 
  * Millionnaires Project, 2025
- * Created by:  "0nnen"
+ * Created by: "0nnen"
  * Last Updated by: "0nnen"
- * Class: "DispatchCursorComponent"
+ * Class: "DispatchCursorComponent" - Source
  * Notes: Cursor traces, hover radial charge and slow motion implementation.
  */
-
-#include "Dispatch/DispatchCursorComponent.h"
+#include "Dispatch/Cursor/DispatchCursorComponent.h"
 
 #include "Dispatch/DispatchPlayerController.h"
 #include "Engine/World.h"
-#include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
-#include "Engine/Engine.h"
-#include "Engine/GameViewportClient.h"
+
+#pragma region LIFECYCLE
 
 UDispatchCursorComponent::UDispatchCursorComponent()
 {
     PrimaryComponentTick.bCanEverTick = true;
-    PrimaryComponentTick.bStartWithTickEnabled = true;
-
-    TraceDistance = 100000.f;
-    TraceChannel = ECC_Visibility;
-
-    HoverableTag = FName(TEXT("DispatchHover"));
-    HoverFillTime = 1.0f;
-    SlowMoTargetDilation = 0.1f;
-    SlowMoInterpSpeed = 3.0f;
-
-    CurrentHoverProgress = 0.f;
-    CurrentTimeDilation = 1.f;
 }
-
-#pragma region LIFECYCLE
 
 void UDispatchCursorComponent::BeginPlay()
 {
     Super::BeginPlay();
-
-    CachedController = Cast<ADispatchPlayerController>(GetOwner());
 
     // Ensure we start at normal speed.
     ApplyGlobalTimeDilation(1.f);
@@ -56,8 +38,16 @@ void UDispatchCursorComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    AActor* NewHoveredActor = PerformHoverTrace();
-    UpdateHoverAndSlowMo(DeltaTime, NewHoveredActor);
+    AActor* PreviousHovered = HoveredActor.Get();
+    AActor* NewHovered = PerformHoverTrace();
+
+    if (PreviousHovered != NewHovered)
+    {
+        CurrentHoverProgress = 0.f;
+        HoveredActor = NewHovered;
+    }
+
+    UpdateHoverAndSlowMo(DeltaTime, NewHovered);
 }
 
 #pragma endregion LIFECYCLE
@@ -67,18 +57,28 @@ void UDispatchCursorComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 void UDispatchCursorComponent::HandleClick()
 {
     AActor* Target = HoveredActor.Get();
-    if (!Target)
-    {
-        return;
-    }
+    OnActorClicked.Broadcast(Target);
 
-    // Here you could optionally call an interaction interface on the hovered actor.
-    // Example (pseudo-code, depends on your existing interface):
-    //
-    // if (Target->GetClass()->ImplementsInterface(UDispatchInteractableInterface::StaticClass()))
-    // {
-    //     IDispatchInteractableInterface::Execute_OnDispatchClicked(Target, CachedController.Get());
-    // }
+    // Here you can optionally call an interaction interface on the hovered actor.
+    // Example (pseudo-code, depends on your existing interface).
+}
+
+void UDispatchCursorComponent::SetWorldCursorEnabled(bool bEnabled)
+{
+    bWorldCursorEnabled = bEnabled;
+
+    if (!bWorldCursorEnabled)
+    {
+        // Reset state and restore time immediately.
+        HoveredActor.Reset();
+        CurrentHoverProgress = 0.f;
+        CurrentTimeDilation = 1.f;
+        ApplyGlobalTimeDilation(1.f);
+
+        // Force UI to hide radial instantly (it will fade out via UIManager).
+        OnHoverProgress.Broadcast(0.f, false);
+        OnHoverUIProgress.Broadcast(0.f, LastMousePos, false);
+    }
 }
 
 #pragma endregion API
@@ -97,23 +97,23 @@ AActor* UDispatchCursorComponent::PerformHoverTrace()
         }
     }
 
-    FVector2D MousePos(0.f, 0.f);
-    if (!CachedController->GetMousePosition(MousePos.X, MousePos.Y))
+    float X = 0.f;
+    float Y = 0.f;
+    if (CachedController->GetMousePosition(X, Y))
     {
-        HoveredActor.Reset();
-        return nullptr;
+        LastMousePos = FVector2D(X, Y);
     }
 
     FVector WorldOrigin;
-    FVector WorldDirection;
-    if (!CachedController->DeprojectMousePositionToWorld(WorldOrigin, WorldDirection))
+    FVector WorldDir;
+    if (!CachedController->DeprojectMousePositionToWorld(WorldOrigin, WorldDir))
     {
         HoveredActor.Reset();
         return nullptr;
     }
 
     const FVector TraceStart = WorldOrigin;
-    const FVector TraceEnd = TraceStart + WorldDirection * TraceDistance;
+    const FVector TraceEnd = WorldOrigin + (WorldDir * TraceDistance);
 
     FHitResult Hit;
     FCollisionQueryParams Params(SCENE_QUERY_STAT(DispatchCursorTrace), false);
@@ -122,14 +122,14 @@ AActor* UDispatchCursorComponent::PerformHoverTrace()
 
     if (GetWorld() && GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, TraceChannel, Params))
     {
-        HoveredActor = Hit.GetActor();
+        return Hit.GetActor();
     }
     else
     {
-        HoveredActor.Reset();
+        return nullptr;
     }
 
-    return HoveredActor.Get();
+    return nullptr;
 }
 
 void UDispatchCursorComponent::UpdateHoverAndSlowMo(float DeltaTime, AActor* NewHoveredActor)
@@ -146,32 +146,26 @@ void UDispatchCursorComponent::UpdateHoverAndSlowMo(float DeltaTime, AActor* New
     }
 
     // Update radial progress (fill or drain).
-    if (bIsHoverable)
-    {
-        const float DeltaProgress = DeltaTime / HoverFillTime;
-        CurrentHoverProgress = FMath::Clamp(CurrentHoverProgress + DeltaProgress, 0.f, 1.f);
-    }
-    else
-    {
-        const float DeltaProgress = DeltaTime / HoverFillTime;
-        CurrentHoverProgress = FMath::Clamp(CurrentHoverProgress - DeltaProgress, 0.f, 1.f);
-    }
-
-    // Compute target time dilation.
-    float TargetDilation = 1.f;
+    const float TargetProgress = bIsHoverable ? 1.f : 0.f;
+    const float Speed = 1.f / HoverFillTime;
+    CurrentHoverProgress = FMath::FInterpConstantTo(CurrentHoverProgress, TargetProgress, DeltaTime, Speed);
+    CurrentHoverProgress = FMath::Clamp(CurrentHoverProgress, 0.f, 1.f);
 
     // Time slowdown only when hovering a character.
+    float TargetDilation = 1.f;
     if (bIsCharacter && CurrentHoverProgress > 0.f)
     {
         TargetDilation = FMath::Lerp(1.f, SlowMoTargetDilation, CurrentHoverProgress);
     }
 
-    // Smoothly interpolate towards the target dilation.
     CurrentTimeDilation = FMath::FInterpTo(CurrentTimeDilation, TargetDilation, DeltaTime, SlowMoInterpSpeed);
     ApplyGlobalTimeDilation(CurrentTimeDilation);
 
-    // Notify listeners (e.g. the PlayerController updating the radial widget).
+    // Legacy broadcast
     OnHoverProgress.Broadcast(CurrentHoverProgress, bIsCharacter);
+
+    // UI broadcast
+    OnHoverUIProgress.Broadcast(CurrentHoverProgress, LastMousePos, bIsHoverable);
 }
 
 void UDispatchCursorComponent::ApplyGlobalTimeDilation(float NewDilation)

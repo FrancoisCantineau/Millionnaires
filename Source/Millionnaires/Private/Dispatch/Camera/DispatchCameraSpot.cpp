@@ -6,8 +6,8 @@
  * Notes: Implementation of the Dispatch camera spot actor.
  */
 
-#include "Dispatch/DispatchCameraSpot.h"
-#include "Dispatch/DispatchCameraManagerComponent.h"
+#include "Dispatch/Camera/DispatchCameraSpot.h"
+#include "Dispatch/Camera/DispatchCameraManagerComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SceneComponent.h"
 #include "Engine/World.h"
@@ -34,14 +34,13 @@ void ADispatchCameraSpot::BeginPlay()
         InitialFOV = Camera->FieldOfView;
     }
 
-    // Registration is handled by UDispatchCameraManagerComponent (auto-discovery) by default.
-    // If you spawn camera spots dynamically, you can call RegisterToDispatchCameraManager() manually.
+    RegisterToDispatchCameraManager();
 }
 
 void ADispatchCameraSpot::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-    // Unregister is optional because the manager stores weak pointers and cleans them up when sorting.
-    // If you register manually at runtime, you may also want to unregister manually before destroying.
+    UnregisterFromDispatchCameraManager();
+
     Super::EndPlay(EndPlayReason);
 }
 

@@ -1,90 +1,62 @@
-/**
+/* 
  * Millionnaires Project, 2025
- * Created by:  "0nnen"
+ * Created by: "0nnen"
  * Last Updated by: "0nnen"
- * Class: "DispatchPlayerController"
- * Notes: Implements camera switching fade and cursor-driven radial UI for the Dispatch scene.
+ * Class: "DispatchPlayerController" - Source
+ * Notes: Input routing for Dispatch mode (camera/cursor/ui/missions).
  */
-
 #include "Dispatch/DispatchPlayerController.h"
 
-#include "Dispatch/DispatchCameraManagerComponent.h"
-#include "Dispatch/DispatchCursorComponent.h"
-#include "Dispatch/DispatchCursorRadialWidget.h"
-#include "Dispatch/DispatchCameraSpot.h"
+#include "Dispatch/Camera/DispatchCameraManagerComponent.h"
+#include "Dispatch/Cursor/DispatchCursorComponent.h"
+#include "Dispatch/UI/DispatchUIManagerComponent.h"
+#include "Dispatch/Missions/DispatchMissionManagerComponent.h"
 
+#include "InputMappingContext.h"
+#include "InputAction.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "Blueprint/UserWidget.h"
 #include "Engine/LocalPlayer.h"
-#include "TimerManager.h"
-#include "Camera/PlayerCameraManager.h"
+
+#pragma region LIFECYCLE
 
 ADispatchPlayerController::ADispatchPlayerController()
 {
     bShowMouseCursor = true;
-    bEnableClickEvents = false;
-    bEnableMouseOverEvents = false;
+    bEnableClickEvents = true;
+    bEnableMouseOverEvents = true;
 
-    DefaultMouseCursor = EMouseCursor::Default;
-
-    // Create sub components
-    CameraManagerComponent = CreateDefaultSubobject<UDispatchCameraManagerComponent>(TEXT("DispatchCameraManager"));
-    CursorComponent = CreateDefaultSubobject<UDispatchCursorComponent>(TEXT("DispatchCursor"));
+    cameraManagerComponent = CreateDefaultSubobject<UDispatchCameraManagerComponent>(TEXT("DispatchCameraManagerComponent"));
+    cursorComponent = CreateDefaultSubobject<UDispatchCursorComponent>(TEXT("DispatchCursorComponent"));
+    uiManagerComponent = CreateDefaultSubobject<UDispatchUIManagerComponent>(TEXT("DispatchUIManagerComponent"));
+    missionManagerComponent = CreateDefaultSubobject<UDispatchMissionManagerComponent>(TEXT("DispatchMissionManagerComponent"));
 }
-
-#pragma region LIFECYCLE
 
 void ADispatchPlayerController::BeginPlay()
 {
     Super::BeginPlay();
 
-    // Apply the MappingContext to the Enhanced Input subsystem.
+    // Enhanced Input mapping context.
     if (ULocalPlayer* LocalPlayer = GetLocalPlayer())
     {
-        if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(LocalPlayer))
+        if (UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
         {
-            if (DispatchIMC)
+            if (dispatchIMC)
             {
-                Subsystem->AddMappingContext(DispatchIMC, 0);
+                Subsystem->AddMappingContext(dispatchIMC, 0);
+            }
+            else
+            {
+                UE_LOG(LogTemp, Warning, TEXT("[DispatchPC] dispatchIMC is not set."));
             }
         }
     }
 
-    // Ensure we still receive keyboard/mouse input while the cursor is visible (Dispatch is UI-heavy).
+    // Ensure we still receive input while cursor is visible.
     {
         FInputModeGameAndUI InputMode;
         InputMode.SetHideCursorDuringCapture(false);
         SetInputMode(InputMode);
-    }
-
-    // Bind to camera manager delegate if available.
-    if (CameraManagerComponent)
-    {
-        CameraManagerComponent->OnActiveCameraChanged.AddDynamic(this, &ADispatchPlayerController::HandleActiveCameraChanged);
-
-        // In case the manager activated a camera before we bound the delegate, sync it now.
-        if (ADispatchCameraSpot* Active = CameraManagerComponent->GetActiveCamera())
-        {
-            HandleActiveCameraChanged(Active);
-        }
-    }
-
-    // Create and hook cursor radial widget.
-    if (CursorRadialWidgetClass)
-    {
-        CursorRadialWidgetInstance = CreateWidget<UDispatchCursorRadialWidget>(this, CursorRadialWidgetClass);
-        if (CursorRadialWidgetInstance)
-        {
-            CursorRadialWidgetInstance->AddToViewport(10);
-            CursorRadialWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
-        }
-    }
-
-    // Bind to cursor progress delegate so we can drive the radial widget.
-    if (CursorComponent)
-    {
-        CursorComponent->OnHoverProgress.AddDynamic(this, &ADispatchPlayerController::HandleHoverProgress);
     }
 }
 
@@ -92,206 +64,86 @@ void ADispatchPlayerController::SetupInputComponent()
 {
     Super::SetupInputComponent();
 
-    if (!InputComponent)
+    UEnhancedInputComponent* EI = Cast<UEnhancedInputComponent>(InputComponent);
+    if (!EI)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[Dispatch] No InputComponent on DispatchPlayerController."));
+        UE_LOG(LogTemp, Warning, TEXT("[DispatchPC] EnhancedInputComponent missing."));
         return;
     }
 
-    if (UEnhancedInputComponent* EI = Cast<UEnhancedInputComponent>(InputComponent))
+    if (nextCameraAction)
     {
-        UE_LOG(LogTemp, Log, TEXT("[Dispatch] SetupInputComponent | IMC=%s | Zoom=%s | Click=%s"),
-            *GetNameSafe(DispatchIMC),
-            *GetNameSafe(ZoomAction),
-            *GetNameSafe(ClickAction)
-        );
-
-        if (CameraLeftAction)
-        {
-            EI->BindAction(CameraLeftAction, ETriggerEvent::Started, this, &ADispatchPlayerController::CycleCameraLeft);
-        }
-
-        if (CameraRightAction)
-        {
-            EI->BindAction(CameraRightAction, ETriggerEvent::Started, this, &ADispatchPlayerController::CycleCameraRight);
-        }
-
-        if (ZoomAction)
-        {
-            // Some IA trigger setups only emit Triggered (not Started). Bind both for robustness.
-            EI->BindAction(ZoomAction, ETriggerEvent::Started, this, &ADispatchPlayerController::HandleZoomPressed);
-            EI->BindAction(ZoomAction, ETriggerEvent::Triggered, this, &ADispatchPlayerController::HandleZoomPressed);
-            EI->BindAction(ZoomAction, ETriggerEvent::Completed, this, &ADispatchPlayerController::HandleZoomReleased);
-            EI->BindAction(ZoomAction, ETriggerEvent::Canceled, this, &ADispatchPlayerController::HandleZoomReleased);
-        }
-
-        if (ClickAction)
-        {
-            EI->BindAction(ClickAction, ETriggerEvent::Started, this, &ADispatchPlayerController::HandleCursorClick);
-        }
+        EI->BindAction(nextCameraAction, ETriggerEvent::Started, this, &ADispatchPlayerController::HandleNextCamera);
     }
+
+    if (prevCameraAction)
+    {
+        EI->BindAction(prevCameraAction, ETriggerEvent::Started, this, &ADispatchPlayerController::HandlePrevCamera);
+    }
+
+    if (zoomAction)
+    {
+        // Robust binding: some trigger setups emit Triggered but not Started.
+        EI->BindAction(zoomAction, ETriggerEvent::Started, this, &ADispatchPlayerController::HandleZoomPressed);
+        EI->BindAction(zoomAction, ETriggerEvent::Triggered, this, &ADispatchPlayerController::HandleZoomPressed);
+        EI->BindAction(zoomAction, ETriggerEvent::Completed, this, &ADispatchPlayerController::HandleZoomReleased);
+        EI->BindAction(zoomAction, ETriggerEvent::Canceled, this, &ADispatchPlayerController::HandleZoomReleased);
+    }
+
+    if (clickAction)
+    {
+        EI->BindAction(clickAction, ETriggerEvent::Started, this, &ADispatchPlayerController::HandleClick);
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("[DispatchPC] SetupInputComponent | IMC=%s | Zoom=%s | Click=%s"),
+        *GetNameSafe(dispatchIMC),
+        *GetNameSafe(zoomAction),
+        *GetNameSafe(clickAction)
+    );
 }
 
 #pragma endregion LIFECYCLE
 
-#pragma region CAMERA_API
+#pragma region INPUT_CALLBACKS
 
-void ADispatchPlayerController::CycleCameraLeft()
+void ADispatchPlayerController::HandleNextCamera()
 {
-    if (!CameraManagerComponent || bIsCameraFading)
+    if (cameraManagerComponent)
     {
-        return;
+        cameraManagerComponent->CycleCameraRight();
     }
-
-    StartCameraFadeSequence(EDispatchPendingCameraSwitch::Left);
 }
 
-void ADispatchPlayerController::CycleCameraRight()
+void ADispatchPlayerController::HandlePrevCamera()
 {
-    if (!CameraManagerComponent || bIsCameraFading)
+    if (cameraManagerComponent)
     {
-        return;
+        cameraManagerComponent->CycleCameraLeft();
     }
-
-    StartCameraFadeSequence(EDispatchPendingCameraSwitch::Right);
 }
 
 void ADispatchPlayerController::HandleZoomPressed()
 {
-    if (CameraManagerComponent)
+    if (cameraManagerComponent)
     {
-        CameraManagerComponent->SetWantsZoom(true);
+        cameraManagerComponent->SetWantsZoom(true);
     }
 }
 
 void ADispatchPlayerController::HandleZoomReleased()
 {
-    if (CameraManagerComponent)
+    if (cameraManagerComponent)
     {
-        CameraManagerComponent->SetWantsZoom(false);
+        cameraManagerComponent->SetWantsZoom(false);
     }
 }
 
-#pragma endregion CAMERA_API
-
-#pragma region CURSOR_API
-
-void ADispatchPlayerController::HandleCursorClick()
+void ADispatchPlayerController::HandleClick()
 {
-    if (!CursorComponent)
+    if (cursorComponent)
     {
-        return;
+        cursorComponent->HandleClick();
     }
-
-    // Cursor handles generic interaction (interfaces, tags, etc).
-    CursorComponent->HandleClick();
 }
 
-#pragma endregion CURSOR_API
-
-#pragma region INTERNAL_CALLBACKS
-
-void ADispatchPlayerController::HandleActiveCameraChanged(ADispatchCameraSpot* NewCamera)
-{
-    CurrentCameraSpot = NewCamera;
-}
-
-void ADispatchPlayerController::HandleHoverProgress(float Progress, bool bIsHoveringCharacter)
-{
-    if (!CursorRadialWidgetInstance)
-    {
-        return;
-    }
-
-    if (Progress <= KINDA_SMALL_NUMBER)
-    {
-        CursorRadialWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
-        return;
-    }
-
-    FVector2D MousePos;
-    if (GetMousePosition(MousePos.X, MousePos.Y))
-    {
-        CursorRadialWidgetInstance->SetScreenPosition(MousePos);
-    }
-
-    CursorRadialWidgetInstance->SetProgress(Progress);
-    CursorRadialWidgetInstance->SetVisibility(ESlateVisibility::Visible);
-}
-
-void ADispatchPlayerController::StartCameraFadeSequence(EDispatchPendingCameraSwitch SwitchDirection)
-{
-    if (!PlayerCameraManager)
-    {
-        return;
-    }
-
-    PendingCameraSwitch = SwitchDirection;
-    bIsCameraFading = true;
-
-    // Fade to black, hold when finished until we manually fade-in.
-    PlayerCameraManager->StartCameraFade(
-        0.f,
-        1.f,
-        CameraFadeOutDuration,
-        FLinearColor::Black,
-        false,
-        true
-    );
-
-    GetWorldTimerManager().ClearTimer(CameraFadeTimerHandle);
-    GetWorldTimerManager().SetTimer(
-        CameraFadeTimerHandle,
-        this,
-        &ADispatchPlayerController::HandleCameraFadeOutFinished,
-        CameraFadeOutDuration,
-        false
-    );
-}
-
-void ADispatchPlayerController::HandleCameraFadeOutFinished()
-{
-    if (CameraManagerComponent)
-    {
-        if (PendingCameraSwitch == EDispatchPendingCameraSwitch::Left)
-        {
-            CameraManagerComponent->CycleCameraLeft();
-        }
-        else if (PendingCameraSwitch == EDispatchPendingCameraSwitch::Right)
-        {
-            CameraManagerComponent->CycleCameraRight();
-        }
-    }
-
-    PendingCameraSwitch = EDispatchPendingCameraSwitch::None;
-
-    if (PlayerCameraManager)
-    {
-        // Fade from black back to normal, do not hold once finished.
-        PlayerCameraManager->StartCameraFade(
-            1.f,
-            0.f,
-            CameraFadeInDuration,
-            FLinearColor::Black,
-            false,
-            false
-        );
-    }
-
-    GetWorldTimerManager().ClearTimer(CameraFadeTimerHandle);
-    GetWorldTimerManager().SetTimer(
-        CameraFadeTimerHandle,
-        this,
-        &ADispatchPlayerController::HandleCameraFadeInFinished,
-        CameraFadeInDuration,
-        false
-    );
-}
-
-void ADispatchPlayerController::HandleCameraFadeInFinished()
-{
-    bIsCameraFading = false;
-    GetWorldTimerManager().ClearTimer(CameraFadeTimerHandle);
-}
-
-#pragma endregion INTERNAL_CALLBACKS
+#pragma endregion INPUT_CALLBACKS

@@ -65,7 +65,7 @@ void ADispatchHologramActor::OnDispatchClicked_Implementation(APlayerController*
     {
         if (ADispatchPlayerController* DispatchPC = Cast<ADispatchPlayerController>(Controller))
         {
-            DispatchPC->ToggleMap();
+            // DispatchPC->ToggleMap();
         }
     }
 }

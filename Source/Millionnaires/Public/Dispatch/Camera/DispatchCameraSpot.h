@@ -126,7 +126,7 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Dispatch|Camera")
     void UnregisterFromDispatchCameraManager();
 
-    /** Returns true if zoom is allowed for this camera. */
+        /** Returns true if zoom is allowed for this camera. */
     UFUNCTION(BlueprintPure, Category = "Dispatch|Camera|Zoom")
     bool IsZoomAllowed() const { return bAllowZoom; }
 
