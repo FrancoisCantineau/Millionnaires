@@ -24,8 +24,6 @@ UDispatchCursorComponent::UDispatchCursorComponent()
     TraceChannel = ECC_Visibility;
 
     HoverableTag = FName(TEXT("DispatchHover"));
-    MapHologramTag = FName(TEXT("DispatchMapHologram"));
-
     HoverFillTime = 1.0f;
     SlowMoTargetDilation = 0.1f;
     SlowMoInterpSpeed = 3.0f;
@@ -140,7 +138,7 @@ void UDispatchCursorComponent::UpdateHoverAndSlowMo(float DeltaTime, AActor* New
     const bool bIsCharacter = bHasHover && NewHoveredActor->IsA<APawn>();
     const bool bIsHoverable =
         bHasHover &&
-        (bIsCharacter || NewHoveredActor->ActorHasTag(HoverableTag) || NewHoveredActor->ActorHasTag(MapHologramTag));
+        (bIsCharacter || NewHoveredActor->ActorHasTag(HoverableTag));
 
     if (HoverFillTime <= KINDA_SMALL_NUMBER)
     {

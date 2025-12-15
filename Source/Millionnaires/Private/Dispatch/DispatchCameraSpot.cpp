@@ -34,13 +34,14 @@ void ADispatchCameraSpot::BeginPlay()
         InitialFOV = Camera->FieldOfView;
     }
 
-    RegisterToDispatchCameraManager();
+    // Registration is handled by UDispatchCameraManagerComponent (auto-discovery) by default.
+    // If you spawn camera spots dynamically, you can call RegisterToDispatchCameraManager() manually.
 }
 
 void ADispatchCameraSpot::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-    UnregisterFromDispatchCameraManager();
-
+    // Unregister is optional because the manager stores weak pointers and cleans them up when sorting.
+    // If you register manually at runtime, you may also want to unregister manually before destroying.
     Super::EndPlay(EndPlayReason);
 }
 

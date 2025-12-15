@@ -44,11 +44,6 @@ protected:
     /** Tag that marks actors as "hoverable" for the radial charge (in addition to being a Pawn). */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dispatch|Cursor")
     FName HoverableTag;
-
-    /** Tag that marks a hologram actor which should open the Dispatch map when clicked. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dispatch|Cursor")
-    FName MapHologramTag;
-
     /** Time in seconds required to fully fill the radial hover circle. */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dispatch|SlowMo")
     float HoverFillTime;
