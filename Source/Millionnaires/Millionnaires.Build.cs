@@ -19,6 +19,7 @@ public class Millionnaires : ModuleRules
 			"GameplayStateTreeModule",
 			"UMG",
 			"Slate",
+			"SlateCore",
 			"Niagara"
 		});
 
