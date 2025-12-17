@@ -1,7 +1,7 @@
 /*
  * Millionaire Project, 2025
  * Created by:  "0nnen"
- * Last Updated by: "Francois"
+ * Last Updated by: "Francki"
  * Class: "BaseCharacter" - Header
  * Notes: Base character class shared by the player and AI. Contains generic logic and a stats component.
  */
@@ -41,6 +41,16 @@ protected:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character|Components", meta = (AllowPrivateAccess = "true", ToolTip = "Component that manages health, hunger and basic character data."))
     TObjectPtr<UCharacterStatsComponent> StatsComponent;
+    
+    /** Name of the collision profile to use during ragdoll death */
+    UPROPERTY(EditAnywhere, Category="Damage")
+    FName RagdollCollisionProfile = FName("Ragdoll");
+
+    /** Called when HP is depleted and the character should die */
+    UFUNCTION()
+    void Die();
+
+    virtual void BeginPlay() override;
 
     
 };
