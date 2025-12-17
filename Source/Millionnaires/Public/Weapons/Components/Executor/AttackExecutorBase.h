@@ -14,27 +14,32 @@
 #include "NiagaraComponent.h"
 #include "Components/ActorComponent.h"
 #include "Weapons/WeaponBase.h"
-#include "AttackExecutorComponentBase.generated.h"
+#include "AttackExecutorBase.generated.h"
+
 
 
 UCLASS(Abstract, ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class MILLIONNAIRES_API UAttackExecutorComponentBase : public UActorComponent
+class MILLIONNAIRES_API UAttackExecutorBase : public UObject
 {
 	GENERATED_BODY()
 
 public:	
-
-	UAttackExecutorComponentBase();
-
+	
 	/**
 	 * Executes the attack. Must be overrided by each child
 	 * @param m_DamageMultiplier , multiplies the damages (used for charging weapons, for exemple)
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Attack")
-	virtual void ExecuteAttack(float m_DamageMultiplier = 1.f) PURE_VIRTUAL(UAttackExecutorComponentBase::ExecuteAttack, );
+	virtual void ExecuteAttack(float m_DamageMultiplier = 1.f);
 
 	UFUNCTION(BlueprintCallable, Category = "Attack")
 	virtual void EndAttackExecution();
+
+	/**
+	 * Initialize the executor, with the weapon
+	 * @param Weapon, attached weapon
+	 */
+	virtual void Initialize(AWeaponBase* Weapon);
 
 	
 protected:
@@ -43,8 +48,6 @@ protected:
 
 	UFUNCTION()
 	virtual void OnHit(const FHitResult& Hit) ;
-	
-	virtual void BeginPlay() override;
 	
 	float GetFinalDamage(float Multiplier = 1.f) const;
 	
@@ -55,30 +58,10 @@ protected:
 	void ExplodeAtLocation(const FHitResult& Hit);
 
 	//** Properties */
-	
+
+	/** Associated weapon */
 	UPROPERTY()
 	AWeaponBase* OwnerWeapon;
-	
-	UPROPERTY(EditAnywhere, Category = "Projectile")
-	FName MuzzleSocketName = TEXT("Muzzle");
 
 	float DamageMultiplier = 1.f;
-	
-	UPROPERTY(EditAnywhere, Category="AOE")
-	EAttackAreaType AreaType = EAttackAreaType::Single;
-
-	UPROPERTY(EditAnywhere, Category="AOE", meta=(EditCondition="AreaType != EAttackAreaType::Single"))
-	float ExplosionRadius = 300.f;
-
-	UPROPERTY(EditAnywhere, Category="AOE", meta=(EditCondition="AreaType == EAttackAreaType::Cone"))
-	float ConeAngle = 45.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "FX")
-	UNiagaraSystem* ImpactVFX;
-
-	
-public:	
-	
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-	
 };

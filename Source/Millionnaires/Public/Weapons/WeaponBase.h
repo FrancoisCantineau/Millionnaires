@@ -59,10 +59,10 @@ public:
 	UFUNCTION(BlueprintCallable,BlueprintImplementableEvent, Category = "Weapon")
 	void StopAttacking();
 
-	UFUNCTION(BlueprintCallable,BlueprintImplementableEvent, Category = "Weapon")
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void PerformAttack(float DamagesMultiplicator);
 
-	UFUNCTION(BlueprintCallable,BlueprintImplementableEvent, Category = "Weapon")
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void InterruptAttack();
 	
 	UFUNCTION(BlueprintPure, Category = "Weapon")
@@ -87,6 +87,10 @@ protected:
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Components")
 	TArray<UWeaponEffectBaseComponent*> Effects;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Components")
+	UAttackExecutorBase* AttackExecutor;
+
 
 public:	
 	// Called every frame

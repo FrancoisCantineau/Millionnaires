@@ -11,7 +11,7 @@
 
 
 #include "Weapons//WeaponBase.h"
-
+#include "Weapons/Components/Executor/AttackExecutorBase.h"
 
 
 #pragma region Setup
@@ -31,6 +31,7 @@ AWeaponBase::AWeaponBase()
 	
 }
 
+
 /**
 * Called whenever the actor is modified
 */
@@ -46,6 +47,16 @@ void AWeaponBase::BeginPlay()
 {
 	Super::BeginPlay();
 
+	AttackExecutor = NewObject<UAttackExecutorBase>(
+		this,
+		WeaponData->ExecutorClass
+	);
+
+	if (AttackExecutor)
+	{
+		AttackExecutor->Initialize(this);
+	}
+	
 	GetComponents<UWeaponEffectBaseComponent>(Effects);
 	ApplyWeaponData();
 }
@@ -71,10 +82,35 @@ void AWeaponBase::ApplyWeaponData()
 			WeaponData->AttackRate,
 			WeaponData->AttackRange
 		);
-            
-		// Debug pour vérifier
+		
 		UE_LOG(LogTemp, Warning, TEXT("✅ BuffComponent initialized - FireRate: %.2f"), 
 			   BuffComponent->GetFireRate());
+	}
+}
+
+
+#pragma endregion
+
+// Called every frame
+void AWeaponBase::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+}
+
+void AWeaponBase::PerformAttack(float DamagesMultiplicator)
+{
+	if (AttackExecutor)
+	{
+		AttackExecutor->ExecuteAttack(DamagesMultiplicator);
+	}
+}
+
+void AWeaponBase::InterruptAttack()
+{
+	if (AttackExecutor)
+	{
+		AttackExecutor->EndAttackExecution();
 	}
 }
 
@@ -84,13 +120,4 @@ void AWeaponBase::ApplyEffects(const FHitResult& Hit, AActor* Instigatorr)
 	{
 		Effect->ApplyEffect(Hit, Instigatorr);
 	}
-}
-
-#pragma endregion
-
-// Called every frame
-void AWeaponBase::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
 }

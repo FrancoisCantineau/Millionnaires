@@ -16,40 +16,26 @@
 #include "NiagaraSystem.h"
 #include "NiagaraFunctionLibrary.h"
 
-#include "Weapons/Components/Executor/AttackExecutorComponentBase.h"
-#include "LineTraceAttackExecutorComponent.generated.h"
+#include "Weapons/Components/Executor/AttackExecutorBase.h"
+#include "LineTraceExecutor.generated.h"
+
+
 
 /**
  * 
  */
 UCLASS(Blueprintable, ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class MILLIONNAIRES_API ULineTraceAttackExecutorComponent : public UAttackExecutorComponentBase
+class MILLIONNAIRES_API ULineTraceExecutor : public UAttackExecutorBase
 {
 	GENERATED_BODY()
 
 public:
+
+	void Initialize(AWeaponBase* Weapon) override;
 	
 	virtual void ExecuteAttack(float DamageMultiplier = 1.f) override;
 
 	virtual void EndAttackExecution() override;
 
-	virtual void BeginPlay() override;
-
 	virtual void OnHit(const FHitResult& Hit) override;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Line Trace")
-	float TraceDistance = 20000.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Line Trace")
-	UNiagaraComponent* TraceParticle;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "FX")
-	UNiagaraSystem* LaserBeamVFX;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "FX")
-	FString ParticleVariable = "None";
-	
-	
-	
-	
 };

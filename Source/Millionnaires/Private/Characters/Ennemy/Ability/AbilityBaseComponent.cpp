@@ -46,7 +46,7 @@ void UAbilityBaseComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 	// ...
 }
 
-bool UAbilityBaseComponent::UseAbility()
+bool UAbilityBaseComponent::UseAbility(AActor* Target)
 {
 	return false;
 }

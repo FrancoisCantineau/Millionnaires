@@ -21,11 +21,11 @@ protected:
 	virtual void OnPossess(APawn* InPawn) override;
 
 	/** Blackboard */
-	UPROPERTY(EditDefaultsOnly, Category="AI")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AI")
 	UBlackboardData* BlackboardAsset;
 
 	/** Behavior Tree */
-	UPROPERTY(EditDefaultsOnly, Category="AI")
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly, Category="AI")
 	UBehaviorTree* BehaviorTreeAsset;
 	
 };

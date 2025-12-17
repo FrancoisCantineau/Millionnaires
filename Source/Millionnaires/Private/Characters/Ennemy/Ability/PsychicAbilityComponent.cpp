@@ -10,7 +10,7 @@
 
 #include "Characters/Ennemy/Ability/PsychicAbilityComponent.h"
 
-bool UPsychicAbilityComponent::UseAbility()
+bool UPsychicAbilityComponent::UseAbility(AActor* Target)
 {
 
 	if (!CanUseAbility() || !OwningCharacter)

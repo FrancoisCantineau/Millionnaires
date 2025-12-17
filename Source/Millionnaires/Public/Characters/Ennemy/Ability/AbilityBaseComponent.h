@@ -50,6 +50,6 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	UFUNCTION(BlueprintCallable, Category = "Ability")
-	virtual bool UseAbility();
+	virtual bool UseAbility(AActor* Target);
 	
 };

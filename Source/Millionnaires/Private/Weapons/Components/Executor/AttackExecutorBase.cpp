@@ -8,41 +8,23 @@
  * Notes: Implements the logic for attack execution, mostly regarding damages type.
  */
 
-#include "Weapons/Components/Executor/AttackExecutorComponentBase.h"
+#include "Weapons/Components/Executor/AttackExecutorBase.h"
 
 #include "NiagaraFunctionLibrary.h"
 #include "Interfaces/DamageableInterface.h"
 
 #include "Engine/OverlapResult.h"
+#include "Kismet/GameplayStatics.h"
 
 #include "ProfilingDebugging/CookStats.h"
 
 
-UAttackExecutorComponentBase::UAttackExecutorComponentBase()
+void UAttackExecutorBase::Initialize(AWeaponBase* Weapon)
 {
-	PrimaryComponentTick.bCanEverTick = true;
+	OwnerWeapon = Weapon;
 }
 
-
-void UAttackExecutorComponentBase::EndAttackExecution()
-{
-}
-
-void UAttackExecutorComponentBase::BeginPlay()
-{
-	Super::BeginPlay();
-
-	OwnerWeapon = Cast<AWeaponBase>(GetOwner());
-}
-
-
-void UAttackExecutorComponentBase::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-}
-
-float UAttackExecutorComponentBase::GetFinalDamage(float Multiplier) const
+float UAttackExecutorBase::GetFinalDamage(float Multiplier) const
 {
 	if (!OwnerWeapon || !OwnerWeapon->BuffComponent)
 		return 10.f;
@@ -50,7 +32,7 @@ float UAttackExecutorComponentBase::GetFinalDamage(float Multiplier) const
 	return OwnerWeapon->BuffComponent->GetDamage() * Multiplier;
 }
 
-float UAttackExecutorComponentBase::GetFinalRange() const
+float UAttackExecutorBase::GetFinalRange() const
 {
 	if (!OwnerWeapon || !OwnerWeapon->BuffComponent)
 		return 1000.f;
@@ -58,7 +40,7 @@ float UAttackExecutorComponentBase::GetFinalRange() const
 	return OwnerWeapon->BuffComponent->GetRange();
 }
 
-void UAttackExecutorComponentBase::ApplyDamage(const FHitResult& Hit, AActor* AttackedActor)
+void UAttackExecutorBase::ApplyDamage(const FHitResult& Hit, AActor* AttackedActor)
 {
 	OwnerWeapon->ApplyEffects(Hit, OwnerWeapon);
 	
@@ -76,11 +58,11 @@ void UAttackExecutorComponentBase::ApplyDamage(const FHitResult& Hit, AActor* At
 
 }
 
-void UAttackExecutorComponentBase::ExplodeAtLocation(const FHitResult& Hit)
+void UAttackExecutorBase::ExplodeAtLocation(const FHitResult& Hit)
 {
 	TArray<FOverlapResult> Overlaps;
 
-	FCollisionShape Sphere = FCollisionShape::MakeSphere(ExplosionRadius);
+	FCollisionShape Sphere = FCollisionShape::MakeSphere(OwnerWeapon->WeaponData->BaseAttackExecutorSettings.ExplosionRadius);
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(OwnerWeapon);
 	Params.AddIgnoredActor(OwnerWeapon->GetOwner());
@@ -106,19 +88,28 @@ void UAttackExecutorComponentBase::ExplodeAtLocation(const FHitResult& Hit)
 	}
 }
 
-void UAttackExecutorComponentBase::OnHit(const FHitResult& Hit)
+void UAttackExecutorBase::OnHit(const FHitResult& Hit)
 {
-	if (ImpactVFX)
+	if (OwnerWeapon->WeaponData->BaseAttackExecutorSettings.ImpactVFX)
 	{
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 		GetWorld(),      
-		ImpactVFX,       
+		OwnerWeapon->WeaponData->BaseAttackExecutorSettings.ImpactVFX,       
 		Hit.ImpactPoint,
 		Hit.ImpactNormal.Rotation() 
 	);
 	}
+
+	if (OwnerWeapon->WeaponData->BaseAttackExecutorSettings.ImpactSFX)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+		this,              
+		OwnerWeapon->WeaponData->BaseAttackExecutorSettings.ImpactSFX,       
+		Hit.ImpactPoint     
+	);
+	}
 	
-	switch (AreaType)
+	switch (OwnerWeapon->WeaponData->BaseAttackExecutorSettings.AreaType)
 	{
 	case EAttackAreaType::Single : ApplyDamage(Hit, Hit.GetActor());
 		break;
@@ -129,4 +120,13 @@ void UAttackExecutorComponentBase::OnHit(const FHitResult& Hit)
 	default : break;
 	}
 	
+}
+
+void UAttackExecutorBase::ExecuteAttack(float m_DamageMultiplier)
+{
+	DamageMultiplier = m_DamageMultiplier;
+}
+
+void UAttackExecutorBase::EndAttackExecution()
+{
 }
