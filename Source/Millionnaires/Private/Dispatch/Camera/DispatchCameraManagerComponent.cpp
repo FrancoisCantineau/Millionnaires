@@ -94,6 +94,15 @@ void UDispatchCameraManagerComponent::UnregisterCameraSpot(ADispatchCameraSpot* 
     }
 }
 
+bool UDispatchCameraManagerComponent::IsOnMapCamera() const
+{
+    if (ADispatchCameraSpot* Active = GetActiveCamera())
+    {
+        return Active->IsMapCamera();
+    }
+    return false;
+}
+
 void UDispatchCameraManagerComponent::CycleCameraRight()
 {
     if (CameraSpots.Num() == 0)
@@ -143,6 +152,16 @@ void UDispatchCameraManagerComponent::ActivateCameraByIndex(int32 Index)
     if (!NewCamera)
     {
         return;
+    }
+
+    // --- Check if we are leaving the map camera, automatically reset the suspended/map state.
+    ADispatchCameraSpot* OldCamera = GetActiveCamera();
+    const bool bWasMapCamera = OldCamera && OldCamera->IsMapCamera();
+    const bool bIsMapCamera = NewCamera->IsMapCamera();
+
+    if (bSuspended && bWasMapCamera && !bIsMapCamera)
+    {
+        SetSuspended(false);
     }
 
     APlayerController* PC = GetOwningPlayerController();
@@ -212,7 +231,7 @@ void UDispatchCameraManagerComponent::UpdateZoom(float DeltaTime)
     }
     else
     {
-        CameraComp->PostProcessBlendWeight = 0.f;
+        CameraComp->PostProcessBlendWeight = 1.f;
     }
 }
 

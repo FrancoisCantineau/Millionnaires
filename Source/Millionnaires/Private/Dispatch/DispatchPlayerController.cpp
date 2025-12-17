@@ -11,6 +11,7 @@
 #include "Dispatch/Cursor/DispatchCursorComponent.h"
 #include "Dispatch/UI/DispatchUIManagerComponent.h"
 #include "Dispatch/Missions/DispatchMissionManagerComponent.h"
+#include "Dispatch/Map/DispatchMissionWorldIndicatorComponent.h"
 
 #include "InputMappingContext.h"
 #include "InputAction.h"
@@ -26,10 +27,11 @@ ADispatchPlayerController::ADispatchPlayerController()
     bEnableClickEvents = true;
     bEnableMouseOverEvents = true;
 
-    cameraManagerComponent = CreateDefaultSubobject<UDispatchCameraManagerComponent>(TEXT("DispatchCameraManagerComponent"));
-    cursorComponent = CreateDefaultSubobject<UDispatchCursorComponent>(TEXT("DispatchCursorComponent"));
-    uiManagerComponent = CreateDefaultSubobject<UDispatchUIManagerComponent>(TEXT("DispatchUIManagerComponent"));
-    missionManagerComponent = CreateDefaultSubobject<UDispatchMissionManagerComponent>(TEXT("DispatchMissionManagerComponent"));
+    cameraManagerComponent = CreateDefaultSubobject<UDispatchCameraManagerComponent>(TEXT("BPC_DispatchCameraManager"));
+    cursorComponent = CreateDefaultSubobject<UDispatchCursorComponent>(TEXT("BPC_DispatchCursor"));
+    uiManagerComponent = CreateDefaultSubobject<UDispatchUIManagerComponent>(TEXT("BPC_DispatchUIManager"));
+    missionManagerComponent = CreateDefaultSubobject<UDispatchMissionManagerComponent>(TEXT("BPC_DispatchMissionManager"));
+    worldIndicatorComponent = CreateDefaultSubobject<UDispatchMissionWorldIndicatorComponent>(TEXT("BPC_DispatchWorldIndicators"));
 }
 
 void ADispatchPlayerController::BeginPlay()

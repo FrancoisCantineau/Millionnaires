@@ -3,16 +3,15 @@
  * Created by: "0nnen"
  * Last Updated by: "0nnen"
  * Class: "DispatchMissionManagerComponent" - Source
- * Notes: Runtime mission offers and Dispatch mission simulation.
+ * Notes: Generates mission offers, handles time-limited acceptance, and simulates Dispatch missions (FPS later).
  */
 #include "Dispatch/Missions/DispatchMissionManagerComponent.h"
 
 #include "Dispatch/Missions/DispatchMissionDefinition.h"
+#include "Dispatch/Map/DispatchMissionSiteActor.h"
 
 #include "Engine/World.h"
-#include "TimerManager.h"
 #include "EngineUtils.h"
-#include "GameFramework/Actor.h"
 
 #pragma region LIFECYCLE
 
@@ -26,142 +25,135 @@ void UDispatchMissionManagerComponent::BeginPlay()
     Super::BeginPlay();
 
     StartNewRun();
-
-    if (bAutoDiscoverAgents)
-    {
-        DiscoverAgents();
-    }
-
-    ScheduleNextOffer();
-}
-
-void UDispatchMissionManagerComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-    if (UWorld* World = GetWorld())
-    {
-        World->GetTimerManager().ClearTimer(offerTimerHandle);
-    }
-
-    Super::EndPlay(EndPlayReason);
 }
 
 void UDispatchMissionManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+    // Offers update
+    UpdateOfferTimers(DeltaTime);
+
+    // Offer generation
+    if (bAutoSpawnOffers && availableDefinitions.Num() > 0)
+    {
+        timeUntilNextOffer -= DeltaTime;
+        if (timeUntilNextOffer <= 0.f)
+        {
+            GenerateOffer();
+
+            FRandomStream Rng(runSeed + currentDay * 1000 + offers.Num() * 17);
+            ScheduleNextOffer(Rng);
+        }
+    }
+
+    // Missions update
     UpdateMissionSimulation(DeltaTime);
 }
 
 #pragma endregion LIFECYCLE
 
-#pragma region API_DAY
+#pragma region API_RUN
 
 void UDispatchMissionManagerComponent::StartNewRun()
 {
-    currentDay = 1;
-    offers.Reset();
-    activeMissions.Reset();
+    ResetState();
 
-    OnDayChanged.Broadcast(currentDay);
+    FRandomStream Rng(runSeed);
+    ScheduleNextOffer(Rng);
 
-    UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] StartNewRun -> Day %d"), currentDay);
+    UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] New run started | Day=%d | Seed=%d"), currentDay, runSeed);
 }
 
 void UDispatchMissionManagerComponent::AdvanceDay()
 {
     currentDay = FMath::Max(1, currentDay + 1);
-    OnDayChanged.Broadcast(currentDay);
-
-    UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] AdvanceDay -> Day %d"), currentDay);
+    UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] AdvanceDay | Day=%d"), currentDay);
 }
 
-#pragma endregion API_DAY
+#pragma endregion API_RUN
 
 #pragma region API_OFFERS
 
+bool UDispatchMissionManagerComponent::TryGetOffer(const FGuid& OfferId, FDispatchMissionOffer& OutOffer) const
+{
+    for (const FDispatchMissionOffer& O : offers)
+    {
+        if (O.offerId == OfferId)
+        {
+            OutOffer = O;
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool UDispatchMissionManagerComponent::AcceptOffer(const FGuid& OfferId, const TArray<APawn*>& SelectedAgents)
 {
-    const int32 OfferIndex = FindOfferIndex(OfferId);
+    const int32 OfferIndex = offers.IndexOfByPredicate([&](const FDispatchMissionOffer& O){ return O.offerId == OfferId; });
     if (OfferIndex == INDEX_NONE)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[DispatchMissions] AcceptOffer failed: offer not found."));
         return false;
     }
 
     const FDispatchMissionOffer Offer = offers[OfferIndex];
-    if (!Offer.definition)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[DispatchMissions] AcceptOffer failed: definition is null."));
-        return false;
-    }
 
-    // Validate agent selection according to mission type.
-    const int32 AgentCount = SelectedAgents.Num();
-
-    if (Offer.definition->missionType == EDispatchMissionType::Dispatch)
+    // Validate agent selection
+    if (Offer.missionMode == EDispatchMissionMode::FPS)
     {
-        if (AgentCount < Offer.definition->minAgents || AgentCount > Offer.definition->maxAgents)
+        if (SelectedAgents.Num() != 1)
         {
-            UE_LOG(LogTemp, Warning, TEXT("[DispatchMissions] AcceptOffer failed: invalid agent count (%d)."), AgentCount);
+            UE_LOG(LogTemp, Warning, TEXT("[DispatchMissions] AcceptOffer rejected (FPS requires exactly 1 agent)."));
             return false;
         }
     }
     else
     {
-        // FPS mission: enforce single agent now (future takeover).
-        if (Offer.definition->bFpsSingleAgentOnly && AgentCount != 1)
+        if (SelectedAgents.Num() <= 0)
         {
-            UE_LOG(LogTemp, Warning, TEXT("[DispatchMissions] AcceptOffer failed: FPS missions require exactly one agent."));
+            UE_LOG(LogTemp, Warning, TEXT("[DispatchMissions] AcceptOffer rejected (Dispatch requires at least 1 agent)."));
             return false;
         }
     }
 
-    // Create mission instance.
+    // Create mission
     FDispatchActiveMission Mission;
     Mission.missionId = FGuid::NewGuid();
     Mission.sourceOfferId = Offer.offerId;
     Mission.definition = Offer.definition;
-    Mission.missionType = Offer.definition->missionType;
-    Mission.state = EDispatchMissionState::Accepted;
+    Mission.missionMode = Offer.missionMode;
+    Mission.missionLocation = Offer.missionLocation;
+    Mission.locationActor = Offer.locationActor;
     Mission.worldLocation = Offer.worldLocation;
-    Mission.difficulty = Offer.difficulty;
     Mission.seed = Offer.seed;
 
     for (APawn* P : SelectedAgents)
     {
-        if (P)
-        {
-            Mission.assignedAgents.Add(P);
-        }
+        Mission.assignedAgents.Add(P);
     }
+
+    // Init first stage
+    Mission.state = EDispatchMissionState::Accepted;
+    SetMissionState(Mission, EDispatchMissionState::Traveling);
 
     activeMissions.Add(Mission);
 
-    // Remove offer.
+    OnOfferAccepted.Broadcast(OfferId);
+
+    // Remove offer
     offers.RemoveAt(OfferIndex);
     OnOfferRemoved.Broadcast(OfferId);
 
-    UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] Mission accepted | MissionId=%s | Type=%d | Agents=%d"),
-        *Mission.missionId.ToString(), (int32)Mission.missionType, Mission.assignedAgents.Num()
-    );
-
-    // Start simulation (Dispatch missions only). FPS missions will later transition to "player takeover".
-    if (Mission.missionType == EDispatchMissionType::Dispatch)
-    {
-        StartMissionSimulation(activeMissions.Last());
-    }
-    else
-    {
-        // For now: mark as Traveling so UI can visualize it, but gameplay takeover is not implemented yet.
-        StartMissionSimulation(activeMissions.Last());
-    }
+    UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] Offer accepted | OfferId=%s | MissionId=%s | Agents=%d"),
+        *OfferId.ToString(), *Mission.missionId.ToString(), SelectedAgents.Num());
 
     return true;
 }
 
 bool UDispatchMissionManagerComponent::DeclineOffer(const FGuid& OfferId)
 {
-    const int32 OfferIndex = FindOfferIndex(OfferId);
+    const int32 OfferIndex = offers.IndexOfByPredicate([&](const FDispatchMissionOffer& O){ return O.offerId == OfferId; });
     if (OfferIndex == INDEX_NONE)
     {
         return false;
@@ -169,6 +161,8 @@ bool UDispatchMissionManagerComponent::DeclineOffer(const FGuid& OfferId)
 
     offers.RemoveAt(OfferIndex);
     OnOfferRemoved.Broadcast(OfferId);
+
+    UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] Offer declined | OfferId=%s"), *OfferId.ToString());
     return true;
 }
 
@@ -176,199 +170,105 @@ bool UDispatchMissionManagerComponent::DeclineOffer(const FGuid& OfferId)
 
 #pragma region INTERNAL
 
-void UDispatchMissionManagerComponent::ScheduleNextOffer()
+void UDispatchMissionManagerComponent::ResetState()
 {
-    UWorld* World = GetWorld();
-    if (!World)
-    {
-        return;
-    }
+    currentDay = 1;
+    offers.Reset();
+    activeMissions.Reset();
+    timeUntilNextOffer = 3.f;
+}
 
-    if (maxOffers <= 0)
-    {
-        return;
-    }
-
-    const float MinT = FMath::Max(0.1f, offerIntervalRangeSec.X);
+void UDispatchMissionManagerComponent::ScheduleNextOffer(FRandomStream& Rng)
+{
+    const float MinT = FMath::Max(0.25f, offerIntervalRangeSec.X);
     const float MaxT = FMath::Max(MinT, offerIntervalRangeSec.Y);
-
-    const float Delay = FMath::FRandRange(MinT, MaxT);
-
-    World->GetTimerManager().SetTimer(
-        offerTimerHandle,
-        this,
-        &UDispatchMissionManagerComponent::GenerateOffer,
-        Delay,
-        false
-    );
+    timeUntilNextOffer = Rng.FRandRange(MinT, MaxT);
 }
 
 void UDispatchMissionManagerComponent::GenerateOffer()
 {
-    if (maxOffers > 0 && offers.Num() >= maxOffers)
+    if (availableDefinitions.Num() == 0)
     {
-        ScheduleNextOffer();
         return;
     }
 
-    if (missionDefinitions.Num() == 0)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[DispatchMissions] No missionDefinitions set."));
-        ScheduleNextOffer();
-        return;
-    }
+    FRandomStream Rng(runSeed + currentDay * 1000 + offers.Num() * 17);
 
-    // Pick a random definition.
-    const int32 DefIndex = FMath::RandRange(0, missionDefinitions.Num() - 1);
-    UDispatchMissionDefinition* Def = missionDefinitions[DefIndex];
+    // Pick definition
+    const int32 DefIndex = Rng.RandRange(0, availableDefinitions.Num() - 1);
+    UDispatchMissionDefinition* Def = availableDefinitions[DefIndex];
     if (!Def)
     {
-        ScheduleNextOffer();
         return;
     }
 
     FDispatchMissionOffer Offer;
     Offer.offerId = FGuid::NewGuid();
     Offer.definition = Def;
+    Offer.missionMode = Def->missionMode;
+    Offer.missionLocation = Def->missionLocation;
     Offer.dayCreated = currentDay;
-    Offer.seed = FMath::Rand();
-    FRandomStream Rng(Offer.seed);
+    Offer.seed = Rng.RandRange(1, 2147483646);
 
-    Offer.worldLocation = PickMissionLocation(Rng);
+    // Pick site (building/zone) from dropdown
+    ADispatchMissionSiteActor* Site = PickMissionSite(Offer.missionLocation, Rng);
+    Offer.locationActor = Site;
+    Offer.worldLocation = Site ? Site->GetActorLocation() : GetFallbackWorldLocation(Rng);
+     UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] Offer generated | OfferId=%s | Def=%s | Location=%d | Site=%s"),
+         *Offer.offerId.ToString(), *GetNameSafe(Def), (int32)Offer.missionLocation, *GetNameSafe(Site));
+    if (!Site)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[DispatchMissions] No MissionSiteActor found for Location=%d. Place sites in the level and set their MissionLocation."),
+             (int32)Offer.missionLocation);
+    }
+    
+    // Roll difficulty
     Offer.difficulty = RollDifficulty(Def, Rng);
 
+    // Time limit
+    float LimitMin = defaultOfferTimeLimitRangeSec.X;
+    float LimitMax = defaultOfferTimeLimitRangeSec.Y;
+    if (Def)
+    {
+        LimitMin = FMath::Max(1.f, Def->offerTimeLimitMinSec);
+        LimitMax = FMath::Max(LimitMin, Def->offerTimeLimitMaxSec);
+    }
+
+    Offer.timeLimitSec = Rng.FRandRange(LimitMin, LimitMax);
+    Offer.timeRemainingSec = Offer.timeLimitSec;
+
     offers.Add(Offer);
+
     OnOfferAdded.Broadcast(Offer.offerId);
 
-    UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] Offer generated | OfferId=%s | Type=%d | Loc=%s"),
-        *Offer.offerId.ToString(),
-        (int32)Def->missionType,
-        *Offer.worldLocation.ToString()
-    );
-
-    ScheduleNextOffer();
+    UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] Offer generated | OfferId=%s | Mode=%d | Location=%d | Time=%.1fs"),
+        *Offer.offerId.ToString(), (int32)Offer.missionMode, (int32)Offer.missionLocation, Offer.timeLimitSec);
 }
 
-FDispatchMissionDifficulty UDispatchMissionManagerComponent::RollDifficulty(const UDispatchMissionDefinition* Def, FRandomStream& Rng) const
+void UDispatchMissionManagerComponent::UpdateOfferTimers(float DeltaTime)
 {
-    FDispatchMissionDifficulty D;
-    if (!Def)
-    {
-        return D;
-    }
-
-    D.monsterChance10 = Def->difficultyRanges.monsterChance10.RandomInRange(Rng);
-    D.lootChance10 = Def->difficultyRanges.lootChance10.RandomInRange(Rng);
-    D.complicationChance10 = Def->difficultyRanges.complicationChance10.RandomInRange(Rng);
-    return D;
-}
-
-FVector UDispatchMissionManagerComponent::PickMissionLocation(FRandomStream& Rng) const
-{
-    if (!bUseTaggedMissionLocations)
-    {
-        // Fallback: random near base.
-        const FVector Base = GetBaseLocation();
-        const float Radius = 2500.f;
-        const FVector Dir3 = Rng.VRand();
-        FVector2D Rand2(Dir3.X, Dir3.Y);
-        Rand2 = Rand2.GetSafeNormal();
-        return Base + FVector(Rand2.X, Rand2.Y, 0.f) * Radius;
-    }
-
-    UWorld* World = GetWorld();
-    if (!World)
-    {
-        return FVector::ZeroVector;
-    }
-
-    TArray<AActor*> Candidates;
-    for (TActorIterator<AActor> It(World); It; ++It)
-    {
-        if (It->ActorHasTag(missionLocationTag))
-        {
-            Candidates.Add(*It);
-        }
-    }
-
-    if (Candidates.Num() == 0)
-    {
-        return GetBaseLocation();
-    }
-
-    const int32 Index = Rng.RandRange(0, Candidates.Num() - 1);
-    return Candidates[Index]->GetActorLocation();
-}
-
-FVector UDispatchMissionManagerComponent::GetBaseLocation() const
-{
-    UWorld* World = GetWorld();
-    if (!World)
-    {
-        return FVector::ZeroVector;
-    }
-
-    for (TActorIterator<AActor> It(World); It; ++It)
-    {
-        if (It->ActorHasTag(baseAnchorTag))
-        {
-            return It->GetActorLocation();
-        }
-    }
-
-    // Fallback to owner location.
-    if (const AActor* OwnerActor = GetOwner())
-    {
-        return OwnerActor->GetActorLocation();
-    }
-
-    return FVector::ZeroVector;
-}
-
-void UDispatchMissionManagerComponent::DiscoverAgents()
-{
-    availableAgents.Reset();
-
-    UWorld* World = GetWorld();
-    if (!World)
+    if (offers.Num() == 0)
     {
         return;
     }
 
-    for (TActorIterator<APawn> It(World); It; ++It)
+    for (int32 i = offers.Num() - 1; i >= 0; --i)
     {
-        if (It->ActorHasTag(agentTag))
+        FDispatchMissionOffer& O = offers[i];
+        O.timeLimitSec = FMath::Max(1.f, O.timeLimitSec);
+        O.timeRemainingSec = FMath::Clamp(O.timeRemainingSec - DeltaTime, 0.f, O.timeLimitSec);
+
+        if (O.timeRemainingSec <= 0.f)
         {
-            availableAgents.Add(*It);
+            const FGuid ExpiredId = O.offerId;
+            offers.RemoveAt(i);
+
+            OnOfferExpired.Broadcast(ExpiredId);
+            OnOfferRemoved.Broadcast(ExpiredId);
+
+            UE_LOG(LogTemp, Warning, TEXT("[DispatchMissions] Offer expired | OfferId=%s"), *ExpiredId.ToString());
         }
     }
-
-    UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] Discovered %d agents (Tag=%s)."), availableAgents.Num(), *agentTag.ToString());
-}
-
-void UDispatchMissionManagerComponent::StartMissionSimulation(FDispatchActiveMission& Mission)
-{
-    const FVector Base = GetBaseLocation();
-    const float Dist = FVector::Dist(Base, Mission.worldLocation);
-
-    float Speed = 400.f;
-    if (Mission.definition)
-    {
-        Speed = FMath::Max(1.f, Mission.definition->travelSpeedCmPerSec);
-    }
-
-    const float TravelDuration = FMath::Max(0.1f, Dist / Speed);
-    SetMissionState(Mission, EDispatchMissionState::Traveling, TravelDuration);
-}
-
-void UDispatchMissionManagerComponent::SetMissionState(FDispatchActiveMission& Mission, EDispatchMissionState NewState, float StageDurationSec)
-{
-    Mission.state = NewState;
-    Mission.stageDuration = FMath::Max(0.1f, StageDurationSec);
-    Mission.stageTime = 0.f;
-    Mission.stageProgress01 = 0.f;
-
-    OnMissionStateChanged.Broadcast(Mission.missionId, NewState);
 }
 
 void UDispatchMissionManagerComponent::UpdateMissionSimulation(float DeltaTime)
@@ -377,13 +277,15 @@ void UDispatchMissionManagerComponent::UpdateMissionSimulation(float DeltaTime)
     {
         FDispatchActiveMission& M = activeMissions[i];
 
-        if (M.state == EDispatchMissionState::Completed || M.state == EDispatchMissionState::Failed || M.state == EDispatchMissionState::Aborted)
+        // Only simulate dispatch mode for now (FPS missions will be player-driven later).
+        if (M.missionMode == EDispatchMissionMode::FPS)
         {
             continue;
         }
 
         M.stageTime += DeltaTime;
-        M.stageProgress01 = FMath::Clamp(M.stageTime / FMath::Max(0.1f, M.stageDuration), 0.f, 1.f);
+        M.stageDuration = FMath::Max(0.1f, M.stageDuration);
+        M.stageProgress01 = FMath::Clamp(M.stageTime / M.stageDuration, 0.f, 1.f);
 
         OnMissionProgress.Broadcast(M.missionId, M.stageProgress01);
 
@@ -392,58 +294,139 @@ void UDispatchMissionManagerComponent::UpdateMissionSimulation(float DeltaTime)
             continue;
         }
 
-        // Stage finished -> next state
+        // Stage complete -> advance state
         if (M.state == EDispatchMissionState::Traveling)
         {
-            // Resolve stage (later: combat/rolls/complications).
-            SetMissionState(M, EDispatchMissionState::Resolving, 3.f);
+            SetMissionState(M, EDispatchMissionState::Working);
         }
-        else if (M.state == EDispatchMissionState::Resolving)
+        else if (M.state == EDispatchMissionState::Working)
         {
-            // Return stage
-            const FVector Base = GetBaseLocation();
-            const float Dist = FVector::Dist(Base, M.worldLocation);
-
-            float Speed = 450.f;
-            if (M.definition)
-            {
-                Speed = FMath::Max(1.f, M.definition->returnSpeedCmPerSec);
-            }
-
-            const float ReturnDuration = FMath::Max(0.1f, Dist / Speed);
-            SetMissionState(M, EDispatchMissionState::Returning, ReturnDuration);
+            SetMissionState(M, EDispatchMissionState::Returning);
         }
         else if (M.state == EDispatchMissionState::Returning)
         {
-            SetMissionState(M, EDispatchMissionState::Completed, 0.1f);
-            UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] Mission completed | MissionId=%s"), *M.missionId.ToString());
+            SetMissionState(M, EDispatchMissionState::Completed);
+            activeMissions.RemoveAt(i);
         }
     }
 }
 
-int32 UDispatchMissionManagerComponent::FindOfferIndex(const FGuid& OfferId) const
+ADispatchMissionSiteActor* UDispatchMissionManagerComponent::PickMissionSite(EDispatchMissionLocation Location, FRandomStream& Rng) const
 {
-    for (int32 i = 0; i < offers.Num(); ++i)
+    if (!bUseMissionSites)
     {
-        if (offers[i].offerId == OfferId)
+        return nullptr;
+    }
+
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        return nullptr;
+    }
+
+    TArray<ADispatchMissionSiteActor*> Candidates;
+    for (TActorIterator<ADispatchMissionSiteActor> It(World); It; ++It)
+    {
+        ADispatchMissionSiteActor* Site = *It;
+        if (!Site)
         {
-            return i;
+            continue;
+        }
+
+        if (Location == EDispatchMissionLocation::Any || Site->GetMissionLocation() == Location || Site->GetMissionLocation() == EDispatchMissionLocation::Any)
+        {
+            Candidates.Add(Site);
         }
     }
-    return INDEX_NONE;
+
+    if (Candidates.Num() == 0)
+    {
+        return nullptr;
+    }
+
+    const int32 Index = Rng.RandRange(0, Candidates.Num() - 1);
+    return Candidates[Index];
+}
+
+FVector UDispatchMissionManagerComponent::GetFallbackWorldLocation(FRandomStream& Rng) const
+{
+    // Simple fallback around origin if no sites are placed.
+    const float Radius = 2500.f;
+    const FVector Dir3 = Rng.VRand();
+    FVector2D Rand2(Dir3.X, Dir3.Y);
+    Rand2 = Rand2.GetSafeNormal();
+    return FVector(Rand2.X, Rand2.Y, 0.f) * Radius;
+}
+
+FDispatchMissionDifficulty UDispatchMissionManagerComponent::RollDifficulty(UDispatchMissionDefinition* Def, FRandomStream& Rng) const
+{
+    FDispatchMissionDifficulty D;
+
+    if (!Def)
+    {
+        D.monsterChance10 = Rng.RandRange(0, 10);
+        D.lootChance10 = Rng.RandRange(0, 10);
+        D.complicationChance10 = Rng.RandRange(0, 10);
+        return D;
+    }
+
+    auto Roll10 = [&](const FIntPoint& Range)
+    {
+        const int32 MinV = FMath::Clamp(Range.X, 0, 10);
+        const int32 MaxV = FMath::Clamp(FMath::Max(MinV, Range.Y), 0, 10);
+        return Rng.RandRange(MinV, MaxV);
+    };
+
+    D.monsterChance10 = Roll10(Def->monsterChanceRange10);
+    D.lootChance10 = Roll10(Def->lootChanceRange10);
+    D.complicationChance10 = Roll10(Def->complicationChanceRange10);
+    return D;
+}
+
+void UDispatchMissionManagerComponent::SetMissionState(FDispatchActiveMission& Mission, EDispatchMissionState NewState)
+{
+    Mission.state = NewState;
+    Mission.stageTime = 0.f;
+    Mission.stageProgress01 = 0.f;
+
+    // Roll next stage duration from definition
+    if (Mission.definition)
+    {
+        FRandomStream Rng(Mission.seed + (int32)NewState * 101);
+
+        auto RollRange = [&](const FVector2D& Range)
+        {
+            const float MinV = FMath::Max(0.1f, Range.X);
+            const float MaxV = FMath::Max(MinV, Range.Y);
+            return Rng.FRandRange(MinV, MaxV);
+        };
+
+        if (NewState == EDispatchMissionState::Traveling)
+        {
+            Mission.stageDuration = RollRange(Mission.definition->travelDurationRangeSec);
+        }
+        else if (NewState == EDispatchMissionState::Working)
+        {
+            Mission.stageDuration = RollRange(Mission.definition->workDurationRangeSec);
+        }
+        else if (NewState == EDispatchMissionState::Returning)
+        {
+            Mission.stageDuration = RollRange(Mission.definition->returnDurationRangeSec);
+        }
+        else
+        {
+            Mission.stageDuration = 0.1f;
+        }
+    }
+    else
+    {
+        Mission.stageDuration = 1.f;
+    }
+
+    OnMissionStateChanged.Broadcast(Mission.missionId, NewState);
+
+    UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] Mission state | MissionId=%s | State=%d"),
+        *Mission.missionId.ToString(), (int32)NewState);
 }
 
 #pragma endregion INTERNAL
-
-
-bool UDispatchMissionManagerComponent::TryGetOffer(const FGuid& OfferId, FDispatchMissionOffer& OutOffer) const
-{
-    const int32 Index = FindOfferIndex(OfferId);
-    if (Index == INDEX_NONE)
-    {
-        return false;
-    }
-
-    OutOffer = offers[Index];
-    return true;
-}

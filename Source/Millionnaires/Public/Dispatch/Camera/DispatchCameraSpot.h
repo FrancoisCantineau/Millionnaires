@@ -44,6 +44,10 @@ protected:
 #pragma region CONFIG
 
 protected:
+    /** If true, this camera is considered the Map camera (used to auto-reset map state when leaving it). */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dispatch|Camera|Map")
+    bool bIsMapCamera = false;
+    
     /** Optional index used when ordering cameras manually (e.g. for cycling left/right). */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dispatch|Camera")
     int32 CameraIndex = 0;
@@ -106,6 +110,10 @@ protected:
 #pragma region API
 
 public:
+    /** Returns true if this spot is the Map camera. */
+    UFUNCTION(BlueprintPure, Category = "Dispatch|Camera|Map")
+    bool IsMapCamera() const { return bIsMapCamera; }
+    
     /** Returns the internal camera component. */
     UFUNCTION(BlueprintPure, Category = "Dispatch|Camera")
     UCameraComponent* GetCameraComponent() const { return Camera; }

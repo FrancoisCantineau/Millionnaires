@@ -18,6 +18,7 @@ class UDispatchCameraManagerComponent;
 class UDispatchCursorComponent;
 class UDispatchUIManagerComponent;
 class UDispatchMissionManagerComponent;
+class UDispatchMissionWorldIndicatorComponent;
 
 /**
  * Dispatch PlayerController.
@@ -109,6 +110,9 @@ protected:
     /** Mission manager component. */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Components", meta=(AllowPrivateAccess="true"))
     UDispatchMissionManagerComponent* missionManagerComponent = nullptr;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch", meta=(AllowPrivateAccess="true"))
+    TObjectPtr<UDispatchMissionWorldIndicatorComponent> worldIndicatorComponent;
 
 #pragma endregion COMPONENTS
 
