@@ -10,6 +10,7 @@
 #include "DropComponent.h"
 #include "InteractionComponent.h"
 #include "InventoryWidget.h"
+#include "InteractionWidget.h"
 
 #include "MillionnairesCharacter.generated.h"
 
@@ -85,6 +86,12 @@ protected:
 	UPROPERTY(BlueprintReadWrite, Category = "Inventory")
 	int32 SelectedSlotIndex = INDEX_NONE;
 
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class UInteractionWidget> InteractionWidgetClass;
+
+	UPROPERTY()
+	class UInteractionWidget* InteractionWidget;
+	
 	/** Called from Input Actions for movement input */
 	void MoveInput(const FInputActionValue& Value);
 
@@ -124,6 +131,8 @@ protected:
 
 public:
 	AMillionnairesCharacter();
+	void BeginPlay();
+	void Tick(float DeltaTime);
 
 	/** Get inventory component */
 	UFUNCTION(BlueprintPure, Category = "Inventory")
