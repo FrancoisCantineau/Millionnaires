@@ -57,6 +57,45 @@ AMillionnairesCharacter::AMillionnairesCharacter()
 	InteractionComponent->bShowDebugTrace = false;
 }
 
+void AMillionnairesCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	InteractionWidget = CreateWidget<UInteractionWidget>(GetWorld(), InteractionWidgetClass);
+	
+	if (InteractionWidget)
+	{
+		InteractionWidget->AddToViewport();
+		InteractionWidget->SetInteractionVisible(false);
+	}
+}
+
+void AMillionnairesCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (InteractionWidget && InteractionComponent)
+	{
+		if (InteractionComponent->HasFocusedActor())
+		{
+			AActor* FocusedActor = InteractionComponent->GetFocusedActor();
+			FText InteractionText = InteractionComponent->GetFocusedInteractionText();
+			
+			InteractionWidget->UpdateInteractionText(InteractionText);
+			InteractionWidget->SetInteractionVisible(true);
+		}
+		else
+		{
+			static bool bWasVisible = false;
+			if (bWasVisible)
+			{
+				bWasVisible = false;
+			}
+			InteractionWidget->SetInteractionVisible(false);
+		}
+	}
+}
+
 void AMillionnairesCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {	
 	// Set up action bindings
