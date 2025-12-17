@@ -9,13 +9,36 @@
 
 #include "Dispatch/Cursor/DispatchCursorComponent.h"
 #include "Dispatch/UI/Widgets/DispatchCursorRadialWidget.h"
-#include "Dispatch/UI/Widgets/DispatchMapWidget.h"
 #include "Dispatch/Camera/DispatchCameraManagerComponent.h"
 #include "Dispatch/Missions/DispatchMissionManagerComponent.h"
 
 #include "Blueprint/UserWidget.h"
+#include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
+#include "Kismet/GameplayStatics.h"
+#include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
+
+namespace
+{
+    static AActor* FindFirstActorWithTag(UWorld* World, const FName Tag)
+    {
+        if (!World || Tag.IsNone())
+        {
+            return nullptr;
+        }
+
+        for (TActorIterator<AActor> It(World); It; ++It)
+        {
+            if (It->ActorHasTag(Tag))
+            {
+                return *It;
+            }
+        }
+
+        return nullptr;
+    }
+}
 
 #pragma region LIFECYCLE
 
@@ -41,13 +64,6 @@ void UDispatchUIManagerComponent::EndPlay(const EEndPlayReason::Type EndPlayReas
         cursorRadialWidget->RemoveFromParent();
         cursorRadialWidget = nullptr;
     }
-
-    if (mapWidget)
-    {
-        mapWidget->RemoveFromParent();
-        mapWidget = nullptr;
-    }
-
     Super::EndPlay(EndPlayReason);
 }
 
@@ -62,40 +78,48 @@ void UDispatchUIManagerComponent::OpenMap()
         return;
     }
 
-    bIsMapOpen = true;
-
-    // Disable world interactions while map is open.
-    if (cursorComponent.IsValid())
+    APlayerController* PC = Cast<APlayerController>(GetOwner());
+    if (!PC)
     {
-        cursorComponent->SetWorldCursorEnabled(false);
+        return;
     }
+
+    bIsMapOpen = true;
+    OnMapVisibilityChanged.Broadcast(true);
+
+    // Cache and enable mouse cursor.
+    bPrevShowMouseCursor = PC->bShowMouseCursor;
+    PC->bShowMouseCursor = true;
+
+    // Enter map mode: suspend camera manager movement & disable slow-mo cursor logic (strategic view).
     if (cameraManager.IsValid())
     {
         cameraManager->SetSuspended(true);
     }
 
-    // Switch input mode to UIOnly and focus the map widget.
-    if (APlayerController* PC = Cast<APlayerController>(GetOwner()))
+    if (cursorComponent.IsValid())
     {
-        bPrevShowMouseCursor = PC->bShowMouseCursor;
-        PC->bShowMouseCursor = true;
+        cursorComponent->SetWorldCursorEnabled(false);
+    }
 
-        SetMapWidgetVisible(true);
+    // Switch view to aerial/isometric map camera.
+    UWorld* World = GetWorld();
+    mapViewActor = mapViewActor.IsValid() ? mapViewActor.Get() : FindFirstActorWithTag(World, mapViewActorTag);
 
-        if (mapWidget)
-        {
-            FInputModeUIOnly Mode;
-            Mode.SetWidgetToFocus(mapWidget->TakeWidget());
-            Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-            PC->SetInputMode(Mode);
-        }
+    if (mapViewActor.IsValid())
+    {
+        previousViewTarget = PC->GetViewTarget();
+        PC->SetViewTargetWithBlend(mapViewActor.Get(), mapViewBlendTime);
     }
     else
     {
-        SetMapWidgetVisible(true);
+        UE_LOG(LogTemp, Warning, TEXT("[DispatchUI] Map camera actor not found (Tag=%s)."), *mapViewActorTag.ToString());
     }
 
-    OnMapVisibilityChanged.Broadcast(true);
+    // Keep a game+ui input mode so world clicks remain possible (we'll add world-space notifications next).
+    FInputModeGameAndUI Mode;
+    Mode.SetHideCursorDuringCapture(false);
+    PC->SetInputMode(Mode);
 }
 
 void UDispatchUIManagerComponent::CloseMap()
@@ -105,33 +129,37 @@ void UDispatchUIManagerComponent::CloseMap()
         return;
     }
 
-    bIsMapOpen = false;
-
-    // Fade out map.
-    SetMapWidgetVisible(false);
-
-    // Restore world interactions.
-    if (cursorComponent.IsValid())
+    APlayerController* PC = Cast<APlayerController>(GetOwner());
+    if (!PC)
     {
-        cursorComponent->SetWorldCursorEnabled(true);
+        return;
     }
+
+    bIsMapOpen = false;
+    OnMapVisibilityChanged.Broadcast(false);
+
+    // Restore view target.
+    if (previousViewTarget.IsValid())
+    {
+        PC->SetViewTargetWithBlend(previousViewTarget.Get(), mapViewBlendTime);
+        previousViewTarget.Reset();
+    }
+
+    // Restore cursor + input.
+    PC->bShowMouseCursor = bPrevShowMouseCursor;
+
+    FInputModeGameOnly Mode;
+    PC->SetInputMode(Mode);
+
     if (cameraManager.IsValid())
     {
         cameraManager->SetSuspended(false);
     }
 
-    // Restore input mode.
-    if (APlayerController* PC = Cast<APlayerController>(GetOwner()))
+    if (cursorComponent.IsValid())
     {
-        PC->bShowMouseCursor = bPrevShowMouseCursor;
-
-        FInputModeGameAndUI Mode;
-        Mode.SetHideCursorDuringCapture(false);
-        Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-        PC->SetInputMode(Mode);
+        cursorComponent->SetWorldCursorEnabled(true);
     }
-
-    OnMapVisibilityChanged.Broadcast(false);
 }
 
 void UDispatchUIManagerComponent::ToggleMap()
@@ -214,44 +242,6 @@ void UDispatchUIManagerComponent::CreateCursorRadialWidget()
     cursorRadialWidget->SetVisibility(ESlateVisibility::Hidden);
 }
 
-void UDispatchUIManagerComponent::SetMapWidgetVisible(bool bVisible)
-{
-    if (!mapWidgetClass)
-    {
-        return;
-    }
-
-    APlayerController* PC = Cast<APlayerController>(GetOwner());
-    if (!PC)
-    {
-        return;
-    }
-
-    if (!mapWidget)
-    {
-        mapWidget = CreateWidget<UDispatchMapWidget>(PC, mapWidgetClass);
-        if (mapWidget)
-        {
-            mapWidget->AddToViewport(mapZOrder);
-
-            // Close button / Escape closes the map.
-            mapWidget->OnCloseRequested.AddDynamic(this, &UDispatchUIManagerComponent::CloseMap);
-
-            // Inject mission manager so the map can display mission offers.
-            mapWidget->SetMissionManager(missionManager.Get());
-
-            // Map -> UI actions.
-            mapWidget->OnOfferDeclineRequested.AddDynamic(this, &UDispatchUIManagerComponent::HandleOfferDeclinedFromMap);
-            mapWidget->OnOfferAcceptRequested.AddDynamic(this, &UDispatchUIManagerComponent::HandleOfferAcceptedFromMap);
-        }
-    }
-
-    if (mapWidget)
-    {
-        mapWidget->RequestVisible(bVisible);
-    }
-}
-
 #pragma endregion INTERNAL_WIDGETS
 
 #pragma region INTERNAL_CALLBACKS
@@ -296,14 +286,3 @@ void UDispatchUIManagerComponent::HandleOfferAdded(const FGuid& OfferId)
 
 #pragma endregion INTERNAL_CALLBACKS
 
-
-bool UDispatchUIManagerComponent::TryAcceptOffer(const FGuid& OfferId, const TArray<APawn*>& SelectedAgents)
-{
-    if (!missionManager.IsValid())
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[DispatchUI] TryAcceptOffer failed: missionManager missing."));
-        return false;
-    }
-
-    return missionManager->AcceptOffer(OfferId, SelectedAgents);
-}

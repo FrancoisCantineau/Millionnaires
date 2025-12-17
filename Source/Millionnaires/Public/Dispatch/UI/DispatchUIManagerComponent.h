@@ -14,10 +14,9 @@
 class UDispatchCursorComponent;
 class UDispatchCursorRadialWidget;
 class UDispatchMissionManagerComponent;
-class UUserWidget;
-class UDispatchMapWidget;
-class UDispatchCameraManagerComponent;
+class AActor;
 class APawn;
+class UDispatchCameraManagerComponent;
 
 #pragma region DELEGATES
 
@@ -29,7 +28,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDispatchOfferAcceptRequestedUI, con
 
 /**
  * UI manager component for Dispatch mode.
- * - Owns widgets (radial cursor, map, etc.)
+ * - Owns widgets (radial cursor, notifications later)
+ * - Map is a camera view (aerial/isometric)
  * - Binds to gameplay components (cursor, mission manager) and updates UI accordingly
  *
  * PlayerController should not call widgets directly.
@@ -69,18 +69,6 @@ public:
 
 #pragma endregion API_MAP
 
-#pragma region API_MISSIONS
-
-    /**
-     * Attempts to accept a mission offer using the selected agents.
-     * UI should pick agents (multi for Dispatch mission, single for FPS mission later) then call this.
-     */
-    UFUNCTION(BlueprintCallable, Category="Dispatch|UI|Missions")
-    bool TryAcceptOffer(const FGuid& OfferId, const TArray<APawn*>& SelectedAgents);
-
-#pragma endregion API_MISSIONS
-
-
 #pragma region EVENTS
 
     /** Fired when the map open state changes. */
@@ -103,10 +91,17 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|UI|Cursor")
     int32 cursorRadialZOrder = 999;
 
-    /** Map widget class (optional). */
+    /** If true, opening the map switches view to an aerial/isometric camera actor instead of a widget. */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|UI|Map")
-    TSubclassOf<UDispatchMapWidget> mapWidgetClass;
+    bool bUseMapCameraView = true;
 
+    /** Tag used to find the map camera actor in the level (e.g., a CameraActor). */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|UI|Map")
+    FName mapViewActorTag = FName("DispatchMapView");
+
+    /** Blend time when switching to/from the map camera view. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|UI|Map", meta=(ClampMin="0.0"))
+    float mapViewBlendTime = 0.35f;
     /** Map ZOrder. */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|UI|Map")
     int32 mapZOrder = 50;
@@ -132,10 +127,6 @@ protected:
 
     /** Creates the radial widget and adds it to viewport. */
     void CreateCursorRadialWidget();
-
-    /** Ensures map widget exists and sets its visibility. */
-    void SetMapWidgetVisible(bool bVisible);
-
 #pragma endregion INTERNAL_WIDGETS
 
 #pragma region INTERNAL_CALLBACKS
@@ -171,14 +162,16 @@ private:
 
     UPROPERTY(Transient)
     UDispatchCursorRadialWidget* cursorRadialWidget = nullptr;
-
-    UPROPERTY(Transient)
-    UDispatchMapWidget* mapWidget = nullptr;
-
     bool bIsMapOpen = false;
 
     /** Cached previous cursor visibility, restored on close. */
     bool bPrevShowMouseCursor = true;
+
+    /** Cached previous view target when entering map camera view. */
+    TWeakObjectPtr<AActor> previousViewTarget;
+
+    /** Cached map view actor. */
+    TWeakObjectPtr<AActor> mapViewActor;
 
 #pragma endregion STATE
 };

@@ -94,6 +94,10 @@ public:
 #pragma region CAMERA_CONTROL
 
 public:
+    /** Returns true if the currently active camera is the Map camera. */
+    UFUNCTION(BlueprintPure, Category = "Dispatch|Camera|Map")
+    bool IsOnMapCamera() const;
+
     /** Activates the next camera to the right (increment index). */
     UFUNCTION(BlueprintCallable, Category = "Dispatch|Camera")
     void CycleCameraRight();

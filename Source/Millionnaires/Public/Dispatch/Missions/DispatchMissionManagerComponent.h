@@ -3,7 +3,7 @@
  * Created by: "0nnen"
  * Last Updated by: "0nnen"
  * Class: "DispatchMissionManagerComponent" - Header
- * Notes: Spawns mission offers randomly and simulates Dispatch missions travel/return.
+ * Notes: Generates mission offers, handles time-limited acceptance, and simulates Dispatch missions (FPS later).
  */
 #pragma once
 
@@ -13,13 +13,14 @@
 #include "DispatchMissionManagerComponent.generated.h"
 
 class UDispatchMissionDefinition;
+class ADispatchMissionSiteActor;
 
 #pragma region DELEGATES
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDispatchDayChanged, int32, NewDay);
-
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDispatchOfferAdded, const FGuid&, OfferId);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDispatchOfferRemoved, const FGuid&, OfferId);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDispatchOfferExpired, const FGuid&, OfferId);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDispatchOfferAccepted, const FGuid&, OfferId);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FDispatchMissionStateChanged, const FGuid&, MissionId, EDispatchMissionState, NewState);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FDispatchMissionProgress, const FGuid&, MissionId, float, Progress01);
@@ -42,7 +43,19 @@ struct FDispatchMissionOffer
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
     TObjectPtr<UDispatchMissionDefinition> definition = nullptr;
 
-    /** World location where this mission happens. */
+    /** Mission mode. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
+    EDispatchMissionMode missionMode = EDispatchMissionMode::Dispatch;
+
+    /** Mission location dropdown value. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
+    EDispatchMissionLocation missionLocation = EDispatchMissionLocation::Any;
+
+    /** Actor representing the mission site (building/zone group). */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
+    TObjectPtr<ADispatchMissionSiteActor> locationActor = nullptr;
+
+    /** World location where this mission happens (usually locationActor->GetActorLocation()). */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
     FVector worldLocation = FVector::ZeroVector;
 
@@ -57,9 +70,17 @@ struct FDispatchMissionOffer
     /** Random seed used for loot & outcomes (deterministic if reused). */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
     int32 seed = 0;
+
+    /** Offer time limit rolled for this offer (seconds). */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
+    float timeLimitSec = 60.f;
+
+    /** Remaining time before expiry (seconds). */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
+    float timeRemainingSec = 60.f;
 };
 
-/** A mission currently running (accepted). */
+/** Active mission in progress (after accepting an offer). */
 USTRUCT(BlueprintType)
 struct FDispatchActiveMission
 {
@@ -77,27 +98,31 @@ struct FDispatchActiveMission
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
     TObjectPtr<UDispatchMissionDefinition> definition = nullptr;
 
-    /** Mission type. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
-    EDispatchMissionType missionType = EDispatchMissionType::Dispatch;
-
-    /** State. */
+    /** Mission mode. */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
-    EDispatchMissionState state = EDispatchMissionState::Accepted;
+    EDispatchMissionMode missionMode = EDispatchMissionMode::Dispatch;
 
-    /** Mission world location. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
+    /** Mission location dropdown. */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
+    EDispatchMissionLocation missionLocation = EDispatchMissionLocation::Any;
+
+    /** Actor representing the mission site. */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
+    TObjectPtr<ADispatchMissionSiteActor> locationActor = nullptr;
+
+    /** World location. */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
     FVector worldLocation = FVector::ZeroVector;
 
-    /** Difficulty. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
-    FDispatchMissionDifficulty difficulty;
-
     /** Assigned agents (AI pawns). FPS missions should contain exactly 1 agent. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
     TArray<TObjectPtr<APawn>> assignedAgents;
 
-    /** Travel progress 0..1 for current stage. */
+    /** Mission state. */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
+    EDispatchMissionState state = EDispatchMissionState::None;
+
+    /** Stage progress 0..1 for current stage. */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
     float stageProgress01 = 0.f;
 
@@ -115,13 +140,8 @@ struct FDispatchActiveMission
 #pragma endregion STRUCTS
 
 /**
- * Mission manager component:
- * - starts at Day 1
- * - spawns mission offers at random intervals
- * - accepts offers and simulates Dispatch missions (travel -> resolve -> return)
- *
- * Future FPS missions are supported by validating "single agent" and by emitting state changes,
- * but the actual player takeover is left for later.
+ * Component that spawns time-limited mission offers and simulates Dispatch missions.
+ * Attach to your Dispatch PlayerController (or a central Dispatch manager actor).
  */
 UCLASS(ClassGroup=(Dispatch), meta=(BlueprintSpawnableComponent))
 class MILLIONNAIRES_API UDispatchMissionManagerComponent : public UActorComponent
@@ -132,44 +152,46 @@ public:
 #pragma region LIFECYCLE
 
     UDispatchMissionManagerComponent();
-
     virtual void BeginPlay() override;
-    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 #pragma endregion LIFECYCLE
 
-#pragma region API_DAY
+#pragma region API_RUN
 
-    /** Resets the system to Day 1 and clears offers/missions. */
-    UFUNCTION(BlueprintCallable, Category="Dispatch|Missions|Day")
+    /** Resets day counter, clears offers/missions, and restarts spawning. */
+    UFUNCTION(BlueprintCallable, Category="Dispatch|Missions|Run")
     void StartNewRun();
 
-    /** Advances the day by one (optional for later). */
-    UFUNCTION(BlueprintCallable, Category="Dispatch|Missions|Day")
+    /** Advances current day number (DAY 1..). */
+    UFUNCTION(BlueprintCallable, Category="Dispatch|Missions|Run")
     void AdvanceDay();
 
-    /** Returns the current day. */
-    UFUNCTION(BlueprintPure, Category="Dispatch|Missions|Day")
+    /** Returns current day. */
+    UFUNCTION(BlueprintPure, Category="Dispatch|Missions|Run")
     int32 GetCurrentDay() const { return currentDay; }
 
-#pragma endregion API_DAY
+#pragma endregion API_RUN
 
 #pragma region API_OFFERS
 
-    /** Returns a copy of all active offers. */
+    /** Returns a copy of current offers. */
     UFUNCTION(BlueprintPure, Category="Dispatch|Missions|Offers")
     TArray<FDispatchMissionOffer> GetOffers() const { return offers; }
 
-    /** Tries to find an offer by id. Returns true if found. */
-    UFUNCTION(BlueprintPure, Category="Dispatch|Missions|Offers")
+    /** Finds an offer by id. */
+    UFUNCTION(BlueprintCallable, Category="Dispatch|Missions|Offers")
     bool TryGetOffer(const FGuid& OfferId, FDispatchMissionOffer& OutOffer) const;
 
-    /** Accepts an offer and starts a mission (Dispatch or FPS). Returns true on success. */
+    /**
+     * Accepts an offer with the selected agents.
+     * - Dispatch missions: 1..N agents
+     * - FPS missions: exactly 1 agent (future)
+     */
     UFUNCTION(BlueprintCallable, Category="Dispatch|Missions|Offers")
     bool AcceptOffer(const FGuid& OfferId, const TArray<APawn*>& SelectedAgents);
 
-    /** Declines (removes) an offer. */
+    /** Declines an offer (removes it). */
     UFUNCTION(BlueprintCallable, Category="Dispatch|Missions|Offers")
     bool DeclineOffer(const FGuid& OfferId);
 
@@ -177,8 +199,8 @@ public:
 
 #pragma region API_MISSIONS
 
-    /** Returns a copy of active missions. */
-    UFUNCTION(BlueprintPure, Category="Dispatch|Missions|Missions")
+    /** Returns a copy of all active missions. */
+    UFUNCTION(BlueprintPure, Category="Dispatch|Missions")
     TArray<FDispatchActiveMission> GetActiveMissions() const { return activeMissions; }
 
 #pragma endregion API_MISSIONS
@@ -186,13 +208,16 @@ public:
 #pragma region EVENTS
 
     UPROPERTY(BlueprintAssignable, Category="Dispatch|Missions|Events")
-    FDispatchDayChanged OnDayChanged;
-
-    UPROPERTY(BlueprintAssignable, Category="Dispatch|Missions|Events")
     FDispatchOfferAdded OnOfferAdded;
 
     UPROPERTY(BlueprintAssignable, Category="Dispatch|Missions|Events")
     FDispatchOfferRemoved OnOfferRemoved;
+
+    UPROPERTY(BlueprintAssignable, Category="Dispatch|Missions|Events")
+    FDispatchOfferExpired OnOfferExpired;
+
+    UPROPERTY(BlueprintAssignable, Category="Dispatch|Missions|Events")
+    FDispatchOfferAccepted OnOfferAccepted;
 
     UPROPERTY(BlueprintAssignable, Category="Dispatch|Missions|Events")
     FDispatchMissionStateChanged OnMissionStateChanged;
@@ -202,97 +227,68 @@ public:
 
 #pragma endregion EVENTS
 
-#pragma region CONFIG
+#pragma region SETTINGS
 
-    /** Mission definitions available for offer generation. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Config")
-    TArray<TObjectPtr<UDispatchMissionDefinition>> missionDefinitions;
+    /** All available mission definitions. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Definitions")
+    TArray<TObjectPtr<UDispatchMissionDefinition>> availableDefinitions;
 
-    /** If true, automatically discovers agents by tag at BeginPlay. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Config")
-    bool bAutoDiscoverAgents = true;
+    /** If true, offers are spawned automatically over time. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Offers")
+    bool bAutoSpawnOffers = true;
 
-    /** Pawn tag used to identify base agents. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Config")
-    FName agentTag = FName("DispatchAgent");
+    /** Range of seconds between offer spawns. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Offers")
+    FVector2D offerIntervalRangeSec = FVector2D(12.f, 25.f);
 
-    /** If true, picks a random actor tagged as missionLocationTag for offer locations. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Config")
-    bool bUseTaggedMissionLocations = true;
+    /** Default offer time limit range (seconds) used when definitions don't override it. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Offers")
+    FVector2D defaultOfferTimeLimitRangeSec = FVector2D(45.f, 90.f);
 
-    /** Actor tag used as potential mission locations. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Config")
-    FName missionLocationTag = FName("DispatchMissionLocation");
+    /** If true, offers spawn on Mission Sites (actors placed in level) using the missionLocation dropdown. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Locations")
+    bool bUseMissionSites = true;
 
-    /** Actor tag used as base location anchor (for distance simulation). */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Config")
-    FName baseAnchorTag = FName("DispatchBase");
-
-    /** Offer spawn interval range (seconds). */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Config", meta=(ClampMin="0.1"))
-    FVector2D offerIntervalRangeSec = FVector2D(10.f, 25.f);
-
-    /** Maximum offers alive at the same time. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Config", meta=(ClampMin="0"))
-    int32 maxOffers = 3;
-
-#pragma endregion CONFIG
+#pragma endregion SETTINGS
 
 protected:
 #pragma region INTERNAL
 
-    /** Schedules the next offer spawn timer. */
-    void ScheduleNextOffer();
-
-    /** Generates a new offer if possible. */
+    void ResetState();
+    void ScheduleNextOffer(FRandomStream& Rng);
     void GenerateOffer();
-
-    /** Rolls difficulty from a definition. */
-    FDispatchMissionDifficulty RollDifficulty(const UDispatchMissionDefinition* Def, FRandomStream& Rng) const;
-
-    /** Picks a random mission location in the world. */
-    FVector PickMissionLocation(FRandomStream& Rng) const;
-
-    /** Finds base anchor location. */
-    FVector GetBaseLocation() const;
-
-    /** Discover agents in the world by tag. */
-    void DiscoverAgents();
-
-    /** Starts simulation for a mission (Traveling stage). */
-    void StartMissionSimulation(FDispatchActiveMission& Mission);
-
-    /** Moves mission state and resets stage timers. */
-    void SetMissionState(FDispatchActiveMission& Mission, EDispatchMissionState NewState, float StageDurationSec);
-
-    /** Updates mission simulation each tick. */
+    void UpdateOfferTimers(float DeltaTime);
     void UpdateMissionSimulation(float DeltaTime);
 
-    /** Finds offer index by id. */
-    int32 FindOfferIndex(const FGuid& OfferId) const;
+    /** Picks a site actor matching the requested location (or any). */
+    ADispatchMissionSiteActor* PickMissionSite(EDispatchMissionLocation Location, FRandomStream& Rng) const;
+
+    FVector GetFallbackWorldLocation(FRandomStream& Rng) const;
+    FDispatchMissionDifficulty RollDifficulty(UDispatchMissionDefinition* Def, FRandomStream& Rng) const;
+
+    void SetMissionState(FDispatchActiveMission& Mission, EDispatchMissionState NewState);
 
 #pragma endregion INTERNAL
 
 private:
 #pragma region STATE
 
-    /** Current day. */
     int32 currentDay = 1;
 
-    /** Mission offers. */
-    UPROPERTY(Transient)
+    /** Offer spawn timer. */
+    float timeUntilNextOffer = 3.f;
+
+    /** Offers currently available. */
+    UPROPERTY(VisibleAnywhere, Category="Dispatch|Missions")
     TArray<FDispatchMissionOffer> offers;
 
-    /** Active missions. */
-    UPROPERTY(Transient)
+    /** Active missions in progress. */
+    UPROPERTY(VisibleAnywhere, Category="Dispatch|Missions")
     TArray<FDispatchActiveMission> activeMissions;
 
-    /** Cached agents that can be dispatched. */
-    UPROPERTY(Transient)
-    TArray<TObjectPtr<APawn>> availableAgents;
-
-    /** Offer timer handle. */
-    FTimerHandle offerTimerHandle;
+    /** Seed for deterministic run behavior if needed. */
+    UPROPERTY(EditAnywhere, Category="Dispatch|Missions")
+    int32 runSeed = 1337;
 
 #pragma endregion STATE
 };

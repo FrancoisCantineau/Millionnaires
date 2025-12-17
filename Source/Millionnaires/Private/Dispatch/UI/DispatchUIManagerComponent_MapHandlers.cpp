@@ -3,28 +3,28 @@
  * Created by: "0nnen"
  * Last Updated by: "0nnen"
  * Class: "DispatchUIManagerComponent_MapHandlers" - Source
- * Notes: Fixes missing linker symbols for map callbacks declared as UFUNCTION in DispatchUIManagerComponent.h.
+ * Notes: Implements map-offer callbacks declared in DispatchUIManagerComponent.h (fixes linker errors).
  */
 #include "Dispatch/UI/DispatchUIManagerComponent.h"
 
 #include "Dispatch/Missions/DispatchMissionManagerComponent.h"
 
-#pragma region MAP_CALLBACKS
+#pragma region MAP_OFFER_CALLBACKS
 
 void UDispatchUIManagerComponent::HandleOfferDeclinedFromMap(const FGuid& OfferId)
 {
-    if (!missionManager.IsValid())
+    // Even with map-as-camera, we keep this callback to support future UI (2D/3D notifications).
+    if (missionManager.IsValid())
     {
-        return;
+        missionManager->DeclineOffer(OfferId);
     }
-
-    missionManager->DeclineOffer(OfferId);
 }
 
 void UDispatchUIManagerComponent::HandleOfferAcceptedFromMap(const FGuid& OfferId)
 {
-    // IMPORTANT: UI must pick agents, then call TryAcceptOffer(OfferId, Agents).
+    // UI must pick agents (multi for Dispatch mission / single for FPS mission later),
+    // then call TryAcceptOffer(OfferId, Agents).
     OnOfferAcceptRequested.Broadcast(OfferId);
 }
 
-#pragma endregion MAP_CALLBACKS
+#pragma endregion MAP_OFFER_CALLBACKS
