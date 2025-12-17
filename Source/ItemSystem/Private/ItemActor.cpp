@@ -46,7 +46,6 @@ void AItemActor::InitializeItem(const FDataTableRowHandle& InItemHandle, int32 I
     SetupMesh();
 }
 
-//TODO implementer l'ui pour afficher le nom de l'item lors de l'interaction
 /**
  * Get display name for interaction
  */
