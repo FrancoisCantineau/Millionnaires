@@ -15,7 +15,8 @@ enum class EItemCategory : uint8
     Equipment,
     Consumable,
     Resource,
-    QuestItem
+    QuestItem,
+    Weapon,
 };
 
 UENUM(BlueprintType)
