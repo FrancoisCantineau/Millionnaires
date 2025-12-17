@@ -11,5 +11,17 @@ public class MillionnairesTarget : TargetRules
 		DefaultBuildSettings = BuildSettingsVersion.V6;
 		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_7;
 		ExtraModuleNames.Add("Millionnaires");
+		RegisterModulesCreatedByRider();
+	}
+
+	private void RegisterModulesCreatedByRider()
+	{
+		ExtraModuleNames.AddRange(new string[]
+		{
+			"InventorySystem",
+			"InteractionSystem",
+			"GameInterfaces",
+			"ItemSystem",
+		});
 	}
 }
