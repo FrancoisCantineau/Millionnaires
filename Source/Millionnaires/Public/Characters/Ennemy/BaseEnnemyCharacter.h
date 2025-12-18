@@ -17,5 +17,10 @@ class ABaseEnnemyCharacter : public ABaseCharacter
 	protected:
 
 	virtual void BeginPlay() override;
+
+public :
 	
+	//** Properties */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,Category = "Abilities", meta = (AllowPrivateAccess = "true"))
+	TArray<UAbilityBaseComponent*> AbilityComponents;
 };

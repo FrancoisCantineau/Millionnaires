@@ -27,6 +27,15 @@ public:
 	// Sets default values for this component's properties
 	UAbilityBaseComponent();
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ability")
+	float RangeMax;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ability")
+	float RangeMin;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ability")
+	float MaxCooldown = 4.f;
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
@@ -37,19 +46,21 @@ protected:
 	UPROPERTY()
 	ABaseCharacter*  OwningCharacter;
 
-	virtual bool CanUseAbility();
+	virtual bool CanUseAbility(AActor* Target);
 
 	float CurrentCooldown;
 
-	float MaxCooldown = 4.f;
-
 	bool bCanUseAbility = true;
+
+	FTimerHandle CooldownTimerHandle;
+
+	virtual void ExecuteAbility(AActor* Target);
 
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	UFUNCTION(BlueprintCallable, Category = "Ability")
-	virtual bool UseAbility(AActor* Target);
+	bool UseAbility(AActor* Target);
 	
 };

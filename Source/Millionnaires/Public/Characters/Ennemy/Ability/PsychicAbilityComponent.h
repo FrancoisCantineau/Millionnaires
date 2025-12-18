@@ -24,9 +24,6 @@ class MILLIONNAIRES_API UPsychicAbilityComponent : public UAbilityBaseComponent
 
 public :
 
-virtual bool UseAbility(AActor* Target) override;
-	
-	FTimerHandle CooldownTimerHandle;
-
+virtual void ExecuteAbility(AActor* Target) override;
 	
 };

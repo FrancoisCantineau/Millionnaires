@@ -33,10 +33,6 @@ public:
     //* Damages taken interface */
     virtual void ApplyDamage_Implementation(float Damage,AActor* DamageCauser) override;
 
-    //** Properties */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly,Category = "Abilities", meta = (AllowPrivateAccess = "true"))
-    TArray<UAbilityBaseComponent*> AbilityComponents;
-
 protected:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character|Components", meta = (AllowPrivateAccess = "true", ToolTip = "Component that manages health, hunger and basic character data."))

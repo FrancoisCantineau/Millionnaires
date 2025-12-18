@@ -5,8 +5,16 @@
 
 #include "GameFramework/Character.h"
 
-bool UBasicAttackComponent::UseAbility(AActor* Target)
+void UBasicAttackComponent::ExecuteAbility(AActor* Target)
 {
+	UsedWeapon->Attack();
+
+}
+
+void UBasicAttackComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
 	if (!UsedWeapon)
 	{
 		FActorSpawnParameters Params;
@@ -27,6 +35,5 @@ bool UBasicAttackComponent::UseAbility(AActor* Target)
 		);
 		
 	}
-	UsedWeapon->Attack();
-	return true;
+	RangeMax = UsedWeapon->GetRange();
 }

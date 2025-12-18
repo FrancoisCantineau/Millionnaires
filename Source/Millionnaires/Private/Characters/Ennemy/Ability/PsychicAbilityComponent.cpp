@@ -10,26 +10,9 @@
 
 #include "Characters/Ennemy/Ability/PsychicAbilityComponent.h"
 
-bool UPsychicAbilityComponent::UseAbility(AActor* Target)
+void UPsychicAbilityComponent::ExecuteAbility(AActor* Target)
 {
-
-	if (!CanUseAbility() || !OwningCharacter)
-	{
-		return false;
-	}
-
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "PsychicAbilityComponent");
-	bCanUseAbility = false;
 	
-	GetWorld()->GetTimerManager().SetTimerForNextTick([this]()
-	{
-		GetWorld()->GetTimerManager().SetTimer(
-			CooldownTimerHandle,
-			this,
-			&UPsychicAbilityComponent::ResetCooldown,
-			MaxCooldown,
-			false
-		);
-	});
-	return true;
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "PsychicAbilityComponent");
+	
 }

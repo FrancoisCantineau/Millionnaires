@@ -38,6 +38,10 @@ void UAbilityBaseComponent::ResetCooldown()
 	bCanUseAbility = true;
 }
 
+void UAbilityBaseComponent::ExecuteAbility(AActor* Target)
+{
+}
+
 // Called every frame
 void UAbilityBaseComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
@@ -48,12 +52,42 @@ void UAbilityBaseComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 
 bool UAbilityBaseComponent::UseAbility(AActor* Target)
 {
-	return false;
+	if (!CanUseAbility(Target))
+		return false;
+	
+	UE_LOG(LogTemp, Log, TEXT("Ability used on %s"), *Target->GetName());
+
+	ExecuteAbility(Target);
+	
+	// Cooldown
+	bCanUseAbility = false;
+	CurrentCooldown = MaxCooldown;
+
+	GetWorld()->GetTimerManager().SetTimer(
+		CooldownTimerHandle,
+		this,
+		&UAbilityBaseComponent::ResetCooldown,
+		MaxCooldown,
+		false
+	);
+
+	return true;
 }
 
-bool UAbilityBaseComponent::CanUseAbility()
+bool UAbilityBaseComponent::CanUseAbility(AActor* Target)
 {
-	return bCanUseAbility;
+	if (!Target || !OwningCharacter)
+		return false;
+
+	if (!bCanUseAbility)
+		return false;
+	
+	const float Distance =FVector::Dist(Target->GetActorLocation(), OwningCharacter->GetActorLocation());
+
+	if (Distance < RangeMin || Distance > RangeMax)
+		return false;
+
+	return true;
 }
 
 

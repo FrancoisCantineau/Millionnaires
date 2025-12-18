@@ -23,6 +23,10 @@ public :
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<AWeaponBase> WeaponClass;
 	
-	virtual bool UseAbility(AActor* Target) override;
+	virtual void ExecuteAbility(AActor* Target) override;
+
+protected :
+
+	virtual void BeginPlay() override;
 	
 };
