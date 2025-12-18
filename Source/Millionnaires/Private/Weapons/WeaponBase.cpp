@@ -14,8 +14,8 @@
 #include "Weapons/Components/Executor/AttackExecutorBase.h"
 
 
-#pragma region Setup
 
+#pragma region Setup
 
 // Sets default values
 AWeaponBase::AWeaponBase()
@@ -59,6 +59,7 @@ void AWeaponBase::BeginPlay()
 	
 	GetComponents<UWeaponEffectBaseComponent>(Effects);
 	ApplyWeaponData();
+	
 }
 
 void AWeaponBase::ApplyWeaponData()

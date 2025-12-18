@@ -11,8 +11,6 @@
 
 #include "Weapons/Components/Attack/InstantAttackModeComponent.h"
 
-#include "Weapons/Components/AmmoBaseComponent.h"
-
 void UInstantAttackModeComponent::Attack()
 {
 	if (!bIsAttacking || !CanAttack())

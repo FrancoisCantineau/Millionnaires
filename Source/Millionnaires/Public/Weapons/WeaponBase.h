@@ -23,6 +23,8 @@
 #include "WeaponBase.generated.h"
 
 
+class UWeaponResourceComponentBase;
+
 UCLASS(Blueprintable, Abstract)
 class MILLIONNAIRES_API AWeaponBase : public AActor
 {
@@ -90,7 +92,6 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Components")
 	UAttackExecutorBase* AttackExecutor;
-
 
 public:	
 	// Called every frame

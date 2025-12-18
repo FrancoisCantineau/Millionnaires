@@ -9,22 +9,22 @@
  * Notes: Implements the logic for ammos management (reload and uses of ammos).
  */
 
-#include "Weapons/Components/AmmoBaseComponent.h"
+#include "Weapons/Components/Resources/AmmoWeaponComponent.h"
 
 #include "Kismet/GameplayStatics.h"
 
-UAmmoBaseComponent::UAmmoBaseComponent()
+UAmmoWeaponComponent::UAmmoWeaponComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = false;
 
 }
 
-bool UAmmoBaseComponent::CanConsume() const
+bool UAmmoWeaponComponent::CanConsume() const
 {
 	return !bIsReloading && CurrentMagazine >= AmmoPerShot;
 }
 
-bool UAmmoBaseComponent::Consume()
+bool UAmmoWeaponComponent::Consume()
 {
 	if (!CanConsume())
 	{
@@ -49,12 +49,9 @@ bool UAmmoBaseComponent::Consume()
     
 	CurrentMagazine -= AmmoPerShot;
     
-	OnAmmoChanged.Broadcast();
-    
 	
 	if (CurrentMagazine == 0)
 	{
-		OnAmmoEmpty.Broadcast();
         
 		if (bAutoReload && CanReload())
 		{
@@ -65,10 +62,12 @@ bool UAmmoBaseComponent::Consume()
 	UE_LOG(LogTemp, Log, TEXT("Ammo: %d / %d (Reserve: %d)"), 
 		   CurrentMagazine, MaxMagazineSize, CurrentReserveAmmo);
 
+	ChangesApplied(CurrentMagazine, MaxMagazineSize);
+	
 	return true;
 }
 
-void UAmmoBaseComponent::Reload()
+void UAmmoWeaponComponent::Reload()
 {
 	if (!CanReload())
 	{
@@ -104,7 +103,7 @@ void UAmmoBaseComponent::Reload()
 	UE_LOG(LogTemp, Log, TEXT("Reloading... (%.1fs)"), ReloadTime);*/
 }
 
-bool UAmmoBaseComponent::CanReload()
+bool UAmmoWeaponComponent::CanReload()
 {
 	if (bIsReloading)
 		return false;
@@ -120,7 +119,7 @@ bool UAmmoBaseComponent::CanReload()
 	return true;
 }
 
-void UAmmoBaseComponent::CompleteReload()
+void UAmmoWeaponComponent::CompleteReload()
 {
 	bIsReloading = false;
     
@@ -138,25 +137,24 @@ void UAmmoBaseComponent::CompleteReload()
 		CurrentMagazine += AmmoToReload;
 		CurrentReserveAmmo -= AmmoToReload;
 	}
-    
-	OnReloadCompleted.Broadcast();
-	OnAmmoChanged.Broadcast();
+	
     
 	UE_LOG(LogTemp, Log, TEXT("Reload complete! Ammo: %d / %d (Reserve: %d)"), 
 		   CurrentMagazine, MaxMagazineSize, CurrentReserveAmmo);
+
+	ChangesApplied(CurrentMagazine, MaxMagazineSize);
 }
 
-void UAmmoBaseComponent::BeginPlay()
+void UAmmoWeaponComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	OwnerWeapon = Cast<AWeaponBase>(GetOwner());
-	
+
+	ChangesApplied(CurrentMagazine, MaxMagazineSize);
 }
 
 
 
-void UAmmoBaseComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UAmmoWeaponComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	

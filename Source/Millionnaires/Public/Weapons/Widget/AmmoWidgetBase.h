@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Weapons/Components/Resources/WeaponResourceComponentBase.h"
 #include "AmmoWidgetBase.generated.h"
 
 /**
@@ -16,6 +17,9 @@ class MILLIONNAIRES_API UAmmoWidgetBase : public UUserWidget
 
 public :
 
-	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent)
-	void UpdateAmmos(int m_CurrentAmmos, int m_RemainingAmmos);
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void UpdateResources(int m_CurrentAmmos, int m_RemainingAmmos);
+	
+	UFUNCTION(BlueprintCallable)
+	void BindResources(UWeaponResourceComponentBase* ResourceComp);
 };

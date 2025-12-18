@@ -11,62 +11,33 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
-#include "Weapons/WeaponBase.h"
-#include "AmmoBaseComponent.generated.h"
+#include "Weapons/Components/Resources/WeaponResourceComponentBase.h"
+#include "AmmoWeaponComponent.generated.h"
 
 
 UCLASS(Blueprintable, ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class MILLIONNAIRES_API UAmmoBaseComponent : public UActorComponent
+class MILLIONNAIRES_API UAmmoWeaponComponent : public UWeaponResourceComponentBase
 {
 	GENERATED_BODY()
 
 public:	
 	// Sets default values for this component's properties
-	UAmmoBaseComponent();
+	UAmmoWeaponComponent();
+
+	virtual bool CanConsume() const override;
 	
-	UFUNCTION(BlueprintCallable, Category = "Ammo")
-	virtual bool CanConsume() const;
-    
-	// Consume ammo/durability/etc
-	UFUNCTION(BlueprintCallable, Category = "Ammo")
-	virtual bool Consume();
-    
-	// Reload/cooldown/repair
-	UFUNCTION(BlueprintCallable, Category = "Ammo")
-	virtual void Reload();
-    
-	// Are we reloading
-	UFUNCTION(BlueprintPure, Category = "Ammo")
-	virtual bool IsReloading() const { return false; }
-    
-	// Can we reload
-	UFUNCTION(BlueprintPure, Category = "Ammo")
-	virtual bool CanReload();
+	virtual bool Consume() override;
 	
-	UFUNCTION(BlueprintPure, Category = "Ammo")
-	virtual float GetAmmoPercentage() const { return 1.f; }
-    
-	UFUNCTION(BlueprintPure, Category = "Ammo")
-	virtual FString GetAmmoDisplayText() const { return TEXT("∞"); }
+	virtual void Reload() override;
+	
+	virtual float GetResourcePercent() const override { return 0; };
 
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAmmoChanged);
-	UPROPERTY(BlueprintAssignable, Category = "Ammo")
-	FOnAmmoChanged OnAmmoChanged;
-    
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnReloadStarted);
-	UPROPERTY(BlueprintAssignable, Category = "Ammo")
-	FOnReloadStarted OnReloadStarted;
-    
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnReloadCompleted);
-	UPROPERTY(BlueprintAssignable, Category = "Ammo")
-	FOnReloadCompleted OnReloadCompleted;
-    
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAmmoEmpty);
-	UPROPERTY(BlueprintAssignable, Category = "Ammo")
-	FOnAmmoEmpty OnAmmoEmpty;
-
-
+	virtual bool IsReloading() const override {return false;};
+	
+	virtual bool CanReload()  override;
+	
+	virtual FString GetAmmoDisplayText() const override { return TEXT("∞"); }
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ammo|Magazine")
 	int32 MaxMagazineSize = 30;
     
@@ -82,9 +53,6 @@ public:
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
-	
-	UPROPERTY()
-	AWeaponBase* OwnerWeapon;
 
 	bool bIsReloading = false;
 

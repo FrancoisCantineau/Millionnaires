@@ -14,7 +14,7 @@
 
 #include <gsl/pointers>
 
-#include "Weapons/Components/AmmoBaseComponent.h"
+#include "Weapons/Components/Resources/WeaponResourceComponentBase.h"
 
 // Sets default values for this component's properties
 UAttackModeComponentBase::UAttackModeComponentBase()
@@ -86,7 +86,7 @@ void UAttackModeComponentBase::StopAttacking()
 void UAttackModeComponentBase::Attack()
 {
 	
-	UAmmoBaseComponent*AmmoComponent = OwnerWeapon->FindComponentByClass<UAmmoBaseComponent>();
+	UWeaponResourceComponentBase*AmmoComponent = OwnerWeapon->FindComponentByClass<UWeaponResourceComponentBase>();
 	
 	if (!AmmoComponent->Consume())
 	{
