@@ -91,46 +91,47 @@ bool UInventoryComponent::HasSpaceForItem_Implementation(const FDataTableRowHand
         return false;
     }
 
-    int32 RemainingToPlace = Amount;
-
-    // Check existing stackable slots
-    if (ItemData->bIsStackable)
+    if (!ItemData->bIsStackable)
     {
-        const int32 MaxStack = ItemData->GetMaxStackSize();
-        
         for (const FItemSlot& Slot : ItemSlots)
         {
-            if (Slot.IsSameItem(FItemSlot(ItemHandle, 1)))
+            if (Slot.IsEmpty())
             {
-                const int32 SpaceInSlot = MaxStack - Slot.StackAmount;
-                RemainingToPlace -= SpaceInSlot;
-                
-                if (RemainingToPlace <= 0)
-                {
-                    return true;
-                }
+                return true;
             }
         }
+        return false;
     }
 
-    // Check empty slots
-    const int32 MaxStack = ItemData->GetMaxStackSize();
-    int32 EmptySlotsNeeded = (RemainingToPlace + MaxStack - 1) / MaxStack; // Ceiling division
-    
-    int32 EmptySlotsAvailable = 0;
+    int32 RemainingToPlace = Amount;
+    const int32 MaxStack = FMath::Max(1, ItemData->GetMaxStackSize());
+
     for (const FItemSlot& Slot : ItemSlots)
     {
-        if (Slot.IsEmpty())
+        if (Slot.IsSameItem(FItemSlot(ItemHandle, 1)))
         {
-            EmptySlotsAvailable++;
-            if (EmptySlotsAvailable >= EmptySlotsNeeded)
+            const int32 SpaceInSlot = MaxStack - Slot.StackAmount;
+            RemainingToPlace -= SpaceInSlot;
+
+            if (RemainingToPlace <= 0)
             {
                 return true;
             }
         }
     }
 
-    return false;
+    int32 EmptySlotsAvailable = 0;
+    for (const FItemSlot& Slot : ItemSlots)
+    {
+        if (Slot.IsEmpty())
+        {
+            EmptySlotsAvailable++;
+        }
+    }
+
+    const int32 EmptySlotsNeeded = (RemainingToPlace + MaxStack - 1) / MaxStack;
+
+    return EmptySlotsAvailable >= EmptySlotsNeeded;
 }
 
 /*
@@ -306,17 +307,7 @@ bool UInventoryComponent::IsValidSlotIndex(int32 SlotIndex) const
  */
 bool UInventoryComponent::IsItemAllowed(const FItemData* ItemData) const
 {
-    if (!ItemData)
-    {
-        return false;
-    }
-
-    if (AllowedCategories.Num() == 0)
-    {
-        return true;
-    }
-
-    return AllowedCategories.Contains(ItemData->Category);
+    return ItemData != nullptr;
 }
 
 /*

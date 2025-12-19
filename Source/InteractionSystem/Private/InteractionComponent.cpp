@@ -183,16 +183,16 @@ FText UInteractionComponent::GetFocusedInteractionText() const
     
    // Special case: if focused actor is an item, check inventory space
    AItemActor* ItemActor = Cast<AItemActor>(FocusedActor);
-   if (ItemActor)
+   if (ItemActor && !ItemActor->ItemHandle.IsNull())
    {
       IInventoryInterface* InventoryInterface = Cast<IInventoryInterface>(GetOwner());
        
-      if (InventoryInterface && !ItemActor->ItemHandle.IsNull())
+      if (InventoryInterface)
       {
-         const bool bHasSpace = IInventoryInterface::Execute_HasSpaceForItem(
-            GetOwner(),
-            ItemActor->ItemHandle, 
-            ItemActor->StackAmount
+         const bool bHasSpace = IInventoryInterface::Execute_HasSpaceForItemInAnyInventory(
+             GetOwner(),
+             ItemActor->ItemHandle,
+             ItemActor->StackAmount
          );
           
          if (!bHasSpace)

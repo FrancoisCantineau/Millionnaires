@@ -53,10 +53,6 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory")
     TArray<FItemSlot> ItemSlots;
 
-    /** Allowed item categories for this inventory */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
-    TArray<EItemCategory> AllowedCategories;
-    
 #pragma endregion
 
 #pragma region Core Operations
@@ -115,7 +111,7 @@ protected:
     void InitializeSlots();
 
     /** Check if item is allowed in this inventory */
-    bool IsItemAllowed(const FItemData* ItemData) const;
+    virtual bool IsItemAllowed(const FItemData* ItemData) const;
 
     /** Find first empty slot index */
     int32 FindEmptySlot() const;

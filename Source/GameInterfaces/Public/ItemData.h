@@ -38,7 +38,7 @@ enum class EEquipmentType : uint8
  * Base struct for item data in DataTable
  */
 USTRUCT(BlueprintType)
-struct FItemData : public FTableRowBase
+struct GAMEINTERFACES_API FItemData : public FTableRowBase
 {
     GENERATED_BODY()
 

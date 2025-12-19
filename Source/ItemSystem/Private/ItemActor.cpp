@@ -82,18 +82,17 @@ void AItemActor::Interact_Implementation(AActor* InteractingActor)
       return;
    }
 
-   // TODO remplacer FindComponentByClass par une interface IInventoryInterface
-   UInventoryComponent* InventoryComponent = InteractingActor->FindComponentByClass<UInventoryComponent>();
-   
-   if (!InventoryComponent)
+   if (!InteractingActor->Implements<UInventoryInterface>())
    {
-      UE_LOG(LogTemp, Warning, TEXT("Actor %s has no InventoryComponent"), *InteractingActor->GetName());
+      UE_LOG(LogTemp, Warning, TEXT("Actor %s does not implement IInventoryInterface"), 
+         *InteractingActor->GetName());
       return;
    }
 
-   // Try to add item to inventory
+   UE_LOG(LogTemp, Log, TEXT("Adding item to Character via IInventoryInterface"));
+
    const int32 RemainingAmount = IInventoryInterface::Execute_AddItem(
-       InventoryComponent,
+       InteractingActor,
        ItemHandle, 
        StackAmount
    );

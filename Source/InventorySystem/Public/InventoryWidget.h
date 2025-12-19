@@ -9,7 +9,7 @@ class UItemSlotWidget;
 class UUniformGridPanel;
 struct FItemSlot;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSlotSelectedSignature, int32, SlotIndex);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSlotSelectedSignature, int32, SlotIndex, UInventoryComponent*, InventoryComp);
 
 /**
  * A UserWidget that displays an inventory grid and manages item slots.
