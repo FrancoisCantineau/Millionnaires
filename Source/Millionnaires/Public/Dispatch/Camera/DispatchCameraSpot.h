@@ -105,7 +105,48 @@ protected:
     UPROPERTY(Transient)
     float InitialFOV = 90.f;
 
+    /** Cached camera relative rotation captured at BeginPlay (neutral parallax pose). */
+    UPROPERTY(Transient)
+    FRotator InitialCameraRelativeRotation = FRotator::ZeroRotator;
+
+    /** Cached camera relative location captured at BeginPlay (neutral parallax pose). */
+    UPROPERTY(Transient)
+    FVector InitialCameraRelativeLocation = FVector::ZeroVector;
+
 #pragma endregion STATE
+
+#pragma region MOUSE_PARALLAX_CONFIG
+
+protected:
+    /** If true, the active camera will slightly pan/tilt toward the mouse position. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dispatch|Camera|Mouse Parallax")
+    bool bUseMouseParallax = true;
+
+    /** Max yaw offset in degrees when the mouse is at screen edges. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dispatch|Camera|Mouse Parallax", meta = (ClampMin = "0.0"))
+    float MouseParallaxMaxYaw = 4.f;
+
+    /** Max pitch offset in degrees when the mouse is at screen edges. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dispatch|Camera|Mouse Parallax", meta = (ClampMin = "0.0"))
+    float MouseParallaxMaxPitch = 2.f;
+
+    /** Optional local location offset (Y/Z usually) when mouse is at screen edges. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dispatch|Camera|Mouse Parallax")
+    FVector MouseParallaxMaxLocationOffset = FVector(0.f, 10.f, 5.f);
+
+    /** Interp speed used to smooth the parallax movement. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dispatch|Camera|Mouse Parallax", meta = (ClampMin = "0.0"))
+    float MouseParallaxInterpSpeed = 8.f;
+
+    /** Deadzone around the screen center to avoid jitter (0..0.5). */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dispatch|Camera|Mouse Parallax", meta = (ClampMin = "0.0", ClampMax = "0.5"))
+    float MouseParallaxDeadZone = 0.05f;
+
+    /** If true, invert vertical parallax direction. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dispatch|Camera|Mouse Parallax")
+    bool bInvertMouseParallaxY = false;
+
+#pragma endregion MOUSE_PARALLAX_CONFIG
 
 #pragma region API
 
@@ -165,6 +206,39 @@ public:
     /** Returns target blend weight for the zoom postprocess. */
     UFUNCTION(BlueprintPure, Category = "Dispatch|Camera|Zoom")
     float GetZoomPostProcessBlendWeight() const { return ZoomPostProcessBlendWeight; }
+
+    #pragma region MOUSE_PARALLAX_API
+
+    public:
+        /** Returns true if this camera uses mouse parallax. */
+        UFUNCTION(BlueprintPure, Category = "Dispatch|Camera|Mouse Parallax")
+        bool UsesMouseParallax() const { return bUseMouseParallax; }
+
+        UFUNCTION(BlueprintPure, Category = "Dispatch|Camera|Mouse Parallax")
+        float GetMouseParallaxMaxYaw() const { return MouseParallaxMaxYaw; }
+
+        UFUNCTION(BlueprintPure, Category = "Dispatch|Camera|Mouse Parallax")
+        float GetMouseParallaxMaxPitch() const { return MouseParallaxMaxPitch; }
+
+        UFUNCTION(BlueprintPure, Category = "Dispatch|Camera|Mouse Parallax")
+        FVector GetMouseParallaxMaxLocationOffset() const { return MouseParallaxMaxLocationOffset; }
+
+        UFUNCTION(BlueprintPure, Category = "Dispatch|Camera|Mouse Parallax")
+        float GetMouseParallaxInterpSpeed() const { return MouseParallaxInterpSpeed; }
+
+        UFUNCTION(BlueprintPure, Category = "Dispatch|Camera|Mouse Parallax")
+        float GetMouseParallaxDeadZone() const { return MouseParallaxDeadZone; }
+
+        UFUNCTION(BlueprintPure, Category = "Dispatch|Camera|Mouse Parallax")
+        bool IsMouseParallaxYInverted() const { return bInvertMouseParallaxY; }
+
+        UFUNCTION(BlueprintPure, Category = "Dispatch|Camera|Mouse Parallax")
+        FRotator GetInitialCameraRelativeRotation() const { return InitialCameraRelativeRotation; }
+
+        UFUNCTION(BlueprintPure, Category = "Dispatch|Camera|Mouse Parallax")
+        FVector GetInitialCameraRelativeLocation() const { return InitialCameraRelativeLocation; }
+
+    #pragma endregion MOUSE_PARALLAX_API
 
 #pragma endregion API
 };
