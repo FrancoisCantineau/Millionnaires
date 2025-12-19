@@ -19,8 +19,11 @@ public class Millionnaires : ModuleRules
 			"GameplayStateTreeModule",
 			"UMG",
 			"Slate",
-			"SlateCore",
-			"Niagara"
+			"Niagara",
+			"InventorySystem",
+			"InteractionSystem",
+			"ItemSystem",
+			"GameInterfaces",
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
