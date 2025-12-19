@@ -32,6 +32,10 @@ void ADispatchCameraSpot::BeginPlay()
     if (Camera)
     {
         InitialFOV = Camera->FieldOfView;
+        
+        // Cache neutral pose for mouse parallax.
+        InitialCameraRelativeRotation = Camera->GetRelativeRotation();
+        InitialCameraRelativeLocation = Camera->GetRelativeLocation();
     }
 
     RegisterToDispatchCameraManager();
