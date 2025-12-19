@@ -10,6 +10,12 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Millionnaires.h"
 #include "InteractionComponent.h"
+#include "InventoryComponent.h"
+#include "RestrictedInventoryComponent.h"
+#include "DropComponent.h"
+#include "MultiInventoryWidget.h"
+#include "InteractionWidget.h"
+#include "InventoryWidget.h"
 #include "Blueprint/UserWidget.h"
 
 AMillionnairesCharacter::AMillionnairesCharacter()
@@ -45,9 +51,25 @@ AMillionnairesCharacter::AMillionnairesCharacter()
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
 	GetCharacterMovement()->AirControl = 0.5f;
 	
-	// Create inventory system components
-	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("InventoryComponent"));
-	InventoryComponent->NumSlots = 20;
+	GeneralInventoryComponent = CreateDefaultSubobject<URestrictedInventoryComponent>(TEXT("GeneralInventory"));
+	GeneralInventoryComponent->NumSlots = 20;
+	GeneralInventoryComponent->CategoryFilter.Categories = { EItemCategory::Equipment, EItemCategory::Consumable };
+	GeneralInventoryComponent->CategoryFilter.bWhitelistMode = false;
+	GeneralInventoryComponent->ComponentTags.Add(FName("General"));
+	
+	// Create equipment inventory (only equipment)
+	EquipmentInventoryComponent = CreateDefaultSubobject<URestrictedInventoryComponent>(TEXT("EquipmentInventory"));
+	EquipmentInventoryComponent->NumSlots = 10;
+	EquipmentInventoryComponent->CategoryFilter.Categories = { EItemCategory::Equipment };
+	EquipmentInventoryComponent->CategoryFilter.bWhitelistMode = true;
+	EquipmentInventoryComponent->ComponentTags.Add(FName("Equipment"));
+
+	// Create consumable inventory (only consumables)
+	ConsumableInventoryComponent = CreateDefaultSubobject<URestrictedInventoryComponent>(TEXT("ConsumableInventory"));
+	ConsumableInventoryComponent->NumSlots = 8;
+	ConsumableInventoryComponent->CategoryFilter.Categories = { EItemCategory::Consumable };
+	ConsumableInventoryComponent->CategoryFilter.bWhitelistMode = true;
+	ConsumableInventoryComponent->ComponentTags.Add(FName("Consumable"));
 	
 	// Create drop component
 	DropComponent = CreateDefaultSubobject<UDropComponent>(TEXT("DropComponent"));
@@ -86,11 +108,6 @@ void AMillionnairesCharacter::Tick(float DeltaTime)
 		}
 		else
 		{
-			static bool bWasVisible = false;
-			if (bWasVisible)
-			{
-				bWasVisible = false;
-			}
 			InteractionWidget->SetInteractionVisible(false);
 		}
 	}
@@ -127,7 +144,7 @@ void AMillionnairesCharacter::SetupPlayerInputComponent(UInputComponent* PlayerI
 		// Interact binding
 		if (InteractAction)
 		{
-			EnhancedInputComponent ->BindAction(InteractAction, ETriggerEvent::Started, this, &AMillionnairesCharacter::OnInteractPressed);
+			EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &AMillionnairesCharacter::OnInteractPressed);
 		}
 	}
 	else
@@ -200,51 +217,32 @@ void AMillionnairesCharacter::DoJumpEnd()
  */
 void AMillionnairesCharacter::OnInventoryPressed()
 {
-	if (!InventoryWidgetClass)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("InventoryWidgetClass is not set"));
-		return;
-	}
+	InitializeInventoryWidget();
 
-	// Create the inventory widget if it doesn't exist
-	if (!InventoryWidget)
+	if (!MultiInventoryWidget) return;
+
+	if (bIsInventoryOpen)
 	{
-		InventoryWidget = CreateWidget<UInventoryWidget>(GetWorld(), InventoryWidgetClass);
-        
-		if (InventoryWidget && InventoryComponent)
+		MultiInventoryWidget->RemoveFromParent();
+		bIsInventoryOpen = false;
+
+		if (APlayerController* PC = Cast<APlayerController>(GetController()))
 		{
-			InventoryWidget->InitializeInventory(InventoryComponent);
-			InventoryWidget->OnSlotSelected.AddDynamic(this, &AMillionnairesCharacter::SelectInventorySlot);
+			PC->SetInputMode(FInputModeGameOnly());
+			PC->bShowMouseCursor = false;
 		}
 	}
-
-	// Toggle inventory UI visibility
-	if (InventoryWidget)
+	else
 	{
-		if (bIsInventoryOpen)
+		MultiInventoryWidget->AddToViewport();
+		bIsInventoryOpen = true;
+
+		if (APlayerController* PC = Cast<APlayerController>(GetController()))
 		{
-			InventoryWidget->RemoveFromParent();
-			bIsInventoryOpen = false;
-            
-			if (APlayerController* PC = Cast<APlayerController>(GetController()))
-			{
-				FInputModeGameOnly InputMode;
-				PC->SetInputMode(InputMode);
-				PC->bShowMouseCursor = false;
-			}
-		}
-		else
-		{
-			InventoryWidget->AddToViewport();
-			bIsInventoryOpen = true;
-            
-			if (APlayerController* PC = Cast<APlayerController>(GetController()))
-			{
-				FInputModeGameAndUI InputMode;
-				InputMode.SetWidgetToFocus(InventoryWidget->TakeWidget());
-				PC->SetInputMode(InputMode);
-				PC->bShowMouseCursor = true;
-			}
+			FInputModeGameAndUI InputMode;
+			InputMode.SetWidgetToFocus(MultiInventoryWidget->TakeWidget());
+			PC->SetInputMode(InputMode);
+			PC->bShowMouseCursor = true;
 		}
 	}
 }
@@ -253,21 +251,22 @@ void AMillionnairesCharacter::OnInventoryPressed()
  * Select an inventory slot
  * When a slot is selected in the inventory UI, store the selected slot index
  */
-void AMillionnairesCharacter::SelectInventorySlot(int32 SlotIndex)
+void AMillionnairesCharacter::SelectInventorySlot(int32 SlotIndex, UInventoryComponent* InventoryComp)
 {
-	if (!InventoryComponent)
+	if (!InventoryComp)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Missing InventoryComponent"));
 		return;
 	}
 
-	if (!InventoryComponent->IsValidSlotIndex(SlotIndex))
+	if (!InventoryComp->IsValidSlotIndex(SlotIndex))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Invalid slot selected: %d"), SlotIndex);
 		return;
 	}
 	
 	SelectedSlotIndex = SlotIndex;
+	SelectedInventoryComponent = InventoryComp;
 }
 
 /*
@@ -276,9 +275,9 @@ void AMillionnairesCharacter::SelectInventorySlot(int32 SlotIndex)
  */
 void AMillionnairesCharacter::OnDropItemPressed()
 {
-	if (!InventoryComponent || !DropComponent)
+	if (!SelectedInventoryComponent || !DropComponent)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Missing InventoryComponent or DropComponent"));
+		UE_LOG(LogTemp, Warning, TEXT("No slot selected or missing DropComponent"));
 		return;
 	}
 
@@ -288,29 +287,25 @@ void AMillionnairesCharacter::OnDropItemPressed()
 		return;
 	}
 
-	if (!InventoryComponent->IsValidSlotIndex(SelectedSlotIndex))
+	if (!SelectedInventoryComponent->IsValidSlotIndex(SelectedSlotIndex))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Invalid slot index: %d"), SelectedSlotIndex);
 		return;
 	}
 
-	FItemSlot Slot = InventoryComponent->GetSlot(SelectedSlotIndex);
+	FItemSlot Slot = SelectedInventoryComponent->GetSlot(SelectedSlotIndex);
 	if (Slot.IsEmpty())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Selected slot %d is empty"), SelectedSlotIndex);
 		return;
 	}
-	
-	// Drop the item from the selected slot
-	bool bDropSuccess = DropComponent->DropFromInventory(InventoryComponent, SelectedSlotIndex);
-	
-	// If the slot is now empty after dropping, clear the selected slot index
-	if (bDropSuccess)
+
+	bool bDropSuccess = DropComponent->DropFromInventory(SelectedInventoryComponent, SelectedSlotIndex);
+
+	if (bDropSuccess && SelectedInventoryComponent->GetSlot(SelectedSlotIndex).IsEmpty())
 	{
-		if (InventoryComponent->GetSlot(SelectedSlotIndex).IsEmpty())
-		{
-			SelectedSlotIndex = INDEX_NONE;
-		}
+		SelectedSlotIndex = INDEX_NONE;
+		SelectedInventoryComponent = nullptr;
 	}
 }
 
@@ -324,6 +319,146 @@ void AMillionnairesCharacter::OnInteractPressed()
 	{
 		InteractionComponent->Interact();
 	}
+}
+
+#pragma endregion
+
+#pragma region Inventory Interface
+
+/*
+ * Inventory Interface Implementations
+ */
+bool AMillionnairesCharacter::HasSpaceForItemInAnyInventory_Implementation(
+	const FDataTableRowHandle& ItemHandle, int32 Amount) const
+{
+	const FItemData* ItemData = ItemHandle.GetRow<FItemData>(TEXT("CheckSpace"));
+	if (!ItemData)
+	{
+		return false;
+	}
+
+	if (ItemData->Category == EItemCategory::Equipment && EquipmentInventoryComponent)
+	{
+		if (IInventoryInterface::Execute_HasSpaceForItem(EquipmentInventoryComponent, ItemHandle, Amount))
+		{
+			return true;
+		}
+	}
+	else if (ItemData->Category == EItemCategory::Consumable && ConsumableInventoryComponent)
+	{
+		if (IInventoryInterface::Execute_HasSpaceForItem(ConsumableInventoryComponent, ItemHandle, Amount))
+		{
+			return true;
+		}
+	}
+
+	if (GeneralInventoryComponent)
+	{
+		if (IInventoryInterface::Execute_HasSpaceForItem(GeneralInventoryComponent, ItemHandle, Amount))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/*
+ * Add item to appropriate inventory
+ */
+int32 AMillionnairesCharacter::AddItem_Implementation(const FDataTableRowHandle& ItemHandle, int32 Amount)
+{
+	if (ItemHandle.IsNull() || Amount <= 0)
+	{
+		return Amount;
+	}
+
+	const FItemData* ItemData = ItemHandle.GetRow<FItemData>(TEXT("AddItem"));
+	if (!ItemData)
+	{
+		return Amount;
+	}
+
+	int32 Remaining = Amount;
+
+	auto AddToInventory = [&](UInventoryComponent* InvComp)
+	{
+		Remaining = IInventoryInterface::Execute_AddItem(InvComp, ItemHandle, Remaining);
+	};
+
+	if (ItemData->Category == EItemCategory::Equipment && EquipmentInventoryComponent)
+	{
+		AddToInventory(EquipmentInventoryComponent);
+	}
+	else if (ItemData->Category == EItemCategory::Consumable && ConsumableInventoryComponent)
+	{
+		AddToInventory(ConsumableInventoryComponent);
+	}
+
+	if (Remaining > 0 && GeneralInventoryComponent)
+	{
+		AddToInventory(GeneralInventoryComponent);
+	}
+
+	return Remaining;
+}
+
+/*
+ * Check if there is space for item in appropriate inventory
+ */
+bool AMillionnairesCharacter::HasSpaceForItem_Implementation(
+	const FDataTableRowHandle& ItemHandle, int32 Amount) const
+{
+	if (ItemHandle.IsNull() || Amount <= 0)
+	{
+		return false;
+	}
+
+	const FItemData* ItemData = ItemHandle.GetRow<FItemData>(TEXT("HasSpaceForItem"));
+	if (!ItemData)
+	{
+		return false;
+	}
+
+	return this->TryInventoryOperation(ItemData, [&](UInventoryComponent* InvComp)
+	{
+		return IInventoryInterface::Execute_HasSpaceForItem(InvComp, ItemHandle, Amount);
+	});
+}
+
+/*
+ * Initialize the multi-inventory widget and bind slot selection events
+ */
+void AMillionnairesCharacter::InitializeInventoryWidget()
+{
+	if (!MultiInventoryWidgetClass || MultiInventoryWidget)
+	{
+		return;
+	}
+
+	MultiInventoryWidget = CreateWidget<UMultiInventoryWidget>(GetWorld(), MultiInventoryWidgetClass);
+	if (!MultiInventoryWidget)
+	{
+		return;
+	}
+
+	MultiInventoryWidget->InitializeAllInventories(
+		EquipmentInventoryComponent,
+		ConsumableInventoryComponent,
+		GeneralInventoryComponent
+	);
+
+	auto BindSlot = [&](UInventoryWidget* Widget)
+	{
+		if (Widget)
+		{
+			Widget->OnSlotSelected.AddDynamic(this, &AMillionnairesCharacter::SelectInventorySlot);
+		}
+	};
+
+	BindSlot(MultiInventoryWidget->EquipmentInventory);
+	BindSlot(MultiInventoryWidget->ConsumableInventory);
+	BindSlot(MultiInventoryWidget->GeneralInventory);
 }
 
 #pragma endregion

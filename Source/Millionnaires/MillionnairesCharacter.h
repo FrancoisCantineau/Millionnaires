@@ -3,17 +3,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InventoryInterface.h"
+#include "ItemData.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
-
-#include "InventoryComponent.h"
-#include "DropComponent.h"
-#include "InteractionComponent.h"
-#include "InventoryWidget.h"
-#include "InteractionWidget.h"
-
 #include "MillionnairesCharacter.generated.h"
 
+class UInventoryComponent;
+class URestrictedInventoryComponent;
+class UDropComponent;
+class UInteractionComponent;
+class UMultiInventoryWidget;
+class UInteractionWidget;
 class UInputComponent;
 class USkeletalMeshComponent;
 class UCameraComponent;
@@ -26,7 +27,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
  *  A basic first person character
  */
 UCLASS(abstract)
-class AMillionnairesCharacter : public ACharacter
+class AMillionnairesCharacter : public ACharacter, public IInventoryInterface
 {
 	GENERATED_BODY()
 
@@ -40,6 +41,39 @@ class AMillionnairesCharacter : public ACharacter
 
 protected:
 
+	void InitializeInventoryWidget();
+
+#pragma region Inventory Operation Helper
+	
+	template<typename Func>
+	bool TryInventoryOperation(const FItemData* ItemData, Func Operation) const
+	{
+		if (!ItemData) return false;
+
+		if (ItemData->Category == EItemCategory::Equipment && EquipmentInventoryComponent)
+		{
+			if (Operation(EquipmentInventoryComponent))
+				return true;
+		}
+		else if (ItemData->Category == EItemCategory::Consumable && ConsumableInventoryComponent)
+		{
+			if (Operation(ConsumableInventoryComponent))
+				return true;
+		}
+
+		if (GeneralInventoryComponent)
+		{
+			if (Operation(GeneralInventoryComponent))
+				return true;
+		}
+
+		return false;
+	}
+
+#pragma endregion
+	
+#pragma region Input Actions
+
 	/** Jump Input Action */
 	UPROPERTY(EditAnywhere, Category ="Input")
 	UInputAction* JumpAction;
@@ -50,23 +84,11 @@ protected:
 
 	/** Look Input Action */
 	UPROPERTY(EditAnywhere, Category ="Input")
-	class UInputAction* LookAction;
+	UInputAction* LookAction;
 
 	/** Mouse Look Input Action */
 	UPROPERTY(EditAnywhere, Category ="Input")
-	class UInputAction* MouseLookAction;
-	
-	/** Inventory component */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-	UInventoryComponent* InventoryComponent;
-	
-	/** Drop component */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-	UDropComponent* DropComponent;
-
-	/** Interaction component */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
-	UInteractionComponent* InteractionComponent;
+	UInputAction* MouseLookAction;
 
 	/** Input action for opening inventory */
 	UPROPERTY(EditAnywhere, Category = "Input")
@@ -79,19 +101,75 @@ protected:
 	/** Input action for interact */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* InteractAction;
-	
+
+#pragma endregion
+
+#pragma region Inventory Components
+
+	/** General inventory - accepts all items EXCEPT specialized ones */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+	URestrictedInventoryComponent* GeneralInventoryComponent;
+
+	/** Equipment inventory - only accepts equipment items */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+	URestrictedInventoryComponent* EquipmentInventoryComponent;
+
+	/** Consumable inventory - only accepts consumable items */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+	URestrictedInventoryComponent* ConsumableInventoryComponent;
+
+	/** Drop component for dropping items */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+	UDropComponent* DropComponent;
+
+#pragma endregion
+
+#pragma region Interaction
+
+	/** Interaction component */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
+	UInteractionComponent* InteractionComponent;
+
+	/** Interaction widget class */
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UInteractionWidget> InteractionWidgetClass;
+
+	/** Interaction widget instance */
+	UPROPERTY()
+	UInteractionWidget* InteractionWidget;
+
+#pragma endregion
+
+#pragma region UI
+
+	/** Multi-inventory widget class */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "UI")
-	TSubclassOf<UInventoryWidget> InventoryWidgetClass;
-	
+	TSubclassOf<UMultiInventoryWidget> MultiInventoryWidgetClass;
+
+	/** Cached multi-inventory widget instance */
+	UPROPERTY()
+	UMultiInventoryWidget* MultiInventoryWidget;
+
+	/** Is inventory currently open? */
+	UPROPERTY(BlueprintReadOnly, Category = "UI")
+	bool bIsInventoryOpen = false;
+
+#pragma endregion
+
+#pragma region Selection State
+
+	/** Currently selected slot index across all inventories */
 	UPROPERTY(BlueprintReadWrite, Category = "Inventory")
 	int32 SelectedSlotIndex = INDEX_NONE;
 
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<class UInteractionWidget> InteractionWidgetClass;
+	/** Currently selected inventory component */
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory")
+	UInventoryComponent* SelectedInventoryComponent = nullptr;
 
-	UPROPERTY()
-	class UInteractionWidget* InteractionWidget;
-	
+#pragma endregion
+
+#pragma region Input Handlers
+
 	/** Called from Input Actions for movement input */
 	void MoveInput(const FInputActionValue& Value);
 
@@ -126,41 +204,56 @@ protected:
 	UFUNCTION()
 	void OnInteractPressed();
 
+	/** Called when a slot is selected in any inventory */
+	UFUNCTION()
+	void SelectInventorySlot(int32 SlotIndex, UInventoryComponent* InventoryComp);
+
 	/** Set up input action bindings */
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 
-public:
-	AMillionnairesCharacter();
-	void BeginPlay();
-	void Tick(float DeltaTime);
+#pragma endregion
 
-	/** Get inventory component */
-	UFUNCTION(BlueprintPure, Category = "Inventory")
-	UInventoryComponent* GetInventory() const { return InventoryComponent; }
+#pragma region Interface Implementations
+
+	// IInventoryInterface implementations
+	virtual int32 AddItem_Implementation(const FDataTableRowHandle& ItemHandle, int32 Amount) override;
+	virtual bool HasSpaceForItem_Implementation(const FDataTableRowHandle& ItemHandle, int32 Amount) const override;
+	virtual bool HasSpaceForItemInAnyInventory_Implementation(const FDataTableRowHandle& ItemHandle, int32 Amount) const override;
+
+#pragma endregion
+
+public:
+
+	AMillionnairesCharacter();
+	
+	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaTime) override;
+
+#pragma region Public Getters
+
+	/** Get general inventory component */
+	FORCEINLINE URestrictedInventoryComponent* GetGeneralInventory() const { return GeneralInventoryComponent; }
+
+	/** Get equipment inventory component */
+	FORCEINLINE URestrictedInventoryComponent* GetEquipmentInventory() const { return EquipmentInventoryComponent; }
+
+	/** Get consumable inventory component */
+	FORCEINLINE URestrictedInventoryComponent* GetConsumableInventory() const { return ConsumableInventoryComponent; }
 	
 	/** Get drop component */
-	UFUNCTION(BlueprintPure, Category = "Inventory")
-	UDropComponent* GetDropComponent() const { return DropComponent; }
-	
-	/** Select an inventory slot */
-	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	void SelectInventorySlot(int32 SlotIndex);
+	FORCEINLINE UDropComponent* GetDropComponent() const { return DropComponent; }
 	
 	/** Get the currently selected inventory slot index */
-	UFUNCTION(BlueprintPure, Category = "Inventory")
-	int32 GetSelectedSlotIndex() const { return SelectedSlotIndex; }
+	FORCEINLINE int32 GetSelectedSlotIndex() const { return SelectedSlotIndex; }
 
-	/** Returns the first person mesh **/
-	USkeletalMeshComponent* GetFirstPersonMesh() const { return FirstPersonMesh; }
+	/** Get the currently selected inventory component */
+	FORCEINLINE UInventoryComponent* GetSelectedInventoryComponent() const { return SelectedInventoryComponent; }
 
-	/** Returns first person camera component **/
-	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
+	/** Returns the first person mesh */
+	FORCEINLINE USkeletalMeshComponent* GetFirstPersonMesh() const { return FirstPersonMesh; }
 
-private:
-	/** Cached inventory widget instance */
-	UPROPERTY()
-	UInventoryWidget* InventoryWidget;
+	/** Returns first person camera component */
+	FORCEINLINE UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
 
-	/** Is inventory currently open? */
-	bool bIsInventoryOpen;
+#pragma endregion
 };

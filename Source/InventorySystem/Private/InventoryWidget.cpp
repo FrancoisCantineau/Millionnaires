@@ -124,7 +124,7 @@ void UInventoryWidget::OnSlotClicked(int32 SlotIndex)
     }
     
     UpdateSlotSelection(SlotIndex);
-    OnSlotSelected.Broadcast(SlotIndex);
+    OnSlotSelected.Broadcast(SlotIndex, InventoryComponent);
 }
 
 void UInventoryWidget::UpdateSlotSelection(int32 NewSelectedIndex)

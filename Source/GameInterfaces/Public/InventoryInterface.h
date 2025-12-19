@@ -29,4 +29,6 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Inventory")
 	bool HasSpaceForItem(const FDataTableRowHandle& ItemHandle, int32 Amount) const;
 	
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Inventory")
+	bool HasSpaceForItemInAnyInventory(const FDataTableRowHandle& ItemHandle, int32 Amount) const;
 };

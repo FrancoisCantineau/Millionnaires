@@ -22,7 +22,8 @@ public class Millionnaires : ModuleRules
 			"Niagara",
 			"InventorySystem",
 			"InteractionSystem",
-			"ItemSystem"
+			"ItemSystem",
+			"GameInterfaces",
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
