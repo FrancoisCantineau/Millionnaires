@@ -11,6 +11,8 @@
 
 
 #include "Weapons//WeaponBase.h"
+
+#include "GameFramework/Character.h"
 #include "Weapons/Components/Executor/AttackExecutorBase.h"
 
 
@@ -28,6 +30,8 @@ AWeaponBase::AWeaponBase()
 	RootComponent = WeaponMesh;
 
 	BuffComponent = CreateDefaultSubobject<UWeaponBuffComponent>(TEXT("BuffComponent"));
+
+	AnimationComponent= CreateDefaultSubobject<UWeaponAnimationHandlerComponent>(TEXT("AnimationComponent"));
 	
 }
 
@@ -104,6 +108,14 @@ void AWeaponBase::PerformAttack(float DamagesMultiplicator)
 	if (AttackExecutor)
 	{
 		AttackExecutor->ExecuteAttack(DamagesMultiplicator);
+
+		if (AnimationComponent)
+		{
+			ACharacter* CharacterOwner = Cast<ACharacter>(Owner);
+			
+			float PlayRate = WeaponData->AttackRate;
+			AnimationComponent->PlayMontage(WeaponData->AttackMontage, CharacterOwner->GetMesh(), PlayRate);
+		}
 	}
 }
 

@@ -15,6 +15,8 @@ void UBasicAttackComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (!WeaponClass) return;
+	
 	if (!UsedWeapon)
 	{
 		FActorSpawnParameters Params;
@@ -36,4 +38,6 @@ void UBasicAttackComponent::BeginPlay()
 		
 	}
 	RangeMax = UsedWeapon->GetRange();
+	MaxCooldown = 1.f /UsedWeapon->GetAttackRate();
+
 }

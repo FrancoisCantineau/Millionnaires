@@ -13,6 +13,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/WeaponAnimationHandlerComponent.h"
 #include "Components/Effect/WeaponEffectBaseComponent.h"
 #include "GameFramework/Actor.h"
 
@@ -40,6 +41,9 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UWeaponBuffComponent* BuffComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UWeaponAnimationHandlerComponent* AnimationComponent;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	UWeaponData* WeaponData;
@@ -72,6 +76,9 @@ public:
     
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetRange() const { return WeaponData ? WeaponData->AttackRange : 0.f; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetAttackRate() const { return WeaponData ? WeaponData->AttackRate : 0.f; }
 
 	virtual void OnConstruction(const FTransform& Transform) override;
 

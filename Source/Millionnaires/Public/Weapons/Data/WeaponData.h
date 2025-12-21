@@ -82,6 +82,12 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Presentation")
 	UParticleSystem* AttackVFX;
 
+	/** Animations */
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* AttackMontage;
+	
+
 
 	/** Executors */
 	

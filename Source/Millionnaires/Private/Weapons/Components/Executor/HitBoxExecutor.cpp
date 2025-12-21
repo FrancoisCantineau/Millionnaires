@@ -12,7 +12,6 @@ void UHitBoxExecutor::Initialize(AWeaponBase* Weapon)
 	Hitbox_Main = OwnerWeapon->FindComponentByClass<UBoxComponent>();
 	if (!Hitbox_Main)
 	{
-		UE_LOG(LogTemp, Error, TEXT("HitBoxExecutor::Initialize - No BoxComponent found on Weapon"));
 		return;
 	}
 

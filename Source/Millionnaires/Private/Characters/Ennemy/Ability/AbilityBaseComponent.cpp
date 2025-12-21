@@ -63,13 +63,20 @@ bool UAbilityBaseComponent::UseAbility(AActor* Target)
 	bCanUseAbility = false;
 	CurrentCooldown = MaxCooldown;
 
-	GetWorld()->GetTimerManager().SetTimer(
-		CooldownTimerHandle,
-		this,
-		&UAbilityBaseComponent::ResetCooldown,
-		MaxCooldown,
-		false
-	);
+	if (MaxCooldown > 0.f)
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			CooldownTimerHandle,
+			this,
+			&UAbilityBaseComponent::ResetCooldown,
+			MaxCooldown,
+			false
+		);
+	}
+	else
+	{
+		ResetCooldown();
+	}
 
 	return true;
 }

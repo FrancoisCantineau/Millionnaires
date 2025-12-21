@@ -17,7 +17,6 @@ void UInstantAttackModeComponent::Attack()
 	{
 		return;
 	}
-	GEngine->AddOnScreenDebugMessage(-1, 8.f, FColor::Blue, FString::Printf(TEXT("aaaaFFF %f"), OwnerWeapon->BuffComponent->GetFireRate()));
 	// update the time of our last attack
 	TimeOfLastAttack = GetWorld()->GetTimeSeconds();
 	const float AttacksPerSecond = OwnerWeapon->BuffComponent->GetFireRate();

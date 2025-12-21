@@ -46,8 +46,6 @@ protected:
 	UPROPERTY()
 	ABaseCharacter*  OwningCharacter;
 
-	virtual bool CanUseAbility(AActor* Target);
-
 	float CurrentCooldown;
 
 	bool bCanUseAbility = true;
@@ -62,5 +60,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Ability")
 	bool UseAbility(AActor* Target);
-	
+
+	UFUNCTION(BlueprintCallable, Category = "Ability")
+	virtual bool CanUseAbility(AActor* Target);
 };

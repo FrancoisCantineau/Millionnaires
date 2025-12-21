@@ -48,6 +48,7 @@ void UAttackExecutorBase::ApplyDamage(const FHitResult& Hit, AActor* AttackedAct
 	
 	if (AttackedActor && AttackedActor->Implements<UDamageableInterface>())
 	{
+		const FHitResult& Hit2 = Hit;
 		IDamageableInterface::Execute_ApplyDamage(
 			AttackedActor,
 			DamageAmount,

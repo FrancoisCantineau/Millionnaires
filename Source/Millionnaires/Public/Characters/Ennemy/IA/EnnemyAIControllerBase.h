@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+#include "Characters/Ennemy/BaseEnnemyCharacter.h"
 #include "EnnemyAIControllerBase.generated.h"
 
 /**
@@ -25,7 +26,10 @@ protected:
 	UBlackboardData* BlackboardAsset;
 
 	/** Behavior Tree */
-	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly, Category="AI")
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite, Category="AI")
 	UBehaviorTree* BehaviorTreeAsset;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="AI")
+	ABaseEnnemyCharacter* EnemyOwner;
 	
 };

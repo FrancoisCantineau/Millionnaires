@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "BehaviorTree/BehaviorTree.h"
 #include "Characters/BaseCharacter.h"
 #include "BaseEnnemyCharacter.generated.h"
 
@@ -23,4 +24,7 @@ public :
 	//** Properties */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,Category = "Abilities", meta = (AllowPrivateAccess = "true"))
 	TArray<UAbilityBaseComponent*> AbilityComponents;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AI")
+	UBehaviorTree* BehaviorTree;
 };
