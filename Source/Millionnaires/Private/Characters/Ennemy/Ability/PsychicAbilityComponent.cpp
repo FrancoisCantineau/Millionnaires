@@ -10,9 +10,14 @@
 
 #include "Characters/Ennemy/Ability/PsychicAbilityComponent.h"
 
+#include "Interfaces/EffectInterface.h"
+
 void UPsychicAbilityComponent::ExecuteAbility(AActor* Target)
 {
 	
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "PsychicAbilityComponent");
+	if (Target && Target->GetClass()->ImplementsInterface(UEffectInterface::StaticClass()))
+	{
+		IEffectInterface::Execute_SanityEffect(Target);
+	}
 	
 }

@@ -17,8 +17,5 @@ class IEffectInterface
 public:
 	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void SanityEffect(
-		float Damage,
-		AActor* DamageCauser
-	);
+	void SanityEffect();
 };
