@@ -25,6 +25,8 @@ void UHitBoxExecutor::ExecuteAttack(float m_DamageMultiplier)
 	Super::ExecuteAttack(m_DamageMultiplier);
 
 	AlreadyHitActors.Empty();
+	Hitbox_Main->SetGenerateOverlapEvents(true);
+	Hitbox_Main->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
 	Hitbox_Main->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 }
 
@@ -33,7 +35,7 @@ void UHitBoxExecutor::ExecuteAttack(float m_DamageMultiplier)
 void UHitBoxExecutor::OnOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 BodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (OtherActor != OwnerWeapon->Owner && !AlreadyHitActors.Contains(OtherActor))
+	if (OtherActor != OwnerWeapon->Owner && OtherActor != OwnerWeapon && !AlreadyHitActors.Contains(OtherActor))
 	{
 		AlreadyHitActors.Add(OtherActor);
 		OnHit(SweepResult);

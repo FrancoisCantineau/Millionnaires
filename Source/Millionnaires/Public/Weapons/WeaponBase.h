@@ -15,6 +15,7 @@
 #include "CoreMinimal.h"
 #include "Components/WeaponAnimationHandlerComponent.h"
 #include "Components/Effect/WeaponEffectBaseComponent.h"
+#include "Components/Resources/WeaponResourceComponentBase.h"
 #include "GameFramework/Actor.h"
 
 #include "Weapons/Data/WeaponData.h"
@@ -24,7 +25,7 @@
 #include "WeaponBase.generated.h"
 
 
-class UWeaponResourceComponentBase;
+
 
 UCLASS(Blueprintable, Abstract)
 class MILLIONNAIRES_API AWeaponBase : public AActor
@@ -45,6 +46,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UWeaponAnimationHandlerComponent* AnimationComponent;
 	
+	UPROPERTY(BlueprintReadOnly, Category = "Components")
+	UWeaponResourceComponentBase*RessourceComponent;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	UWeaponData* WeaponData;
 
@@ -57,16 +61,19 @@ public:
 	/** Functions */
 	
 	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent, Category = "Weapon")
-	void Attack();
+	void CallAttack();
 
-	UFUNCTION(BlueprintCallable,BlueprintImplementableEvent, Category = "Weapon")
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void StartAttacking();
 
 	UFUNCTION(BlueprintCallable,BlueprintImplementableEvent, Category = "Weapon")
 	void StopAttacking();
 
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
-	void PerformAttack(float DamagesMultiplicator);
+	bool CanAttack();
+	
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	void PerformAttack();
 
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void InterruptAttack();
@@ -79,6 +86,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetAttackRate() const { return WeaponData ? WeaponData->AttackRate : 0.f; }
+
+	UFUNCTION(BlueprintCallable)
+	void SetPendingDamageMultiplier(float DamagesMultiplier);
 
 	virtual void OnConstruction(const FTransform& Transform) override;
 
@@ -99,6 +109,8 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Components")
 	UAttackExecutorBase* AttackExecutor;
+	
+	float PendingDamageMultiplier = 1.f;
 
 public:	
 	// Called every frame

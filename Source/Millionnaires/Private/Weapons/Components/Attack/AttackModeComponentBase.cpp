@@ -86,13 +86,12 @@ void UAttackModeComponentBase::StopAttacking()
 void UAttackModeComponentBase::Attack()
 {
 	
-	UWeaponResourceComponentBase*AmmoComponent = OwnerWeapon->FindComponentByClass<UWeaponResourceComponentBase>();
-	
-	if (!AmmoComponent->Consume())
+	if (!OwnerWeapon->CanAttack())
 	{
 		return;
 	}
-	OwnerWeapon->PerformAttack(DamagesMultiplier);
+	OwnerWeapon->SetPendingDamageMultiplier(DamagesMultiplier);
+	OwnerWeapon->StartAttacking();
 	
 }
 

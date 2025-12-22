@@ -4,6 +4,7 @@
 #include "Weapons/Components/Resources/WeaponResourceComponentBase.h"
 
 #include "Components/WidgetComponent.h"
+#include "Weapons/WeaponBase.h"
 #include "Weapons/Widget/AmmoWidgetBase.h"
 
 // Sets default values for this component's properties

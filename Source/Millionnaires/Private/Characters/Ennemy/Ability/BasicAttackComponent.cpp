@@ -7,7 +7,7 @@
 
 void UBasicAttackComponent::ExecuteAbility(AActor* Target)
 {
-	UsedWeapon->Attack();
+	UsedWeapon->CallAttack();
 
 }
 

@@ -3,36 +3,34 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Characters/Death/Behaviors/DeathBehaviorObjectBase.h"
 #include "Components/ActorComponent.h"
-#include "WeaponAnimationHandlerComponent.generated.h"
+#include "DeathHandlerComponent.generated.h"
 
-
-class AWeaponBase;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class MILLIONNAIRES_API UWeaponAnimationHandlerComponent : public UActorComponent
+class MILLIONNAIRES_API UDeathHandlerComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
 public:	
 	// Sets default values for this component's properties
-	UWeaponAnimationHandlerComponent();
+	UDeathHandlerComponent();
 
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
-	UPROPERTY()
-	AWeaponBase* OwnerWeapon;
-
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	
+	UFUNCTION(BlueprintCallable, Category="Death")
+	void ExecuteDeath();
 
-	UFUNCTION(BlueprintCallable)
-	void PlayMontage(UAnimMontage* Montage, USkeletalMeshComponent* TargetMesh, float PlayRate = 1.f);
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Death")
+	TArray<TSubclassOf<UDeathBehaviorObjectBase>> BehaviourClasses;
 
-	UFUNCTION()
-	void OnNotifyBegin(FName NotifyName, const FBranchingPointNotifyPayload& BranchingPointPayload);
-		
+	UPROPERTY(Transient)
+	TArray<UDeathBehaviorObjectBase*> Behaviours;
 };

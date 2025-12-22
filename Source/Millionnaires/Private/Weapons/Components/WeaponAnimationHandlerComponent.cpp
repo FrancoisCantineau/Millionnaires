@@ -3,6 +3,8 @@
 
 #include "Weapons/Components/WeaponAnimationHandlerComponent.h"
 
+#include "Weapons/WeaponBase.h"
+
 // Sets default values for this component's properties
 UWeaponAnimationHandlerComponent::UWeaponAnimationHandlerComponent()
 {
@@ -19,7 +21,7 @@ void UWeaponAnimationHandlerComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// ...
+	OwnerWeapon = Cast<AWeaponBase>(GetOwner());
 	
 }
 
@@ -41,7 +43,28 @@ void UWeaponAnimationHandlerComponent::PlayMontage(UAnimMontage* Montage, USkele
 	UAnimInstance* AnimInst = TargetMesh->GetAnimInstance();
 	if (AnimInst)
 	{
+
+		AnimInst->OnPlayMontageNotifyBegin.AddDynamic(this, &UWeaponAnimationHandlerComponent::OnNotifyBegin);
+		
 	AnimInst->Montage_Play(Montage, animRate);
+		
+	}
+}
+
+void UWeaponAnimationHandlerComponent::OnNotifyBegin(FName NotifyName,
+	const FBranchingPointNotifyPayload& BranchingPointPayload)
+{
+	if (NotifyName == "StartAttack")
+	{
+		OwnerWeapon->PerformAttack();
+	}
+	else if (NotifyName == "EndAttack")
+	{
+		OwnerWeapon->InterruptAttack();
+	}
+	else if (NotifyName == "PlaySound")
+	{
+		
 	}
 }
 

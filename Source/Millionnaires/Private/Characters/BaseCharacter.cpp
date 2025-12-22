@@ -34,7 +34,7 @@ void ABaseCharacter::ApplyDamage_Implementation(float Damage, AActor* DamageCaus
 
 void ABaseCharacter::Die()
 {
-    UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+   /* UCharacterMovementComponent* MoveComp = GetCharacterMovement();
     if (MoveComp)
     {
         MoveComp->StopMovementImmediately();
@@ -51,7 +51,7 @@ void ABaseCharacter::Die()
         MeshComp->SetCollisionProfileName(TEXT("Ragdoll"));
         MeshComp->SetSimulatePhysics(true);
         MeshComp->WakeAllRigidBodies();
-    }
+    }*/
 }
 
 

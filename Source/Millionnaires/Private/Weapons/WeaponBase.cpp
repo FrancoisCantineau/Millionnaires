@@ -36,6 +36,11 @@ AWeaponBase::AWeaponBase()
 }
 
 
+void AWeaponBase::SetPendingDamageMultiplier(float DamagesMultiplier)
+{
+	PendingDamageMultiplier = DamagesMultiplier;
+}
+
 /**
 * Called whenever the actor is modified
 */
@@ -62,6 +67,9 @@ void AWeaponBase::BeginPlay()
 	}
 	
 	GetComponents<UWeaponEffectBaseComponent>(Effects);
+
+	RessourceComponent = FindComponentByClass<UWeaponResourceComponentBase>();
+	
 	ApplyWeaponData();
 	
 }
@@ -103,19 +111,34 @@ void AWeaponBase::Tick(float DeltaTime)
 
 }
 
-void AWeaponBase::PerformAttack(float DamagesMultiplicator)
+void AWeaponBase::StartAttacking()
+{
+	if (AnimationComponent && WeaponData->AttackMontage)
+	{
+		ACharacter* CharacterOwner = Cast<ACharacter>(Owner);
+			
+		float PlayRate = WeaponData->AttackRate;
+		AnimationComponent->PlayMontage(WeaponData->AttackMontage, CharacterOwner->GetMesh(), PlayRate);
+
+		return;
+	}
+	PerformAttack();
+}
+
+bool AWeaponBase::CanAttack()
+{
+	if (RessourceComponent)
+	{
+		return RessourceComponent->CanConsume();
+	}
+	return true;
+}
+
+void AWeaponBase::PerformAttack()
 {
 	if (AttackExecutor)
 	{
-		AttackExecutor->ExecuteAttack(DamagesMultiplicator);
-
-		if (AnimationComponent)
-		{
-			ACharacter* CharacterOwner = Cast<ACharacter>(Owner);
-			
-			float PlayRate = WeaponData->AttackRate;
-			AnimationComponent->PlayMontage(WeaponData->AttackMontage, CharacterOwner->GetMesh(), PlayRate);
-		}
+		AttackExecutor->ExecuteAttack(PendingDamageMultiplier);
 	}
 }
 
