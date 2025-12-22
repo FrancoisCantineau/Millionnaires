@@ -15,6 +15,7 @@ ABaseCharacter::ABaseCharacter(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
 {
     StatsComponent = CreateDefaultSubobject<UCharacterStatsComponent>(TEXT("BPC_StatsComponent"));
+    DeathHandler = CreateDefaultSubobject<UDeathHandlerComponent>(TEXT("BPC_DeathHandlerComponent"));
 }
 
 void ABaseCharacter::BeginPlay()
@@ -34,24 +35,7 @@ void ABaseCharacter::ApplyDamage_Implementation(float Damage, AActor* DamageCaus
 
 void ABaseCharacter::Die()
 {
-   /* UCharacterMovementComponent* MoveComp = GetCharacterMovement();
-    if (MoveComp)
-    {
-        MoveComp->StopMovementImmediately();
-        MoveComp->DisableMovement();
-    }
-    UCapsuleComponent* Capsule = GetCapsuleComponent();
-    if (Capsule)
-    {
-        Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    }
-    USkeletalMeshComponent* MeshComp = GetMesh();
-    if (MeshComp)
-    {
-        MeshComp->SetCollisionProfileName(TEXT("Ragdoll"));
-        MeshComp->SetSimulatePhysics(true);
-        MeshComp->WakeAllRigidBodies();
-    }*/
+   DeathHandler->ExecuteDeath();
 }
 
 

@@ -9,6 +9,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/Characters/DeathHandlerComponent.h"
 #include "GameFramework/Character.h"
 
 #include "Interfaces/DamageableInterface.h"
@@ -37,6 +38,9 @@ protected:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character|Components", meta = (AllowPrivateAccess = "true", ToolTip = "Component that manages health, hunger and basic character data."))
     TObjectPtr<UCharacterStatsComponent> StatsComponent;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character|Components")
+    UDeathHandlerComponent* DeathHandler;
     
     /** Name of the collision profile to use during ragdoll death */
     UPROPERTY(EditAnywhere, Category="Damage")
