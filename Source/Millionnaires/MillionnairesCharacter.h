@@ -19,6 +19,7 @@ class UInputComponent;
 class USkeletalMeshComponent;
 class UCameraComponent;
 class UInputAction;
+class UConsumableComponent;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -102,9 +103,21 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* InteractAction;
 
+	/** Input action for using health consumable (hotkey 1) */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* UseHealthAction;
+
+	/** Input action for using food consumable (hotkey 2) */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* UseFoodAction;
+
+	/** Input action for using battery consumable (hotkey 3) */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* UseBatteryAction;
+	
 #pragma endregion
 
-#pragma region Inventory Components
+#pragma region Inventory
 
 	/** General inventory - accepts all items EXCEPT specialized ones */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
@@ -140,6 +153,14 @@ protected:
 
 #pragma endregion
 
+#pragma region Consumable
+	
+	/** Consumable component for using items from inventory */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+	UConsumableComponent* ConsumableComponent;
+	
+#pragma endregion
+	
 #pragma region UI
 
 	/** Multi-inventory widget class */
@@ -211,6 +232,22 @@ protected:
 	/** Set up input action bindings */
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 
+	/** Called when health hotkey is pressed */
+	UFUNCTION(BlueprintCallable, Category="Input")
+	void OnUseHealthPressed();
+
+	/** Called when food hotkey is pressed */
+	UFUNCTION(BlueprintCallable, Category="Input")
+	void OnUseFoodPressed();
+
+	/** Called when battery hotkey is pressed */
+	UFUNCTION(BlueprintCallable, Category="Input")
+	void OnUseBatteryPressed();
+
+	/** Called when consumable item is used from UI (right-click) */
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	void UseConsumableFromSlot(int32 SlotIndex, UInventoryComponent* InventoryComp);
+	
 #pragma endregion
 
 #pragma region Interface Implementations
@@ -255,5 +292,8 @@ public:
 	/** Returns first person camera component */
 	FORCEINLINE UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
 
+	/** Get consumable component */
+	FORCEINLINE UConsumableComponent* GetConsumableComponent() const { return ConsumableComponent; }
+	
 #pragma endregion
 };

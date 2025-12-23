@@ -155,6 +155,32 @@ bool UInventoryComponent::RemoveItem(int32 SlotIndex)
 }
 
 /*
+ * Removes one item from a stack in a specific slot.
+ */
+bool UInventoryComponent::RemoveOneFromStack(int32 SlotIndex)
+{
+    if (!IsValidSlotIndex(SlotIndex))
+    {
+        return false;
+    }
+
+    if (ItemSlots[SlotIndex].IsEmpty())
+    {
+        return false;
+    }
+
+    ItemSlots[SlotIndex].StackAmount--;
+
+    if (ItemSlots[SlotIndex].StackAmount <= 0)
+    {
+        ItemSlots[SlotIndex].Clear();
+    }
+
+    NotifySlotChanged(SlotIndex);
+    return true;
+}
+
+/*
  * Moves items between two slots, stacking if possible.
  */
 bool UInventoryComponent::MoveItem(int32 FromSlot, int32 ToSlot)

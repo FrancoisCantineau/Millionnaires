@@ -1,12 +1,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Consumable/ConsumableConfig.h"
 #include "Engine/DataTable.h"
 #include "GameplayTagContainer.h"
+#include "Consumable/ConsumableEffect.h"
 
 #include "ItemData.generated.h"
 
 #pragma region Forward Declarations
+
+class UConsumableEffect;
 
 UENUM(BlueprintType)
 enum class EItemCategory : uint8
@@ -127,6 +131,44 @@ struct GAMEINTERFACES_API FItemData : public FTableRowBase
     {
         return ItemTags.HasAll(Tags);
     }
+    
+#pragma region Consumable Properties
+
+    /** If true, this item can be consumed/used */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Consumable")
+    bool bIsConsumable = false;
+
+    /** Reference to consumable configuration asset */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Consumable",
+        meta = (EditCondition = "bIsConsumable"))
+    UConsumableConfig* ConsumableConfig = nullptr;
+
+    /** Should the item be removed after consumption? (deprecated - use ConsumableConfig) */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Consumable",
+        meta = (EditCondition = "bIsConsumable"))
+    bool bConsumeOnUse = true;
+    
+    
+    FORCEINLINE bool IsConsumableItem() const
+    {
+        return bIsConsumable && ConsumableConfig != nullptr && ConsumableConfig->Effects.Num() > 0;
+    }
+
+    FORCEINLINE FGameplayTagContainer GetConsumableTags() const
+    {
+        FGameplayTagContainer AllTags;
+    
+        if (ConsumableConfig)
+        {
+            AllTags.AppendTags(ConsumableConfig->GetEffectTags());
+        }
+    
+        AllTags.AppendTags(ItemTags);
+    
+        return AllTags;
+    }
+
+#pragma endregion
 };
 
 #pragma endregion

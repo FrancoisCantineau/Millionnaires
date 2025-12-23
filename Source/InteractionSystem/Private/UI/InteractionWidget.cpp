@@ -1,4 +1,4 @@
-#include "InteractionWidget.h"
+#include "UI/InteractionWidget.h"
 #include "Components/TextBlock.h"
 
 void UInteractionWidget::UpdateInteractionText(const FText& NewText)

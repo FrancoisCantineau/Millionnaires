@@ -69,6 +69,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Inventory")
     bool RemoveItem(int32 SlotIndex);
 
+    /** Remove one item from a stack in a specific slot */
+    UFUNCTION(BlueprintCallable, Category = "Inventory")
+    bool RemoveOneFromStack(int32 SlotIndex);
+    
     /** Move item from one slot to another with automatic stacking/swapping */
     UFUNCTION(BlueprintCallable, Category = "Inventory")
     bool MoveItem(int32 FromSlot, int32 ToSlot);
