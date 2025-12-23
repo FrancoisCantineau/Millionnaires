@@ -17,14 +17,19 @@ class ABaseEnnemyCharacter : public ABaseCharacter
 
 	protected:
 
+	ABaseEnnemyCharacter(const FObjectInitializer& ObjectInitializer);
+
 	virtual void BeginPlay() override;
 
 public :
 	
 	//** Properties */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,Category = "Abilities", meta = (AllowPrivateAccess = "true"))
-	TArray<UAbilityBaseComponent*> AbilityComponents;
+	TArray<UAbilityBase*> AbilityComponents;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AI")
 	UBehaviorTree* BehaviorTree;
+
+	UPROPERTY(VisibleAnywhere)
+	UAbilityHandlerComponentBase* AbilityHandler;
 };

@@ -13,7 +13,7 @@
 #include "GameFramework/Character.h"
 
 #include "Interfaces/DamageableInterface.h"
-#include "Ennemy/Ability/AbilityBaseComponent.h"
+#include "Ennemy/Ability/AbilityHandlerComponentBase.h"
 
 #include "BaseCharacter.generated.h"
 
