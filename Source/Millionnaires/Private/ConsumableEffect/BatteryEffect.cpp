@@ -1,10 +1,9 @@
 #include "ConsumableEffect/BatteryEffect.h"
 
-#include "GameplayTagContainer.h"
+#include "Components/FlashlightEquipmentComponent.h"
 
 UBatteryEffect::UBatteryEffect()
 {
-    EffectTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Consumable.Battery")));
     EffectDescription = FText::FromString("Recharges flashlight battery");
 }
 
@@ -13,14 +12,23 @@ UBatteryEffect::UBatteryEffect()
  */
 bool UBatteryEffect::CanApplyEffect_Implementation(const FConsumableContext& Context) const
 {
-    if (!Super::CanApplyEffect_Implementation(Context))
+    if (!Context.Target)
     {
         return false;
     }
 
-    // TODO: Gerer la logique lorsque le FlashlightComponent est disponible
-    
-    return true;
+    UFlashlightEquipmentComponent* Flashlight = Context.Target->FindComponentByClass<UFlashlightEquipmentComponent>();
+    if (!Flashlight)
+    {
+        return false;
+    }
+
+    if (!Flashlight->IsFlashlightEquipped())
+    {
+        return false;
+    }
+
+    return Flashlight->GetBatteryPercentage() < 100.0f;
 }
 
 /*
@@ -28,7 +36,28 @@ bool UBatteryEffect::CanApplyEffect_Implementation(const FConsumableContext& Con
  */
 EConsumableResult UBatteryEffect::ApplyEffect_Implementation(const FConsumableContext& Context)
 {
-    // TODO: Gerer la logique lorsque le FlashlightComponent est disponible
+    if (!Context.Target)
+    {
+        return EConsumableResult::Failed_NoTarget;
+    }
+
+    UFlashlightEquipmentComponent* Flashlight = Context.Target->FindComponentByClass<UFlashlightEquipmentComponent>();
+    if (!Flashlight)
+    {
+        return EConsumableResult::Failed_CannotConsume;
+    }
+
+    if (!Flashlight->IsFlashlightEquipped())
+    {
+        return EConsumableResult::Failed_CannotConsume;
+    }
+
+    if (Flashlight->GetBatteryPercentage() >= 100.0f)
+    {
+        return EConsumableResult::Failed_AlreadyFull;
+    }
+
+    Flashlight->RechargeBattery(ChargeAmount, bFullRecharge);
     
     return EConsumableResult::Success;
 }

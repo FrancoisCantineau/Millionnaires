@@ -9,6 +9,7 @@
 #include "Logging/LogMacros.h"
 #include "MillionnairesCharacter.generated.h"
 
+class UFlashlightEquipmentComponent;
 class UInventoryComponent;
 class URestrictedInventoryComponent;
 class UDropComponent;
@@ -114,7 +115,7 @@ protected:
 	/** Input action for using battery consumable (hotkey 3) */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* UseBatteryAction;
-	
+
 #pragma endregion
 
 #pragma region Inventory
@@ -159,6 +160,22 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 	UConsumableComponent* ConsumableComponent;
 	
+#pragma endregion
+	
+#pragma region Flashlight
+
+	/** Flashlight equipment component */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
+	UFlashlightEquipmentComponent* FlashlightComponent;
+
+	/** Input action for toggling flashlight on/off */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* ToggleFlashlightAction;
+
+	/** Input action for equipping/unequipping flashlight */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* EquipFlashlightAction;
+
 #pragma endregion
 	
 #pragma region UI
@@ -248,6 +265,14 @@ protected:
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	void UseConsumableFromSlot(int32 SlotIndex, UInventoryComponent* InventoryComp);
 	
+	/** Called when toggle flashlight key is pressed */
+	UFUNCTION(BlueprintCallable, Category="Input")
+	void OnToggleFlashlightPressed();
+
+	/** Called when equip flashlight key is pressed (T) */
+	UFUNCTION(BlueprintCallable, Category="Input")
+	void OnEquipFlashlightPressed();
+	
 #pragma endregion
 
 #pragma region Interface Implementations
@@ -294,6 +319,9 @@ public:
 
 	/** Get consumable component */
 	FORCEINLINE UConsumableComponent* GetConsumableComponent() const { return ConsumableComponent; }
+	
+	/** Get flashlight component */
+	FORCEINLINE UFlashlightEquipmentComponent* GetFlashlightComponent() const { return FlashlightComponent; }
 	
 #pragma endregion
 };

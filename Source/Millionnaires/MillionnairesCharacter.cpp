@@ -17,8 +17,11 @@
 #include "UI/InteractionWidget.h"
 #include "UI/InventoryWidget.h"
 #include "Blueprint/UserWidget.h"
+#include "Components/FlashlightEquipmentComponent.h"
 #include "Components/Characters/CharacterStatsComponent.h"
 #include "Consumable/ConsumableComponent.h"
+
+#pragma region Command
 
 static FAutoConsoleCommand CCmdDamage(
 	TEXT("test.damage"),
@@ -78,6 +81,8 @@ static FAutoConsoleCommand CCmdDamage(
 			HealthBefore, HealthAfter, HealthBefore - HealthAfter);
 	})
 );
+
+#pragma endregion 
 
 AMillionnairesCharacter::AMillionnairesCharacter()
 {
@@ -141,6 +146,8 @@ AMillionnairesCharacter::AMillionnairesCharacter()
 	
 	ConsumableComponent = CreateDefaultSubobject<UConsumableComponent>(TEXT("ConsumableComponent"));
 
+	// Create flashlight component
+	FlashlightComponent = CreateDefaultSubobject<UFlashlightEquipmentComponent>(TEXT("FlashlightComponent"));
 }
 
 void AMillionnairesCharacter::BeginPlay()
@@ -237,6 +244,18 @@ void AMillionnairesCharacter::SetupPlayerInputComponent(UInputComponent* PlayerI
 		{
 			EnhancedInputComponent->BindAction(UseBatteryAction, ETriggerEvent::Started, 
 				this, &AMillionnairesCharacter::OnUseBatteryPressed);
+		}
+		
+		// Flashlight bindings
+		if (ToggleFlashlightAction)
+		{
+			EnhancedInputComponent->BindAction(ToggleFlashlightAction, ETriggerEvent::Started, 
+				this, &AMillionnairesCharacter::OnToggleFlashlightPressed);
+		}
+		if (EquipFlashlightAction)
+		{
+			EnhancedInputComponent->BindAction(EquipFlashlightAction, ETriggerEvent::Started, 
+				this, &AMillionnairesCharacter::OnEquipFlashlightPressed);
 		}
 	}
 	else
@@ -677,3 +696,65 @@ void AMillionnairesCharacter::UseConsumableFromSlot(int32 SlotIndex, UInventoryC
 }
 
 #pragma endregion
+
+// Toggle flashlight on/off (F ou autre touche)
+void AMillionnairesCharacter::OnToggleFlashlightPressed()
+{
+    if (!FlashlightComponent)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("No FlashlightComponent"));
+        return;
+    }
+
+    if (!FlashlightComponent->IsFlashlightEquipped())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("No flashlight equipped - equip one first with T"));
+        return;
+    }
+
+    FlashlightComponent->ToggleFlashlight();
+}
+
+// Equip/Unequip flashlight (T)
+void AMillionnairesCharacter::OnEquipFlashlightPressed()
+{
+    if (!FlashlightComponent)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("No FlashlightComponent"));
+        return;
+    }
+
+    if (FlashlightComponent->IsFlashlightEquipped())
+    {
+        FlashlightComponent->UnequipFlashlight();
+        return;
+    }
+
+    if (!ConsumableComponent)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("No ConsumableComponent"));
+        return;
+    }
+
+    TArray<UInventoryComponent*> AllInventories = ConsumableComponent->GetAllInventories();
+    
+    for (UInventoryComponent* Inventory : AllInventories)
+    {
+        if (!Inventory) continue;
+
+        const TArray<FItemSlot>& Slots = Inventory->GetAllSlots();
+        for (int32 i = 0; i < Slots.Num(); i++)
+        {
+            const FItemSlot& Slot = Slots[i];
+            if (Slot.IsEmpty()) continue;
+
+            const FItemData* ItemData = Slot.GetItemData();
+            if (!ItemData || !ItemData->bIsFlashlight) continue;
+            
+            float BatteryCharge = ItemData->InitialBatteryCharge;
+            FlashlightComponent->EquipFlashlight(Slot.ItemHandle, BatteryCharge);
+        	
+            return;
+        }
+    }
+}

@@ -169,6 +169,25 @@ struct GAMEINTERFACES_API FItemData : public FTableRowBase
     }
 
 #pragma endregion
+    
+#pragma region Flashlight Properties
+
+    /** Is this item a flashlight? */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Flashlight")
+    bool bIsFlashlight = false;
+
+    /** Initial battery charge for flashlight (0-100) */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Flashlight",
+        meta = (EditCondition = "bIsFlashlight", ClampMin = "0.0", ClampMax = "100.0"))
+    float InitialBatteryCharge = 100.0f;
+
+    FORCEINLINE bool IsFlashlightItem() const
+    {
+        return bIsFlashlight;
+    }
+
+#pragma endregion
+    
 };
 
 #pragma endregion
