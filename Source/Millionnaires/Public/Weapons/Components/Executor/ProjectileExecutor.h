@@ -26,10 +26,27 @@ class MILLIONNAIRES_API UProjectileExecutor : public UAttackExecutorBase
 {
 	GENERATED_BODY()
 
-protected:
+public:
+	
+	virtual void ExecuteAttack(float DamageMultiplier = 1.f) override;
+	
+protected: 
+		
 	
 
-public :
-		
-	virtual void ExecuteAttack(float DamageMultiplier = 1.f) override;
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile")
+	TSubclassOf<AProjectileBase> ProjectileClass;
+    
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile|Spread")
+	bool bUseSpread = false;
+    
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile|Spread", meta=(EditCondition="bUseSpread"))
+	float SpreadAngle = 2.f;
+    
+	UPROPERTY(EditDefaultsOnly, Category = "Effects")
+	UParticleSystem* MuzzleFlash;
+    
+	UPROPERTY(EditDefaultsOnly, Category = "Effects")
+	USoundBase* FireSound;
+	
 };

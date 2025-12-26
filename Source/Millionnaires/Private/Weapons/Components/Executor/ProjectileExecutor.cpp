@@ -16,40 +16,40 @@ void UProjectileExecutor::ExecuteAttack(float m_DamageMultiplier)
 {
 	Super::ExecuteAttack(m_DamageMultiplier);
 	
-	if (!OwnerWeapon || !OwnerWeapon->WeaponData->ProjectileExecutorSettings.ProjectileClass)
+	if (!OwnerWeapon || !ProjectileClass)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ProjectileExecutor: Missing weapon or projectile class"));
 		return;
 	}
 
 	
-	if (OwnerWeapon->WeaponData->ProjectileExecutorSettings.MuzzleFlash)
+	if (MuzzleFlash)
 	{
 		UGameplayStatics::SpawnEmitterAttached(
-			OwnerWeapon->WeaponData->ProjectileExecutorSettings.MuzzleFlash, 
+			MuzzleFlash, 
 			OwnerWeapon->GetWeaponMesh(), 
-			OwnerWeapon->WeaponData->ProjectileExecutorSettings.MuzzleSocketName
+			MuzzleSocketName
 		);
 	}
     
-	if (OwnerWeapon->WeaponData->ProjectileExecutorSettings.FireSound)
+	if (FireSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(
-			this, 
-			OwnerWeapon->WeaponData->ProjectileExecutorSettings.FireSound, 
+			OwnerWeapon->GetWorld(), 
+			FireSound, 
 			OwnerWeapon->GetActorLocation()
 		);
 	}
 
 
-	FVector SpawnLocation = OwnerWeapon->GetWeaponMesh()->GetSocketLocation(OwnerWeapon->WeaponData->ProjectileExecutorSettings.MuzzleSocketName);
-	FRotator SpawnRotation = OwnerWeapon->GetWeaponMesh()->GetSocketRotation(OwnerWeapon->WeaponData->ProjectileExecutorSettings.MuzzleSocketName);
+	FVector SpawnLocation = OwnerWeapon->GetWeaponMesh()->GetSocketLocation(MuzzleSocketName);
+	FRotator SpawnRotation = OwnerWeapon->GetWeaponMesh()->GetSocketRotation(MuzzleSocketName);
     
 	
-	if (OwnerWeapon->WeaponData->ProjectileExecutorSettings.bUseSpread)
+	if (bUseSpread)
 	{
-		float RandomPitch = FMath::RandRange(-OwnerWeapon->WeaponData->ProjectileExecutorSettings.SpreadAngle, OwnerWeapon->WeaponData->ProjectileExecutorSettings.SpreadAngle);
-		float RandomYaw = FMath::RandRange(-OwnerWeapon->WeaponData->ProjectileExecutorSettings.SpreadAngle, OwnerWeapon->WeaponData->ProjectileExecutorSettings.SpreadAngle);
+		float RandomPitch = FMath::RandRange(-SpreadAngle, SpreadAngle);
+		float RandomYaw = FMath::RandRange(-SpreadAngle, SpreadAngle);
 		SpawnRotation.Pitch += RandomPitch;
 		SpawnRotation.Yaw += RandomYaw;
 	}
@@ -59,8 +59,8 @@ void UProjectileExecutor::ExecuteAttack(float m_DamageMultiplier)
 	SpawnParams.Owner = OwnerWeapon;
 	SpawnParams.Instigator = Cast<APawn>(OwnerWeapon->GetOwner());
     
-	AProjectileBase* Projectile = GetWorld()->SpawnActor<AProjectileBase>(
-		OwnerWeapon->WeaponData->ProjectileExecutorSettings.ProjectileClass, 
+	AProjectileBase* Projectile = OwnerWeapon->GetWorld()->SpawnActor<AProjectileBase>(
+		ProjectileClass, 
 		SpawnLocation, 
 		SpawnRotation, 
 		SpawnParams

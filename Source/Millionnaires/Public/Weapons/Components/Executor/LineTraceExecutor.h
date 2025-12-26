@@ -38,4 +38,24 @@ public:
 	virtual void EndAttackExecution() override;
 
 	virtual void OnHit(const FHitResult& Hit) override;
+
+protected :
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Line Trace")
+	float TraceDistance = 2000.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Line Trace")
+	UNiagaraSystem* TraceVFX;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Line Trace")
+	USoundBase* TraceSFX;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FX")
+	FString ParticleVariable = "None";
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Line Trace")
+	UNiagaraComponent* TraceParticle;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FX")
+	UNiagaraSystem* LaserBeamVFX;
 };

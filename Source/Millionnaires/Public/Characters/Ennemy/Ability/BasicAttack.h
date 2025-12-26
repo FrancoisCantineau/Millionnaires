@@ -20,7 +20,7 @@ public :
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<AWeaponBase> WeaponClass;
 	
-	virtual void ExecuteAbility(AActor* Target) override;
+	virtual void ExecuteAbility_Implementation(AActor* Owner, AActor* Target, const UAbilityDataAsset* Data) override;
 
 protected :
 

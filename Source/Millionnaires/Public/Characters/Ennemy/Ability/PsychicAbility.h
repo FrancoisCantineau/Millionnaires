@@ -24,6 +24,6 @@ class MILLIONNAIRES_API UPsychicAbility : public UAbilityBase
 
 public :
 
-virtual void ExecuteAbility(AActor* Target) override;
+	virtual void ExecuteAbility_Implementation(AActor* Owner, AActor* Target, const UAbilityDataAsset* Data) override;
 	
 };

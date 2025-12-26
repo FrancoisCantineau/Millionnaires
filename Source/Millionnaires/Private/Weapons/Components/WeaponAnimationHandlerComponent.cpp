@@ -43,7 +43,7 @@ void UWeaponAnimationHandlerComponent::PlayMontage(UAnimMontage* Montage, USkele
 	UAnimInstance* AnimInst = TargetMesh->GetAnimInstance();
 	if (AnimInst)
 	{
-
+		AnimInst->OnPlayMontageNotifyBegin.RemoveDynamic(this, &UWeaponAnimationHandlerComponent::OnNotifyBegin);
 		AnimInst->OnPlayMontageNotifyBegin.AddDynamic(this, &UWeaponAnimationHandlerComponent::OnNotifyBegin);
 		
 	AnimInst->Montage_Play(Montage, animRate);

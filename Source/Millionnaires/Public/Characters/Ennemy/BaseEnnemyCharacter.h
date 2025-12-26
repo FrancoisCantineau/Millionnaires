@@ -30,6 +30,6 @@ public :
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AI")
 	UBehaviorTree* BehaviorTree;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly)
 	UAbilityHandlerComponentBase* AbilityHandler;
 };

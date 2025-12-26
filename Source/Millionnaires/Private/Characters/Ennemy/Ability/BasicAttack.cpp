@@ -5,20 +5,22 @@
 #include "Characters/BaseCharacter.h"
 #include "GameFramework/Character.h"
 
-void UBasicAttack::ExecuteAbility(AActor* Target)
+void UBasicAttack::ExecuteAbility_Implementation(AActor* Owner, AActor* Target, const UAbilityDataAsset* Data)
 {
+	Super::ExecuteAbility_Implementation(Owner, Target, Data);
+	
 	if (!UsedWeapon)
 	{
 		FActorSpawnParameters Params;
-		Params.Owner = OwningCharacter;
-
-		UsedWeapon = OwningCharacter->GetWorld()->SpawnActor<AWeaponBase>(
+		Params.Owner = Owner;
+        
+		UsedWeapon = Owner->GetWorld()->SpawnActor<AWeaponBase>(
 			WeaponClass,
 			Params
 		);
-
-		ACharacter* Character = Cast<ACharacter>(OwningCharacter);
-		if (Character)
+        
+		ACharacter* Character = Cast<ACharacter>(Owner);
+		if (Character && UsedWeapon)
 		{
 			UsedWeapon->AttachToComponent(
 				Character->GetMesh(),
@@ -26,13 +28,10 @@ void UBasicAttack::ExecuteAbility(AActor* Target)
 				TEXT("HandGrip_R")
 			);
 		}
-
-		RangeMax = UsedWeapon->GetRange();
-		MaxCooldown = 1.f / UsedWeapon->GetAttackRate();
 	}
-
-	UsedWeapon->CallAttack();
-
+	
+	if (UsedWeapon)
+	{
+		UsedWeapon->CallAttack();
+	}
 }
-
-

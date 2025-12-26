@@ -21,10 +21,10 @@ void ULineTraceExecutor::Initialize(AWeaponBase* Weapon)
 	
 	USkeletalMeshComponent* Mesh = OwnerWeapon->GetWeaponMesh();
 	
-	if (OwnerWeapon->WeaponData->LineTraceExecutorSettings.LaserBeamVFX && Mesh)
+	if (LaserBeamVFX && Mesh)
 	{
-		OwnerWeapon->WeaponData->LineTraceExecutorSettings.TraceParticle = UNiagaraFunctionLibrary::SpawnSystemAttached(
-			OwnerWeapon->WeaponData->LineTraceExecutorSettings.LaserBeamVFX,          
+		TraceParticle = UNiagaraFunctionLibrary::SpawnSystemAttached(
+			LaserBeamVFX,          
 			Mesh,                  
 			FName("Muzzle"),        
 			FVector::ZeroVector,   
@@ -33,9 +33,9 @@ void ULineTraceExecutor::Initialize(AWeaponBase* Weapon)
 			false                   
 		);
 
-		if (OwnerWeapon->WeaponData->LineTraceExecutorSettings.TraceParticle)
+		if (TraceParticle)
 		{
-			OwnerWeapon->WeaponData->LineTraceExecutorSettings.TraceParticle->Deactivate();
+			TraceParticle->Deactivate();
 		}
 	}
 }
@@ -51,7 +51,7 @@ void ULineTraceExecutor::ExecuteAttack(float m_DamageMultiplier)
 	
 	const FVector Start = Mesh->GetSocketLocation("Muzzle");
 	const FVector Forward = Mesh->GetSocketRotation("Muzzle").Vector();
-	const FVector End = Start + Forward * OwnerWeapon->WeaponData->LineTraceExecutorSettings.TraceDistance;
+	const FVector End = Start + Forward * TraceDistance;
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
@@ -72,11 +72,11 @@ void ULineTraceExecutor::ExecuteAttack(float m_DamageMultiplier)
 	}
 	else
 	{
-		if (OwnerWeapon->WeaponData->LineTraceExecutorSettings.TraceParticle)
+		if (TraceParticle)
 		{
-			OwnerWeapon->WeaponData->LineTraceExecutorSettings.TraceParticle->Activate();
+			TraceParticle->Activate();
 			
-			OwnerWeapon->WeaponData->LineTraceExecutorSettings.TraceParticle->SetNiagaraVariableVec3(OwnerWeapon->WeaponData->LineTraceExecutorSettings.ParticleVariable, Hit.TraceEnd);
+			TraceParticle->SetNiagaraVariableVec3(ParticleVariable, Hit.TraceEnd);
 		}
 		
 	}
@@ -91,13 +91,13 @@ void ULineTraceExecutor::ExecuteAttack(float m_DamageMultiplier)
 
 void ULineTraceExecutor::OnHit(const FHitResult& Hit)
 {
-	if (OwnerWeapon->WeaponData->LineTraceExecutorSettings.ParticleVariable != "None")
+	if (ParticleVariable != "None")
 	{
-		if (OwnerWeapon->WeaponData->LineTraceExecutorSettings.TraceParticle)
+		if (TraceParticle)
 		{
-			OwnerWeapon->WeaponData->LineTraceExecutorSettings.TraceParticle->Activate();
+			TraceParticle->Activate();
 		
-			OwnerWeapon->WeaponData->LineTraceExecutorSettings.TraceParticle->SetNiagaraVariableVec3(OwnerWeapon->WeaponData->LineTraceExecutorSettings.ParticleVariable, Hit.ImpactPoint);
+			TraceParticle->SetNiagaraVariableVec3(ParticleVariable, Hit.ImpactPoint);
 		}
 		
 	}
@@ -109,9 +109,9 @@ void ULineTraceExecutor::EndAttackExecution()
 {
 	Super::EndAttackExecution();
 
-	if (OwnerWeapon->WeaponData->LineTraceExecutorSettings.TraceParticle)
+	if (TraceParticle)
 	{
-		OwnerWeapon->WeaponData->LineTraceExecutorSettings.TraceParticle->Deactivate();
+		TraceParticle->Deactivate();
 	}
 }
 

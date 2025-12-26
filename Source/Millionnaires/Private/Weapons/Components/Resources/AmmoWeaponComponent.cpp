@@ -10,7 +10,7 @@
  */
 
 #include "Weapons/Components/Resources/AmmoWeaponComponent.h"
-
+#include "Weapons/WeaponBase.h"
 #include "Kismet/GameplayStatics.h"
 
 UAmmoWeaponComponent::UAmmoWeaponComponent()

@@ -63,7 +63,7 @@ void UAttackExecutorBase::ExplodeAtLocation(const FHitResult& Hit)
 {
 	TArray<FOverlapResult> Overlaps;
 
-	FCollisionShape Sphere = FCollisionShape::MakeSphere(OwnerWeapon->WeaponData->BaseAttackExecutorSettings.ExplosionRadius);
+	FCollisionShape Sphere = FCollisionShape::MakeSphere(ExplosionRadius);
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(OwnerWeapon);
 	Params.AddIgnoredActor(OwnerWeapon->GetOwner());
@@ -91,26 +91,26 @@ void UAttackExecutorBase::ExplodeAtLocation(const FHitResult& Hit)
 
 void UAttackExecutorBase::OnHit(const FHitResult& Hit)
 {
-	if (OwnerWeapon->WeaponData->BaseAttackExecutorSettings.ImpactVFX)
+	if (ImpactVFX)
 	{
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 		GetWorld(),      
-		OwnerWeapon->WeaponData->BaseAttackExecutorSettings.ImpactVFX,       
+		ImpactVFX,       
 		Hit.ImpactPoint,
 		Hit.ImpactNormal.Rotation() 
 	);
 	}
 
-	if (OwnerWeapon->WeaponData->BaseAttackExecutorSettings.ImpactSFX)
+	if (ImpactSFX)
 	{
 		UGameplayStatics::PlaySoundAtLocation(
 		this,              
-		OwnerWeapon->WeaponData->BaseAttackExecutorSettings.ImpactSFX,       
+		ImpactSFX,       
 		Hit.ImpactPoint     
 	);
 	}
 	
-	switch (OwnerWeapon->WeaponData->BaseAttackExecutorSettings.AreaType)
+	switch (AreaType)
 	{
 	case EAttackAreaType::Single : ApplyDamage(Hit, Hit.GetActor());
 		break;

@@ -18,42 +18,17 @@
 class ABaseCharacter;
 
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+UCLASS(Abstract, Blueprintable, EditInlineNew, DefaultToInstanced, ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class MILLIONNAIRES_API UAbilityBase : public UObject
 {
 	GENERATED_BODY()
 
+
 public:	
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ability")
-	float RangeMax;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ability")
-	float RangeMin;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ability")
-	float MaxCooldown = 4.f;
+	UFUNCTION(BlueprintNativeEvent, Category = "Ability")
+	void ExecuteAbility(AActor* Owner, AActor* Target, const class UAbilityDataAsset* Data);
+    
+	virtual void ExecuteAbility_Implementation(AActor* Owner, AActor* Target, const class UAbilityDataAsset* Data);
 	
-	UPROPERTY()
-	ABaseCharacter*  OwningCharacter;
-
-protected:
-
-	void ResetCooldown();
-
-	float CurrentCooldown;
-
-	bool bCanUseAbility = true;
-
-	FTimerHandle CooldownTimerHandle;
-
-	virtual void ExecuteAbility(AActor* Target);
-
-public:	
-
-	UFUNCTION(BlueprintCallable, Category = "Ability")
-	bool UseAbility(AActor* Target);
-
-	UFUNCTION(BlueprintCallable, Category = "Ability")
-	virtual bool CanUseAbility(AActor* Target);
 };

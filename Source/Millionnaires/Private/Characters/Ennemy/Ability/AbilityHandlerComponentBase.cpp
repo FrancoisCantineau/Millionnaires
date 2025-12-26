@@ -4,6 +4,7 @@
 #include "Characters/Ennemy/Ability/AbilityHandlerComponentBase.h"
 #include "Characters/BaseCharacter.h"
 
+
 // Sets default values for this component's properties
 UAbilityHandlerComponentBase::UAbilityHandlerComponentBase()
 {
@@ -19,28 +20,7 @@ void UAbilityHandlerComponentBase::BeginPlay()
 {
 	
 	Super::BeginPlay();
-
-	ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner());
-	if (!OwnerCharacter) return;
-
-	for (TSubclassOf<UAbilityBase> AbilityClass : AbilityClasses)
-	{
-		if (!AbilityClass) continue;
-
-		UAbilityBase* Ability =
-			NewObject<UAbilityBase>(this, AbilityClass);
-
-		Ability->OwningCharacter = OwnerCharacter;
-		Abilities.Add(Ability);
-	}
-}
-
-bool UAbilityHandlerComponentBase::UseAbilityByIndex(int32 Index, AActor* Target)
-{
-	if (!Abilities.IsValidIndex(Index))
-		return false;
-
-	return Abilities[Index]->UseAbility(Target);
+	InitializeAbilities();
 }
 
 
@@ -49,6 +29,221 @@ void UAbilityHandlerComponentBase::TickComponent(float DeltaTime, ELevelTick Tic
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	for (FAbilityInstance& Instance : AbilityInstances)
+	{
+		if (Instance.CurrentCooldown > 0.0f)
+		{
+			Instance.CurrentCooldown -= DeltaTime;
+            
+			if (Instance.CurrentCooldown <= 0.0f)
+			{
+				Instance.CurrentCooldown = 0.0f;
+				Instance.bCanUse = true;
+			}
+		}
+	}
 	// ...
 }
+bool UAbilityHandlerComponentBase::UseAbility(int32 AbilityIndex, AActor* Target)
+{
+	if (!CanUseAbility(AbilityIndex, Target))
+		return false;
+    
+	FAbilityInstance& Instance = AbilityInstances[AbilityIndex];
+	
+	if (Instance.BehaviorInstance)
+	{
+		Instance.BehaviorInstance->ExecuteAbility(GetOwner(), Target, Instance.AbilityData);
+	}
+	
+	Instance.bCanUse = false;
+	Instance.CurrentCooldown = Instance.AbilityData->MaxCooldown;
+    
+	return true;
+}
 
+bool UAbilityHandlerComponentBase::UseBestAbility(AActor* Target)
+{
+	TArray<FAbilityInstance*> BestAbilities;
+	int32 HighestPriority = MIN_int32;
+
+	for (FAbilityInstance& Instance : AbilityInstances)
+	{
+		if (!Instance.AbilityData || !Instance.BehaviorInstance)
+			continue;
+
+		if (!Instance.bCanUse || Instance.CurrentCooldown > 0.f)
+			continue;
+
+		if (!IsInRange(Instance.AbilityData, Target))
+			continue;
+
+		if (!CheckAbilityConditions(Instance.AbilityData))
+			continue;
+		
+		if (!CheckAbilityTags(Instance.AbilityData))
+			continue;
+		
+		if (Instance.Priority > HighestPriority)
+		{
+			HighestPriority = Instance.Priority;
+			BestAbilities.Empty();
+			BestAbilities.Add(&Instance);
+		}
+		else if (Instance.Priority == HighestPriority)
+		{
+			BestAbilities.Add(&Instance);
+		}
+	}
+
+	if (BestAbilities.Num() == 0)
+		return false;
+
+	
+	FAbilityInstance* ChosenAbility =
+		BestAbilities[FMath::RandRange(0, BestAbilities.Num() - 1)];
+
+	
+	ChosenAbility->BehaviorInstance->ExecuteAbility(
+		GetOwner(),
+		Target,
+		ChosenAbility->AbilityData
+	);
+
+	GrantAbilityTags(ChosenAbility->AbilityData);
+	ChosenAbility->bCanUse = false;
+	ChosenAbility->CurrentCooldown = ChosenAbility->AbilityData->MaxCooldown;
+
+	return true;
+}
+
+bool UAbilityHandlerComponentBase::CheckAbilityConditions(const UAbilityDataAsset* AbilityData) const
+{
+	if (!AbilityData)
+		return false;
+	
+	if (AbilityData->ActivationConditions.Num() == 0)
+		return true;
+
+	AActor* Owner = GetOwner();
+	if (!Owner)
+		return false;
+	
+	for (UAbilityConditionBase* Condition : AbilityData->ActivationConditions)
+	{
+		if (Condition && !Condition->CheckCondition(Owner))
+		{
+			return false;
+		}
+	}
+	
+	return true;
+}
+
+bool UAbilityHandlerComponentBase::CheckAbilityTags(const UAbilityDataAsset* AbilityData) const
+{
+    
+	if (AbilityData->BlockedByTags.Num() > 0)
+	{
+		if (OwnedTags.HasAny(AbilityData->BlockedByTags))
+		{
+			return false;
+		}
+	}
+	
+    
+	if (AbilityData->RequiredTags.Num() > 0)
+	{
+		if (!OwnedTags.HasAll(AbilityData->RequiredTags))
+		{
+			return false;
+		}
+	}
+    
+	return true;
+}
+
+void UAbilityHandlerComponentBase::GrantAbilityTags(const UAbilityDataAsset* AbilityData)
+{
+	for (const FGameplayTag& Tag : AbilityData->GrantedTags)
+	{
+		AddGameplayTag(Tag, AbilityData->GrantedTagsDuration);
+	}
+}
+
+void UAbilityHandlerComponentBase::AddGameplayTag(FGameplayTag Tag, float Duration)
+{
+	OwnedTags.AddTag(Tag);
+	
+}
+
+
+bool UAbilityHandlerComponentBase::UseAbilityByName(FName AbilityName, AActor* Target)
+{
+	for (int32 i = 0; i < AbilityInstances.Num(); i++)
+	{
+		if (AbilityInstances[i].AbilityData->AbilityName == AbilityName)
+		{
+			return UseAbility(i, Target);
+		}
+	}
+    
+	return false;
+}
+
+bool UAbilityHandlerComponentBase::CanUseAbility(int32 AbilityIndex, AActor* Target) const
+{
+	if (!AbilityInstances.IsValidIndex(AbilityIndex))
+		return false;
+    
+	const FAbilityInstance& Instance = AbilityInstances[AbilityIndex];
+    
+	if (!Instance.bCanUse || !Target)
+		return false;
+    
+	
+	if (!IsInRange(Instance.AbilityData, Target))
+		return false;
+	
+	if (!CheckAbilityConditions(Instance.AbilityData))
+		return false;
+    
+	return true;
+}
+
+void UAbilityHandlerComponentBase::InitializeAbilities()
+{
+	AbilityInstances.Empty();
+    
+	for (const TPair<UAbilityDataAsset*, int32>& Pair : Abilities)
+	{
+		UAbilityDataAsset* AbilityData = Pair.Key;
+		int32 Priority = Pair.Value;
+
+		if (!AbilityData || !AbilityData->AbilityBehavior)
+			continue;
+
+		FAbilityInstance Instance;
+		Instance.AbilityData = AbilityData;
+		Instance.CurrentCooldown = 0.0f;
+		Instance.bCanUse = true;
+		Instance.Priority = Priority;
+		
+		Instance.BehaviorInstance = AbilityData->AbilityBehavior;
+
+		AbilityInstances.Add(Instance);
+	}
+}
+
+bool UAbilityHandlerComponentBase::IsInRange(const UAbilityDataAsset* AbilityData, AActor* Target) const
+{
+	if (!AbilityData || !Target || !GetOwner())
+		return false;
+    
+	const float Distance = FVector::Dist(
+		GetOwner()->GetActorLocation(),
+		Target->GetActorLocation()
+	);
+    
+	return Distance >= AbilityData->RangeMin && Distance <= AbilityData->RangeMax;
+}

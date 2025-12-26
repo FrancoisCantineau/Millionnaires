@@ -18,7 +18,7 @@
 
 
 
-UCLASS(Abstract, ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+UCLASS(Abstract, Blueprintable, EditInlineNew, DefaultToInstanced, ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class MILLIONNAIRES_API UAttackExecutorBase : public UObject
 {
 	GENERATED_BODY()
@@ -64,4 +64,22 @@ protected:
 	AWeaponBase* OwnerWeapon;
 
 	float DamageMultiplier = 1.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile")
+	FName MuzzleSocketName = TEXT("Muzzle");
+	
+	UPROPERTY(EditDefaultsOnly, Category="AOE")
+	EAttackAreaType AreaType = EAttackAreaType::Single;
+
+	UPROPERTY(EditDefaultsOnly, Category="AOE", meta=(EditCondition="AreaType != EAttackAreaType::Single"))
+	float ExplosionRadius = 300.f;
+
+	UPROPERTY(EditDefaultsOnly, Category="AOE", meta=(EditCondition="AreaType == EAttackAreaType::Cone"))
+	float ConeAngle = 45.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FX")
+	UNiagaraSystem* ImpactVFX;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FX")
+	USoundBase* ImpactSFX;
 };

@@ -11,12 +11,12 @@
 #include "Characters/Ennemy/Ability/PsychicAbility.h"
 #include "Interfaces/EffectInterface.h"
 
-void UPsychicAbility::ExecuteAbility(AActor* Target)
+void UPsychicAbility::ExecuteAbility_Implementation(AActor* Owner, AActor* Target, const UAbilityDataAsset* Data)
 {
-	
+	Super::ExecuteAbility_Implementation(Owner, Target, Data);
+
 	if (Target && Target->GetClass()->ImplementsInterface(UEffectInterface::StaticClass()))
 	{
 		IEffectInterface::Execute_SanityEffect(Target);
 	}
-	
 }

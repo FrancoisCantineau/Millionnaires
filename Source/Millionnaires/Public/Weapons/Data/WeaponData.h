@@ -13,8 +13,6 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 
-#include "Weapons/Data/ExecutorsSettings.h"
-
 #include "Weapons/Enum/WeaponsEnum.h"
 
 #include "WeaponData.generated.h"
@@ -87,23 +85,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
 	UAnimMontage* AttackMontage;
 	
-
-
+	
 	/** Executors */
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Executor")
-	TSubclassOf<UAttackExecutorBase> ExecutorClass;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Executor")
-	FAttackExecutorSettings BaseAttackExecutorSettings;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Executor")
-	FLineTraceSettings LineTraceExecutorSettings;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Executor")
-	FHitBoxExecutorSettings HitBoxExecutorSettings;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Executor")
-	FProjectileExecutorSettings ProjectileExecutorSettings;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Instanced, Category = "Executor")
+	UAttackExecutorBase* ExecutorType;
 	
 };

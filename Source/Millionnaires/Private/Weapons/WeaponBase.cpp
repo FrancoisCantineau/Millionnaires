@@ -56,10 +56,7 @@ void AWeaponBase::BeginPlay()
 {
 	Super::BeginPlay();
 
-	AttackExecutor = NewObject<UAttackExecutorBase>(
-		this,
-		WeaponData->ExecutorClass
-	);
+	AttackExecutor = WeaponData->ExecutorType;
 
 	if (AttackExecutor)
 	{
@@ -138,6 +135,7 @@ void AWeaponBase::PerformAttack()
 {
 	if (AttackExecutor)
 	{
+		RessourceComponent->Consume();
 		AttackExecutor->ExecuteAttack(PendingDamageMultiplier);
 	}
 }
