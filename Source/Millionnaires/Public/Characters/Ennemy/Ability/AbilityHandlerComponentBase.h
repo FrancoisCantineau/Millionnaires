@@ -45,6 +45,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Abilities")
 	bool UseAbility(int32 AbilityIndex, AActor* Target);
 
+	UFUNCTION(BlueprintCallable, Category = "Ability|Tags")
+	bool TryActivateAbilityByTag(FGameplayTag Tag, AActor* Target, bool bActivateRandom = true);
+
+
 	UFUNCTION(BlueprintCallable, Category = "Abilities")
 	bool UseBestAbility(AActor* Target);
 
@@ -62,6 +66,12 @@ protected:
 
 	UPROPERTY(VisibleAnywhere)
 	TArray<FAbilityInstance> AbilityInstances;
+
+	UFUNCTION(BlueprintCallable, Category = "Ability|Tags")
+	TArray<int32> GetAbilitiesWithTag(FGameplayTag Tag, bool bOnlyUsable = false) const;
+
+	bool AbilityHasTag(const UAbilityDataAsset* AbilityData, FGameplayTag Tag) const;
+
 	
 	void InitializeAbilities();
 	

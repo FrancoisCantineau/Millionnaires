@@ -62,6 +62,33 @@ bool UAbilityHandlerComponentBase::UseAbility(int32 AbilityIndex, AActor* Target
 	return true;
 }
 
+bool UAbilityHandlerComponentBase::TryActivateAbilityByTag(FGameplayTag Tag, AActor* Target, bool bActivateRandom)
+{
+	if (!Tag.IsValid() || !Target)
+		return false;
+
+	TArray<int32> ValidAbilityIndices = GetAbilitiesWithTag(Tag, true);
+
+	if (ValidAbilityIndices.Num() == 0)
+	{
+		UE_LOG(LogTemp, Verbose, TEXT("%s: No usable ability found with tag '%s'"), 
+			   *GetOwner()->GetName(), *Tag.ToString());
+		return false;
+	}
+	
+	int32 ChosenIndex;
+	if (bActivateRandom)
+	{
+		ChosenIndex = ValidAbilityIndices[FMath::RandRange(0, ValidAbilityIndices.Num() - 1)];
+	}
+	else
+	{
+		ChosenIndex = ValidAbilityIndices[0];
+	}
+	
+	return UseAbility(ChosenIndex, Target);
+}
+
 bool UAbilityHandlerComponentBase::UseBestAbility(AActor* Target)
 {
 	TArray<FAbilityInstance*> BestAbilities;
@@ -209,6 +236,47 @@ bool UAbilityHandlerComponentBase::CanUseAbility(int32 AbilityIndex, AActor* Tar
 		return false;
     
 	return true;
+}
+
+TArray<int32> UAbilityHandlerComponentBase::GetAbilitiesWithTag(FGameplayTag Tag, bool bOnlyUsable) const
+{
+	TArray<int32> FoundIndices;
+
+	if (!Tag.IsValid())
+		return FoundIndices;
+
+	for (int32 i = 0; i < AbilityInstances.Num(); i++)
+	{
+		const FAbilityInstance& Instance = AbilityInstances[i];
+        
+		if (!Instance.AbilityData)
+			continue;
+		
+		if (AbilityHasTag(Instance.AbilityData, Tag))
+		{
+			if (bOnlyUsable)
+			{
+				if (Instance.bCanUse && Instance.CurrentCooldown <= 0.0f)
+				{
+					FoundIndices.Add(i);
+				}
+			}
+			else
+			{
+				FoundIndices.Add(i);
+			}
+		}
+	}
+
+	return FoundIndices;
+}
+
+bool UAbilityHandlerComponentBase::AbilityHasTag(const UAbilityDataAsset* AbilityData, FGameplayTag Tag) const
+{
+	if (!AbilityData || !Tag.IsValid())
+		return false;
+    
+	return AbilityData->AbilityTags.HasTag(Tag);
 }
 
 void UAbilityHandlerComponentBase::InitializeAbilities()
