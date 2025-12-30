@@ -51,6 +51,10 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dispatch|Camera|Transition", meta = (ClampMin = "0.0"))
     float DefaultTransitionPostProcessWeight = 1.f;
 
+    /** If true, the initial camera will try to avoid the Map camera (bIsMapCamera). */
+    UPROPERTY(EditAnywhere, Category = "Dispatch|Camera")
+    bool bPreferNonMapAtStartup = true;
+
 #pragma endregion CONFIG
 
 #pragma region STATE
@@ -71,6 +75,14 @@ protected:
     /** Current zoom alpha [0..1] interpolated over time. */
     UPROPERTY(Transient)
     float CurrentZoomAlpha = 0.f;
+
+    /** Virtual cursor normalized X [0..1], used when the real cursor is captured/hidden. */
+    UPROPERTY(Transient)
+    float VirtualCursorX01 = 0.5f;
+
+    /** Virtual cursor normalized Y [0..1], used when the real cursor is captured/hidden. */
+    UPROPERTY(Transient)
+    float VirtualCursorY01 = 0.5f;
 
 #pragma endregion STATE
 
@@ -133,6 +145,10 @@ public:
     /** Activates a camera by index in the registered list. */
     UFUNCTION(BlueprintCallable, Category = "Dispatch|Camera")
     void ActivateCameraByIndex(int32 Index);
+
+    /** Returns the index of the currently active camera in the internal list, or INDEX_NONE. */
+    UFUNCTION(BlueprintPure, Category = "Dispatch|Camera")
+    int32 GetActiveCameraIndex() const { return ActiveCameraIndex; }
 
     /** Returns the currently active camera spot. */
     UFUNCTION(BlueprintPure, Category = "Dispatch|Camera")
@@ -228,6 +244,9 @@ protected:
 
     /** Returns the next camera index that can be cycled to (skips Map camera), or INDEX_NONE if none found. */
     int32 FindNextCyclableCameraIndex(int32 FromIndex, int32 Direction) const;
+
+    /** Returns which camera index should be used at startup (can skip the Map camera). */
+    int32 FindStartupCameraIndex() const;
 
 #pragma endregion INTERNAL
 

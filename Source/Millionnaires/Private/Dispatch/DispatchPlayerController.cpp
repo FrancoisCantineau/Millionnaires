@@ -18,6 +18,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
+#include "TimerManager.h"
 
 #pragma region LIFECYCLE
 
@@ -26,6 +27,9 @@ ADispatchPlayerController::ADispatchPlayerController()
     bShowMouseCursor = true;
     bEnableClickEvents = true;
     bEnableMouseOverEvents = true;
+
+    // Prevent Unreal from overriding our Dispatch camera view target with the default Pawn.
+    bAutoManageActiveCameraTarget = false;
 
     cameraManagerComponent = CreateDefaultSubobject<UDispatchCameraManagerComponent>(TEXT("BPC_DispatchCameraManager"));
     cursorComponent = CreateDefaultSubobject<UDispatchCursorComponent>(TEXT("BPC_DispatchCursor"));
@@ -60,6 +64,9 @@ void ADispatchPlayerController::BeginPlay()
         InputMode.SetHideCursorDuringCapture(false);
         SetInputMode(InputMode);
     }
+
+    // Force-apply the startup Dispatch camera on next tick (after possession/automanage).
+    GetWorldTimerManager().SetTimerForNextTick(this, &ADispatchPlayerController::ForceApplyInitialDispatchCamera);
 }
 
 void ADispatchPlayerController::SetupInputComponent()
@@ -147,5 +154,28 @@ void ADispatchPlayerController::HandleClick()
         cursorComponent->HandleClick();
     }
 }
+
+
+#pragma region INTERNAL
+
+void ADispatchPlayerController::ForceApplyInitialDispatchCamera()
+{
+    if (!cameraManagerComponent)
+    {
+        return;
+    }
+
+    const int32 ActiveIdx = cameraManagerComponent->GetActiveCameraIndex();
+    if (ActiveIdx != INDEX_NONE)
+    {
+        cameraManagerComponent->ActivateCameraByIndex(ActiveIdx);
+    }
+    else
+    {
+        cameraManagerComponent->ActivateCameraByIndex(0);
+    }
+}
+
+#pragma endregion INTERNAL
 
 #pragma endregion INPUT_CALLBACKS
