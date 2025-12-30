@@ -54,6 +54,18 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Indicator")
     bool bAutoDestroyIfOfferMissing = true;
 
+    /// <summary>If true, keeps the widget facing the player's camera while staying in World space.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Indicator")
+    bool bBillboardToCamera = true;
+
+    /// <summary>If true, billboard uses yaw only (keeps the widget upright).</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Indicator")
+    bool bBillboardYawOnly = true;
+
+    /// <summary>Optional update interval for billboard updates (0 = every tick).</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Indicator", meta=(ClampMin="0.0"))
+    float billboardUpdateInterval = 0.f;
+
 #pragma endregion SETTINGS
 
 public:
@@ -90,6 +102,9 @@ private:
 
     UPROPERTY(Transient)
     TObjectPtr<UDispatchMissionOfferClickProxyComponent> clickProxy = nullptr;
+
+    /// <summary>Internal billboard timer.</summary>
+    float billboardAccum = 0.f;
 
 #pragma endregion STATE
 };

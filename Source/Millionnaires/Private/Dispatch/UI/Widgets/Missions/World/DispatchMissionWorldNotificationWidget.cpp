@@ -27,5 +27,12 @@ void UDispatchMissionWorldNotificationWidget::SetFromOffer(const FDispatchMissio
         iconTexture = nullptr;
     }
 
+    const float Display01 = bInvertRadialFill ? (1.f - progress01) : progress01;
+
+    // Notify Blueprint so the WBP can update any controls (RadialSlider, images, texts...) without C++ dependencies.
+    BP_OnProgress01Changed(Display01);
+    BP_OnIconChanged(iconTexture);
+    BP_OnTitleChanged(titleText);
+    BP_OnTimeChanged(timeRemainingSec, timeLimitSec);
     BP_OnOfferUpdated();
 }
