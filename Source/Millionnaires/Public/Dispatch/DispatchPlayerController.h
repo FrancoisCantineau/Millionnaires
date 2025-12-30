@@ -68,6 +68,16 @@ public:
 #pragma endregion GETTERS
 
 protected:
+#pragma region INTERNAL
+
+    /**
+     * Forces the initial Dispatch camera after possession / engine auto-camera management.
+     * This prevents the view target from sticking to the default Pawn at game start.
+     */
+    void ForceApplyInitialDispatchCamera();
+
+#pragma endregion INTERNAL
+
 #pragma region INPUT_CALLBACKS
 
     /** Next camera. */
@@ -111,6 +121,7 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Components", meta=(AllowPrivateAccess="true"))
     UDispatchMissionManagerComponent* missionManagerComponent = nullptr;
 
+    /** World-space mission indicator manager (2D notifications in world). */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch", meta=(AllowPrivateAccess="true"))
     TObjectPtr<UDispatchMissionWorldIndicatorComponent> worldIndicatorComponent;
 

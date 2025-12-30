@@ -40,10 +40,14 @@ void UDispatchCameraManagerComponent::BeginPlay()
 
     SortCameraSpots();
 
-    // Optionally activate the first camera if none is active.
-    if (ActiveCameraIndex == INDEX_NONE && CameraSpots.Num() > 0)
+    // Apply a startup camera (by default, prefer a non-Map camera).
+    if (CameraSpots.Num() > 0)
     {
-        ActivateCameraByIndex(0);
+        const int32 StartupIdx = FindStartupCameraIndex();
+        if (StartupIdx != INDEX_NONE)
+        {
+            ActivateCameraByIndex(StartupIdx);
+        }
     }
 }
 
@@ -77,7 +81,11 @@ void UDispatchCameraManagerComponent::RegisterCameraSpot(ADispatchCameraSpot* Ca
 
     if (ActiveCameraIndex == INDEX_NONE && CameraSpots.Num() > 0)
     {
-        ActivateCameraByIndex(0);
+        const int32 StartupIdx = FindStartupCameraIndex();
+        if (StartupIdx != INDEX_NONE)
+        {
+            ActivateCameraByIndex(StartupIdx);
+        }
     }
 }
 
@@ -113,6 +121,31 @@ int32 UDispatchCameraManagerComponent::FindMapCameraIndex() const
         }
     }
     return INDEX_NONE;
+}
+
+int32 UDispatchCameraManagerComponent::FindStartupCameraIndex() const
+{
+    if (CameraSpots.Num() <= 0)
+    {
+        return INDEX_NONE;
+    }
+
+    if (!bPreferNonMapAtStartup)
+    {
+        return 0;
+    }
+
+    const ADispatchCameraSpot* First = CameraSpots[0].Get();
+    if (First && First->IsMapCamera())
+    {
+        const int32 Next = FindNextCyclableCameraIndex(0, +1);
+        if (Next != INDEX_NONE)
+        {
+            return Next;
+        }
+    }
+
+    return 0;
 }
 
 int32 UDispatchCameraManagerComponent::FindNextCyclableCameraIndex(int32 FromIndex, int32 Direction) const
@@ -226,10 +259,9 @@ void UDispatchCameraManagerComponent::ActivateCameraByIndex(int32 Index)
 
     // --- Check if we are leaving the map camera, automatically reset the suspended/map state.
     ADispatchCameraSpot* OldCamera = GetActiveCamera();
-    const bool bWasMapCamera = OldCamera && OldCamera->IsMapCamera();
     const bool bIsMapCamera = NewCamera->IsMapCamera();
 
-    if (bSuspended && bWasMapCamera && !bIsMapCamera)
+    if (bSuspended && !bIsMapCamera)
     {
         SetSuspended(false);
     }
@@ -246,6 +278,10 @@ void UDispatchCameraManagerComponent::ActivateCameraByIndex(int32 Index)
 
     ActiveCameraIndex = Index;
     ResetMouseParallax(NewCamera);
+
+    // Reset virtual cursor (keeps parallax stable if the real cursor is captured/hidden).
+    VirtualCursorX01 = 0.5f;
+    VirtualCursorY01 = 0.5f;
 
     // Reset zoom when switching cameras.
     bWantsZoom = false;
@@ -588,12 +624,30 @@ void UDispatchCameraManagerComponent::SetSuspended(bool bInSuspended)
 {
     bSuspended = bInSuspended;
 
+    // Keep parallax stable when the real cursor becomes captured/hidden.
+    VirtualCursorX01 = 0.5f;
+    VirtualCursorY01 = 0.5f;
+
+    // Ensure the Dispatch cursor remains usable when switching in/out of Map camera.
+    if (APlayerController* PC = GetOwningPlayerController())
+    {
+        FInputModeGameAndUI InputMode;
+        InputMode.SetHideCursorDuringCapture(false);
+        InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
+        PC->SetInputMode(InputMode);
+
+        PC->bShowMouseCursor = true;
+        PC->bEnableClickEvents = true;
+        PC->bEnableMouseOverEvents = true;
+    }
+
     if (bSuspended)
     {
         // Stop zoom while map is open.
         bWantsZoom = false;
     }
 }
+
 
 static float ApplyDeadZone01(float V, float DeadZone)
 {
@@ -639,13 +693,6 @@ void UDispatchCameraManagerComponent::UpdateMouseParallax(float DeltaTime)
         return;
     }
 
-    float MouseX = 0.f;
-    float MouseY = 0.f;
-    if (!PC->GetMousePosition(MouseX, MouseY))
-    {
-        return;
-    }
-
     int32 SizeX = 0;
     int32 SizeY = 0;
     PC->GetViewportSize(SizeX, SizeY);
@@ -654,9 +701,30 @@ void UDispatchCameraManagerComponent::UpdateMouseParallax(float DeltaTime)
         return;
     }
 
+    float MouseX = 0.f;
+    float MouseY = 0.f;
+    const bool bHasMousePos = PC->GetMousePosition(MouseX, MouseY);
+
+    // If the mouse is captured/hidden, GetMousePosition may fail (or stay stuck).
+    // In that case, fall back to deltas and maintain a virtual cursor in [0..1].
+    if (bHasMousePos && PC->bShowMouseCursor)
+    {
+        VirtualCursorX01 = FMath::Clamp(MouseX / (float)SizeX, 0.f, 1.f);
+        VirtualCursorY01 = FMath::Clamp(MouseY / (float)SizeY, 0.f, 1.f);
+    }
+    else
+    {
+        float DeltaX = 0.f;
+        float DeltaY = 0.f;
+        PC->GetInputMouseDelta(DeltaX, DeltaY);
+
+        VirtualCursorX01 = FMath::Clamp(VirtualCursorX01 + (DeltaX / (float)SizeX), 0.f, 1.f);
+        VirtualCursorY01 = FMath::Clamp(VirtualCursorY01 + (DeltaY / (float)SizeY), 0.f, 1.f);
+    }
+
     // Normalize mouse position to [-1..1] with (0,0) center.
-    float NX = ((MouseX / (float)SizeX) - 0.5f) * 2.f;
-    float NY = ((MouseY / (float)SizeY) - 0.5f) * 2.f;
+    float NX = (VirtualCursorX01 - 0.5f) * 2.f;
+    float NY = (VirtualCursorY01 - 0.5f) * 2.f;
 
     // Deadzone to avoid micro jitter.
     const float DZ = Active->GetMouseParallaxDeadZone();
