@@ -1,4 +1,4 @@
-#include "ItemSlotWidget.h"
+#include "UI/ItemSlotWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Blueprint/DragDropOperation.h"
 #include "Engine/Texture2D.h"

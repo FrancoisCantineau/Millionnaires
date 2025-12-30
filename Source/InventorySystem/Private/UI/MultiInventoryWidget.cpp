@@ -1,5 +1,5 @@
-#include "MultiInventoryWidget.h"
-#include "InventoryWidget.h"
+#include "UI/MultiInventoryWidget.h"
+#include "UI/InventoryWidget.h"
 #include "RestrictedInventoryComponent.h"
 #include "Components/ActorComponent.h"
 

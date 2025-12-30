@@ -13,10 +13,76 @@
 #include "InventoryComponent.h"
 #include "RestrictedInventoryComponent.h"
 #include "DropComponent.h"
-#include "MultiInventoryWidget.h"
-#include "InteractionWidget.h"
-#include "InventoryWidget.h"
+#include "UI/MultiInventoryWidget.h"
+#include "UI/InteractionWidget.h"
+#include "UI/InventoryWidget.h"
 #include "Blueprint/UserWidget.h"
+#include "Components/FlashlightEquipmentComponent.h"
+#include "Components/Characters/CharacterStatsComponent.h"
+#include "Consumable/ConsumableComponent.h"
+
+#pragma region Command
+
+static FAutoConsoleCommand CCmdDamage(
+	TEXT("test.damage"),
+	TEXT("Deal 20 damage to player"),
+	FConsoleCommandDelegate::CreateLambda([]()
+	{
+		if (!GEngine || !GEngine->GameViewport)
+		{
+			UE_LOG(LogTemp, Error, TEXT("No GEngine or GameViewport!"));
+			return;
+		}
+
+		UWorld* World = GEngine->GetWorldFromContextObject(GEngine->GameViewport, EGetWorldErrorMode::LogAndReturnNull);
+		if (!World)
+		{
+			UE_LOG(LogTemp, Error, TEXT("No World found!"));
+			return;
+		}
+
+		APlayerController* PC = World->GetFirstPlayerController();
+		if (!PC)
+		{
+			UE_LOG(LogTemp, Error, TEXT("No PlayerController found!"));
+			return;
+		}
+
+		APawn* Pawn = PC->GetPawn();
+		if (!Pawn)
+		{
+			UE_LOG(LogTemp, Error, TEXT("No Pawn found!"));
+			return;
+		}
+
+		UE_LOG(LogTemp, Warning, TEXT("Found Pawn: %s"), *Pawn->GetName());
+
+		UCharacterStatsComponent* Stats = Pawn->FindComponentByClass<UCharacterStatsComponent>();
+		if (!Stats)
+		{
+			UE_LOG(LogTemp, Error, TEXT("No CharacterStatsComponent found on pawn!"));
+            
+			// List all components
+			TArray<UActorComponent*> Components;
+			Pawn->GetComponents(Components);
+			UE_LOG(LogTemp, Warning, TEXT("Pawn has %d components:"), Components.Num());
+			for (UActorComponent* Comp : Components)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("  - %s"), *Comp->GetName());
+			}
+			return;
+		}
+
+		float HealthBefore = Stats->GetCurrentHealth();
+		Stats->ModifyHealth(-20.0f);
+		float HealthAfter = Stats->GetCurrentHealth();
+        
+		UE_LOG(LogTemp, Warning, TEXT("✓ DAMAGE APPLIED: %.1f -> %.1f (%.1f damage)"), 
+			HealthBefore, HealthAfter, HealthBefore - HealthAfter);
+	})
+);
+
+#pragma endregion 
 
 AMillionnairesCharacter::AMillionnairesCharacter()
 {
@@ -77,6 +143,11 @@ AMillionnairesCharacter::AMillionnairesCharacter()
 	// Create interaction component
 	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
 	InteractionComponent->bShowDebugTrace = false;
+	
+	ConsumableComponent = CreateDefaultSubobject<UConsumableComponent>(TEXT("ConsumableComponent"));
+
+	// Create flashlight component
+	FlashlightComponent = CreateDefaultSubobject<UFlashlightEquipmentComponent>(TEXT("FlashlightComponent"));
 }
 
 void AMillionnairesCharacter::BeginPlay()
@@ -89,6 +160,17 @@ void AMillionnairesCharacter::BeginPlay()
 	{
 		InteractionWidget->AddToViewport();
 		InteractionWidget->SetInteractionVisible(false);
+	}
+	if (ConsumableComponent)
+	{
+		ConsumableComponent->CacheInventoryComponents();
+        
+		// Debug : vérifiez combien d'inventaires sont trouvés
+		if (ConsumableComponent->bDebugMode)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Character has %d cached inventories"), 
+				ConsumableComponent->GetAllInventories().Num());
+		}
 	}
 }
 
@@ -111,6 +193,7 @@ void AMillionnairesCharacter::Tick(float DeltaTime)
 			InteractionWidget->SetInteractionVisible(false);
 		}
 	}
+	
 }
 
 void AMillionnairesCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -145,6 +228,34 @@ void AMillionnairesCharacter::SetupPlayerInputComponent(UInputComponent* PlayerI
 		if (InteractAction)
 		{
 			EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &AMillionnairesCharacter::OnInteractPressed);
+		}
+		
+		if (UseHealthAction)
+		{
+			EnhancedInputComponent->BindAction(UseHealthAction, ETriggerEvent::Started, 
+				this, &AMillionnairesCharacter::OnUseHealthPressed);
+		}
+		if (UseFoodAction)
+		{
+			EnhancedInputComponent->BindAction(UseFoodAction, ETriggerEvent::Started, 
+				this, &AMillionnairesCharacter::OnUseFoodPressed);
+		}
+		if (UseBatteryAction)
+		{
+			EnhancedInputComponent->BindAction(UseBatteryAction, ETriggerEvent::Started, 
+				this, &AMillionnairesCharacter::OnUseBatteryPressed);
+		}
+		
+		// Flashlight bindings
+		if (ToggleFlashlightAction)
+		{
+			EnhancedInputComponent->BindAction(ToggleFlashlightAction, ETriggerEvent::Started, 
+				this, &AMillionnairesCharacter::OnToggleFlashlightPressed);
+		}
+		if (EquipFlashlightAction)
+		{
+			EnhancedInputComponent->BindAction(EquipFlashlightAction, ETriggerEvent::Started, 
+				this, &AMillionnairesCharacter::OnEquipFlashlightPressed);
 		}
 	}
 	else
@@ -462,3 +573,188 @@ void AMillionnairesCharacter::InitializeInventoryWidget()
 }
 
 #pragma endregion
+
+#pragma region Consumables
+
+/*
+ * Use health consumable from hotkey
+ */
+void AMillionnairesCharacter::OnUseHealthPressed()
+{
+    if (!ConsumableComponent)
+    {
+        UE_LOG(LogTemp, Error, TEXT("ConsumableComponent is NULL!"));
+        return;
+    }
+
+    TArray<UInventoryComponent*> AllInv = ConsumableComponent->GetAllInventories();
+  
+    for (int32 i = 0; i < AllInv.Num(); i++)
+    {
+        UInventoryComponent* Inv = AllInv[i];
+        if (Inv)
+        {
+            const TArray<FItemSlot>& Slots = Inv->GetAllSlots();
+            for (int32 j = 0; j < Slots.Num(); j++)
+            {
+                if (!Slots[j].IsEmpty())
+                {
+                    const FItemData* Data = Slots[j].GetItemData();
+                    if (Data)
+                    {
+                        if (Data->bIsConsumable)
+                        {
+                            FGameplayTagContainer EffectTags = Data->GetConsumableTags();
+                            FString EffectTagsString;
+                            for (auto Tag : EffectTags)
+                            {
+                                EffectTagsString += Tag.ToString() + TEXT(", ");
+                            }
+                           
+                            FString ItemTagsString;
+                            for (auto Tag : Data->ItemTags)
+                            {
+                                ItemTagsString += Tag.ToString() + TEXT(", ");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    FGameplayTagContainer HealthTags;
+    HealthTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Consumable.Health")));
+
+    EConsumableResult Result = ConsumableComponent->ConsumeFirstItemWithTags(HealthTags);
+}
+
+/*
+ * Use food consumable from hotkey
+ */
+void AMillionnairesCharacter::OnUseFoodPressed()
+{
+    if (!ConsumableComponent)
+    {
+        return;
+    }
+
+    FGameplayTagContainer FoodTags;
+    FoodTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Consumable.Food")));
+
+    EConsumableResult Result = ConsumableComponent->ConsumeFirstItemWithTags(FoodTags);
+}
+
+/*
+ * Use battery consumable from hotkey
+ */
+void AMillionnairesCharacter::OnUseBatteryPressed()
+{
+    if (!ConsumableComponent)
+    {
+        return;
+    }
+
+    FGameplayTagContainer BatteryTags;
+    BatteryTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Consumable.Battery")));
+
+    EConsumableResult Result = ConsumableComponent->ConsumeFirstItemWithTags(BatteryTags);
+}
+
+/*
+ * Use consumable from inventory UI (right-click)
+ */
+void AMillionnairesCharacter::UseConsumableFromSlot(int32 SlotIndex, UInventoryComponent* InventoryComp)
+{
+    if (!ConsumableComponent || !InventoryComp)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Missing ConsumableComponent or InventoryComp"));
+        return;
+    }
+
+    if (!InventoryComp->IsValidSlotIndex(SlotIndex))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Invalid slot index: %d"), SlotIndex);
+        return;
+    }
+
+    FItemSlot Slot = InventoryComp->GetSlot(SlotIndex);
+    if (Slot.IsEmpty())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Slot %d is empty"), SlotIndex);
+        return;
+    }
+
+    const FItemData* ItemData = Slot.GetItemData();
+    if (!ItemData || !ItemData->bIsConsumable)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Item in slot %d is not consumable"), SlotIndex);
+        return;
+    }
+
+    EConsumableResult Result = ConsumableComponent->ConsumeItemFromSlot(InventoryComp, SlotIndex);
+}
+
+#pragma endregion
+
+// Toggle flashlight on/off (F ou autre touche)
+void AMillionnairesCharacter::OnToggleFlashlightPressed()
+{
+    if (!FlashlightComponent)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("No FlashlightComponent"));
+        return;
+    }
+
+    if (!FlashlightComponent->IsFlashlightEquipped())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("No flashlight equipped - equip one first with T"));
+        return;
+    }
+
+    FlashlightComponent->ToggleFlashlight();
+}
+
+// Equip/Unequip flashlight (T)
+void AMillionnairesCharacter::OnEquipFlashlightPressed()
+{
+    if (!FlashlightComponent)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("No FlashlightComponent"));
+        return;
+    }
+
+    if (FlashlightComponent->IsFlashlightEquipped())
+    {
+        FlashlightComponent->UnequipFlashlight();
+        return;
+    }
+
+    if (!ConsumableComponent)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("No ConsumableComponent"));
+        return;
+    }
+
+    TArray<UInventoryComponent*> AllInventories = ConsumableComponent->GetAllInventories();
+    
+    for (UInventoryComponent* Inventory : AllInventories)
+    {
+        if (!Inventory) continue;
+
+        const TArray<FItemSlot>& Slots = Inventory->GetAllSlots();
+        for (int32 i = 0; i < Slots.Num(); i++)
+        {
+            const FItemSlot& Slot = Slots[i];
+            if (Slot.IsEmpty()) continue;
+
+            const FItemData* ItemData = Slot.GetItemData();
+            if (!ItemData || !ItemData->bIsFlashlight) continue;
+            
+            float BatteryCharge = ItemData->InitialBatteryCharge;
+            FlashlightComponent->EquipFlashlight(Slot.ItemHandle, BatteryCharge);
+        	
+            return;
+        }
+    }
+}

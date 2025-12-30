@@ -24,6 +24,7 @@ public class Millionnaires : ModuleRules
 			"InteractionSystem",
 			"ItemSystem",
 			"GameInterfaces",
+			"GameplayTags",
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
