@@ -12,6 +12,8 @@
 #include "Dispatch/Missions/DispatchMissionTypes.h"
 #include "DispatchMissionDefinition.generated.h"
 
+class UTexture2D;
+
 /**
  * Mission Definition: defines what a mission is, how it spawns, where it can spawn,
  * and how long it stays available before expiring.
@@ -24,23 +26,27 @@ class MILLIONNAIRES_API UDispatchMissionDefinition : public UDataAsset
 public:
 #pragma region GENERAL
 
-    /** Unique identifier for this mission definition. */
+    /// <summary>Unique identifier for this mission definition.</summary>
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|General")
     FName missionId = NAME_None;
 
-    /** Title shown to the player. */
+    /// <summary>Title shown to the player.</summary>
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|General")
     FText title;
 
-    /** Short description. */
+    /// <summary>Short description.</summary>
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|General", meta=(MultiLine=true))
     FText description;
 
-    /** Mission mode (Dispatch now, FPS later). */
+    /// <summary>Optional icon used by world notifications and mission details.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|General")
+    TObjectPtr<UTexture2D> icon = nullptr;
+
+    /// <summary>Mission mode (Dispatch now, FPS later).</summary>
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|General")
     EDispatchMissionMode missionMode = EDispatchMissionMode::Dispatch;
 
-    /** Mission location dropdown (must match a Mission Site in the level). */
+    /// <summary>Mission location dropdown (must match a Mission Site in the level).</summary>
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|General")
     EDispatchMissionLocation missionLocation = EDispatchMissionLocation::Any;
 
@@ -48,11 +54,11 @@ public:
 
 #pragma region TIME_LIMIT
 
-    /** Offer time limit (seconds): if the player doesn't accept in time, the offer expires and fails. */
+    /// <summary>Offer time limit (seconds): if the player doesn't accept in time, the offer expires.</summary>
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|TimeLimit", meta=(ClampMin="1.0"))
     float offerTimeLimitMinSec = 45.f;
 
-    /** Offer time limit max (seconds). If equal to min, the time limit is fixed. */
+    /// <summary>Offer time limit max (seconds). If equal to min, the time limit is fixed.</summary>
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|TimeLimit", meta=(ClampMin="1.0"))
     float offerTimeLimitMaxSec = 90.f;
 
@@ -60,15 +66,15 @@ public:
 
 #pragma region DIFFICULTY_RANGES
 
-    /** Monster encounter chance range (0..10). */
+    /// <summary>Monster encounter chance range (0..10).</summary>
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Difficulty", meta=(ClampMin="0", ClampMax="10"))
     FIntPoint monsterChanceRange10 = FIntPoint(1, 6);
 
-    /** Loot chance range (0..10). */
+    /// <summary>Loot chance range (0..10).</summary>
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Difficulty", meta=(ClampMin="0", ClampMax="10"))
     FIntPoint lootChanceRange10 = FIntPoint(2, 8);
 
-    /** Complication chance range (0..10). */
+    /// <summary>Complication chance range (0..10).</summary>
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Difficulty", meta=(ClampMin="0", ClampMax="10"))
     FIntPoint complicationChanceRange10 = FIntPoint(0, 5);
 
@@ -76,15 +82,15 @@ public:
 
 #pragma region STAGE_DURATIONS
 
-    /** Travel duration range (seconds). */
+    /// <summary>Travel duration range (seconds).</summary>
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Durations", meta=(ClampMin="0.1"))
     FVector2D travelDurationRangeSec = FVector2D(6.f, 14.f);
 
-    /** Work duration range (seconds). */
+    /// <summary>Work duration range (seconds).</summary>
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Durations", meta=(ClampMin="0.1"))
     FVector2D workDurationRangeSec = FVector2D(4.f, 10.f);
 
-    /** Return duration range (seconds). */
+    /// <summary>Return duration range (seconds).</summary>
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Durations", meta=(ClampMin="0.1"))
     FVector2D returnDurationRangeSec = FVector2D(6.f, 14.f);
 

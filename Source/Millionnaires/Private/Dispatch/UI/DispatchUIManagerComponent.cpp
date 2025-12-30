@@ -9,13 +9,14 @@
 
 #include "Dispatch/Cursor/DispatchCursorComponent.h"
 #include "Dispatch/UI/Widgets/DispatchCursorRadialWidget.h"
+#include "Dispatch/UI/Widgets/Missions/Details/DispatchMissionDetailsWidget.h"
 #include "Dispatch/Camera/DispatchCameraManagerComponent.h"
 #include "Dispatch/Missions/DispatchMissionManagerComponent.h"
+#include "Dispatch/Map/DispatchMissionOfferClickProxyComponent.h"
 
 #include "Blueprint/UserWidget.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
-#include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
 
@@ -53,6 +54,7 @@ void UDispatchUIManagerComponent::BeginPlay()
 
     BindToComponents();
     CreateCursorRadialWidget();
+    EnsureMissionDetailsWidget();
 }
 
 void UDispatchUIManagerComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -64,6 +66,13 @@ void UDispatchUIManagerComponent::EndPlay(const EEndPlayReason::Type EndPlayReas
         cursorRadialWidget->RemoveFromParent();
         cursorRadialWidget = nullptr;
     }
+
+    if (missionDetailsWidget)
+    {
+        missionDetailsWidget->RemoveFromParent();
+        missionDetailsWidget = nullptr;
+    }
+
     Super::EndPlay(EndPlayReason);
 }
 
@@ -116,7 +125,7 @@ void UDispatchUIManagerComponent::OpenMap()
         UE_LOG(LogTemp, Warning, TEXT("[DispatchUI] Map camera actor not found (Tag=%s)."), *mapViewActorTag.ToString());
     }
 
-    // Keep a game+ui input mode so world clicks remain possible (we'll add world-space notifications next).
+    // Keep a game+ui input mode so world clicks remain possible.
     FInputModeGameAndUI Mode;
     Mode.SetHideCursorDuringCapture(false);
     PC->SetInputMode(Mode);
@@ -148,8 +157,18 @@ void UDispatchUIManagerComponent::CloseMap()
     // Restore cursor + input.
     PC->bShowMouseCursor = bPrevShowMouseCursor;
 
-    FInputModeGameOnly Mode;
-    PC->SetInputMode(Mode);
+    // If mission details are open, keep Game+UI input; otherwise back to game only.
+    if (bIsMissionDetailsOpen)
+    {
+        FInputModeGameAndUI Mode;
+        Mode.SetHideCursorDuringCapture(false);
+        PC->SetInputMode(Mode);
+    }
+    else
+    {
+        FInputModeGameOnly Mode;
+        PC->SetInputMode(Mode);
+    }
 
     if (cameraManager.IsValid())
     {
@@ -168,6 +187,125 @@ void UDispatchUIManagerComponent::ToggleMap()
 }
 
 #pragma endregion API_MAP
+
+#pragma region API_MISSION_DETAILS
+
+void UDispatchUIManagerComponent::OpenMissionDetailsForOffer(const FGuid& OfferId)
+{
+    if (!OfferId.IsValid())
+    {
+        return;
+    }
+
+    EnsureMissionDetailsWidget();
+    if (!missionDetailsWidget || !missionManager.IsValid())
+    {
+        return;
+    }
+
+    FDispatchMissionOffer Offer;
+    if (!missionManager->TryGetOffer(OfferId, Offer))
+    {
+        return;
+    }
+
+    missionDetailsWidget->SetFromOffer(OfferId, Offer);
+    missionDetailsWidget->SetVisibility(ESlateVisibility::Visible);
+
+    bIsMissionDetailsOpen = true;
+
+    // Pause mission time while menu is open.
+    if (bPauseMissionTimeWhenDetailsOpen)
+    {
+        missionManager->SetMissionTimePaused(true);
+    }
+
+    // Ensure cursor + input mode.
+    if (APlayerController* PC = Cast<APlayerController>(GetOwner()))
+    {
+        PC->bShowMouseCursor = true;
+
+        FInputModeGameAndUI Mode;
+        Mode.SetHideCursorDuringCapture(false);
+        PC->SetInputMode(Mode);
+    }
+}
+
+void UDispatchUIManagerComponent::OpenMissionDetailsForMission(const FGuid& MissionId)
+{
+    if (!MissionId.IsValid())
+    {
+        return;
+    }
+
+    EnsureMissionDetailsWidget();
+    if (!missionDetailsWidget || !missionManager.IsValid())
+    {
+        return;
+    }
+
+    FDispatchActiveMission Mission;
+    if (!missionManager->TryGetActiveMission(MissionId, Mission))
+    {
+        return;
+    }
+
+    missionDetailsWidget->SetFromMission(MissionId, Mission);
+    missionDetailsWidget->SetVisibility(ESlateVisibility::Visible);
+
+    bIsMissionDetailsOpen = true;
+
+    if (bPauseMissionTimeWhenDetailsOpen)
+    {
+        missionManager->SetMissionTimePaused(true);
+    }
+
+    if (APlayerController* PC = Cast<APlayerController>(GetOwner()))
+    {
+        PC->bShowMouseCursor = true;
+
+        FInputModeGameAndUI Mode;
+        Mode.SetHideCursorDuringCapture(false);
+        PC->SetInputMode(Mode);
+    }
+}
+
+void UDispatchUIManagerComponent::CloseMissionDetails()
+{
+    if (!missionDetailsWidget)
+    {
+        return;
+    }
+
+    missionDetailsWidget->SetVisibility(ESlateVisibility::Hidden);
+    bIsMissionDetailsOpen = false;
+
+    // Unpause mission time if map is not forcing it (only details uses pause here).
+    if (missionManager.IsValid() && bPauseMissionTimeWhenDetailsOpen)
+    {
+        missionManager->SetMissionTimePaused(false);
+    }
+
+    // Restore input mode depending on map state.
+    if (APlayerController* PC = Cast<APlayerController>(GetOwner()))
+    {
+        if (bIsMapOpen)
+        {
+            FInputModeGameAndUI Mode;
+            Mode.SetHideCursorDuringCapture(false);
+            PC->SetInputMode(Mode);
+            PC->bShowMouseCursor = true;
+        }
+        else
+        {
+            FInputModeGameOnly Mode;
+            PC->SetInputMode(Mode);
+            PC->bShowMouseCursor = bPrevShowMouseCursor;
+        }
+    }
+}
+
+#pragma endregion API_MISSION_DETAILS
 
 #pragma region INTERNAL_BINDINGS
 
@@ -232,7 +370,7 @@ void UDispatchUIManagerComponent::CreateCursorRadialWidget()
         return;
     }
 
-    cursorRadialWidget = CreateWidget<UDispatchCursorRadialWidget>(PC, cursorRadialWidgetClass);
+    cursorRadialWidget = CreateWidget<UDispatchCursorRadialWidget>(PC, cursorRadialWidgetClass.Get());
     if (!cursorRadialWidget)
     {
         return;
@@ -240,6 +378,32 @@ void UDispatchUIManagerComponent::CreateCursorRadialWidget()
 
     cursorRadialWidget->AddToViewport(cursorRadialZOrder);
     cursorRadialWidget->SetVisibility(ESlateVisibility::Hidden);
+}
+
+void UDispatchUIManagerComponent::EnsureMissionDetailsWidget()
+{
+    if (missionDetailsWidget || !missionDetailsWidgetClass)
+    {
+        return;
+    }
+
+    APlayerController* PC = Cast<APlayerController>(GetOwner());
+    if (!PC)
+    {
+        return;
+    }
+
+    // NOTE: CreateWidget expects a TSubclassOf<UUserWidget>. UDispatchMissionDetailsWidget derives from UUserWidget
+    // so this is valid as long as the class is complete here (we included its header).
+    missionDetailsWidget = CreateWidget<UDispatchMissionDetailsWidget>(PC, missionDetailsWidgetClass.Get());
+    if (!missionDetailsWidget)
+    {
+        return;
+    }
+
+    missionDetailsWidget->OnCloseRequested.AddDynamic(this, &UDispatchUIManagerComponent::HandleDetailsCloseRequested);
+    missionDetailsWidget->AddToViewport(missionDetailsZOrder);
+    missionDetailsWidget->SetVisibility(ESlateVisibility::Hidden);
 }
 
 #pragma endregion INTERNAL_WIDGETS
@@ -255,12 +419,12 @@ void UDispatchUIManagerComponent::HandleHoverUIProgress(float Progress, FVector2
 
     if (!bVisible || Progress <= 0.f)
     {
-        cursorRadialWidget->RequestVisible(false);
+        cursorRadialWidget->SetVisibility(ESlateVisibility::Hidden);
         cursorRadialWidget->SetProgress(0.f);
         return;
     }
 
-    cursorRadialWidget->RequestVisible(true);
+    cursorRadialWidget->SetVisibility(ESlateVisibility::Visible);
     cursorRadialWidget->SetScreenPosition(ScreenPos);
     cursorRadialWidget->SetProgress(Progress);
 }
@@ -272,17 +436,38 @@ void UDispatchUIManagerComponent::HandleActorClicked(AActor* ClickedActor)
         return;
     }
 
+    // Map hologram toggles map view.
     if (ClickedActor->ActorHasTag(mapHologramTag))
     {
         ToggleMap();
+        return;
+    }
+
+    // If clicked actor has a click proxy, open mission details.
+    if (UDispatchMissionOfferClickProxyComponent* Proxy = ClickedActor->FindComponentByClass<UDispatchMissionOfferClickProxyComponent>())
+    {
+        const EDispatchMissionClickProxyKind Kind = Proxy->GetKind();
+        if (Kind == EDispatchMissionClickProxyKind::Offer && Proxy->GetOfferId().IsValid())
+        {
+            OpenMissionDetailsForOffer(Proxy->GetOfferId());
+            return;
+        }
+        if (Kind == EDispatchMissionClickProxyKind::Mission && Proxy->GetMissionId().IsValid())
+        {
+            OpenMissionDetailsForMission(Proxy->GetMissionId());
+            return;
+        }
     }
 }
 
 void UDispatchUIManagerComponent::HandleOfferAdded(const FGuid& OfferId)
 {
-    // Placeholder: later you can spawn a notification widget from here.
     UE_LOG(LogTemp, Log, TEXT("[DispatchUI] New mission offer: %s"), *OfferId.ToString());
 }
 
-#pragma endregion INTERNAL_CALLBACKS
+void UDispatchUIManagerComponent::HandleDetailsCloseRequested()
+{
+    CloseMissionDetails();
+}
 
+#pragma endregion INTERNAL_CALLBACKS

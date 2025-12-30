@@ -3,7 +3,7 @@
  * Created by: "0nnen"
  * Last Updated by: "0nnen"
  * Class: "DispatchMissionSiteActor" - Header
- * Notes: Represents a building/zone group that can be targeted by missions and highlighted via Overlay Material.
+ * Notes: Represents a mission site in the Dispatch map and supports highlight + click targets.
  */
 #pragma once
 
@@ -12,21 +12,16 @@
 #include "Dispatch/Missions/DispatchMissionTypes.h"
 #include "DispatchMissionSiteActor.generated.h"
 
+class UPrimitiveComponent;
 class UMeshComponent;
 class UMaterialInterface;
-class UMaterialInstanceDynamic;
 
-/** Visual state for a mission site (used for highlights). */
-UENUM(BlueprintType)
-enum class EDispatchMissionSiteVisualState : uint8
-{
-    None      UMETA(DisplayName="None"),
-    Offer     UMETA(DisplayName="Offer Available"),
-    Running   UMETA(DisplayName="Mission Running"),
-    Failed    UMETA(DisplayName="Mission Failed"),
-    Completed UMETA(DisplayName="Mission Completed"),
-};
-
+/**
+ * Mission site actor placed in the level.
+ * - Holds a MissionLocation dropdown (used to match offers and notification points).
+ * - Holds TargetActors that should be highlighted / clickable when an offer or mission is active.
+ * - Supports OverlayMaterial highlight (preferred for this project) and/or CustomDepth highlight.
+ */
 UCLASS()
 class MILLIONNAIRES_API ADispatchMissionSiteActor : public AActor
 {
@@ -35,86 +30,70 @@ class MILLIONNAIRES_API ADispatchMissionSiteActor : public AActor
 public:
 #pragma region LIFECYCLE
 
+    /// <summary>Constructor.</summary>
     ADispatchMissionSiteActor();
-    virtual void BeginPlay() override;
-    virtual void Tick(float DeltaSeconds) override;
 
 #pragma endregion LIFECYCLE
 
+public:
+#pragma region SETTINGS
+
+    /// <summary>Location used to match mission offers and notification points.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Site")
+    EDispatchMissionLocation missionLocation = EDispatchMissionLocation::Any;
+
+    /// <summary>Actors to highlight & make clickable when this site has an active offer/mission.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Site")
+    TArray<TObjectPtr<AActor>> targetActors;
+
+    /// <summary>If true, highlights by setting the OverlayMaterial on mesh components.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Highlight")
+    bool bUseOverlayMaterialHighlight = true;
+
+    /// <summary>Material to apply in the OverlayMaterial slot when highlighted.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Highlight")
+    TObjectPtr<UMaterialInterface> overlayHighlightMaterial = nullptr;
+
+    /// <summary>If true, restores the previous OverlayMaterial when highlight is disabled.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Highlight")
+    bool bRestorePreviousOverlayMaterial = true;
+
+    /// <summary>If true, highlights by enabling CustomDepth on all cached primitives.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Highlight")
+    bool bUseCustomDepthHighlight = true;
+
+    /// <summary>Stencil value used for outline materials (if your post process reads it).</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Highlight", meta=(ClampMin="0", ClampMax="255"))
+    int32 customDepthStencilValue = 1;
+
+#pragma endregion SETTINGS
+
+public:
 #pragma region API
 
-    /** Sets current visual state (offer/running/failed/completed). */
-    UFUNCTION(BlueprintCallable, Category="Dispatch|Map|Site")
-    void SetVisualState(EDispatchMissionSiteVisualState NewState);
-
-    /** Convenience: called when an offer is created/removed for this site. */
-    UFUNCTION(BlueprintCallable, Category="Dispatch|Map|Site")
-    void SetOfferActive(bool bActive);
-
-    /** Convenience: called when a mission changes state for this site. */
-    UFUNCTION(BlueprintCallable, Category="Dispatch|Map|Site")
-    void SetMissionState(EDispatchMissionState NewMissionState);
-
-    /** Returns the mission location value for this site (used by MissionManager selection). */
+    /// <summary>Returns the mission location.</summary>
     UFUNCTION(BlueprintPure, Category="Dispatch|Map|Site")
     EDispatchMissionLocation GetMissionLocation() const { return missionLocation; }
 
-    /** Forces a rebuild of cached meshes (useful if targets are spawned at runtime). */
-    UFUNCTION(BlueprintCallable, Category="Dispatch|Map|Debug")
+    /// <summary>Rebuilds the cached primitive components list (site + target actors).</summary>
+    UFUNCTION(BlueprintCallable, Category="Dispatch|Map|Site")
     void RebuildMeshCache();
 
+    /// <summary>Sets offer active highlight state.</summary>
+    UFUNCTION(BlueprintCallable, Category="Dispatch|Map|Site")
+    void SetOfferActive(bool bActive);
+
+    /// <summary>Sets highlight state based on mission state.</summary>
+    UFUNCTION(BlueprintCallable, Category="Dispatch|Map|Site")
+    void SetMissionState(EDispatchMissionState NewState);
+
 #pragma endregion API
-
-#pragma region SETTINGS
-
-    /** Actors whose mesh components will be highlighted (buildings, props, etc). */
-    UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category="Dispatch|Map|Site")
-    TArray<TObjectPtr<AActor>> targetActors;
-
-    /** If true, also highlight this actor's components even if targetActors is not empty. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Site")
-    bool bIncludeSelfMeshes = true;
-
-    /** Mission location dropdown for this site (must match MissionDefinition). */
-    UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category="Dispatch|Map|Site")
-    EDispatchMissionLocation missionLocation = EDispatchMissionLocation::Any;
-
-    /** Overlay material applied while highlighted. If null, highlight is disabled. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Highlight")
-    TObjectPtr<UMaterialInterface> highlightOverlayMaterial = nullptr;
-
-    /** Scalar parameter name used to drive highlight alpha (0..1). */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Highlight")
-    FName highlightAlphaParamName = FName("Alpha");
-
-    /** If false, highlight is applied instantly (no tick / no smooth). */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Highlight")
-    bool bSmoothFade = true;
-
-    /** Fade in speed (units per second). */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Highlight", meta=(ClampMin="0.01"))
-    float fadeInSpeed = 2.5f;
-
-    /** Fade out speed (units per second). */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Highlight", meta=(ClampMin="0.01"))
-    float fadeOutSpeed = 3.5f;
-
-    /** If true, prints debug logs. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Debug")
-    bool bDebugLogs = true;
-
-#pragma endregion SETTINGS
 
 protected:
 #pragma region INTERNAL
 
-    void CacheMeshes();
-    void ApplyOverlayToMeshes(UMaterialInterface* Overlay);
-    void RestoreOriginalOverlays();
-    void EnsureOverlayMID();
-
-    float GetTargetAlphaForState(EDispatchMissionSiteVisualState State) const;
-    void ApplyInstant(float Alpha);
+    /// <summary>Applies highlight to cached components (OverlayMaterial and/or CustomDepth).</summary>
+    void ApplyHighlight(bool bEnabled, int32 Stencil);
 
 #pragma endregion INTERNAL
 
@@ -122,19 +101,16 @@ private:
 #pragma region STATE
 
     UPROPERTY(Transient)
-    EDispatchMissionSiteVisualState visualState = EDispatchMissionSiteVisualState::None;
-
-    float currentAlpha = 0.f;
-    float targetAlpha = 0.f;
+    TArray<TObjectPtr<UPrimitiveComponent>> cachedPrimitives;
 
     UPROPERTY(Transient)
     TArray<TObjectPtr<UMeshComponent>> cachedMeshes;
 
-    UPROPERTY(Transient)
-    TArray<TObjectPtr<UMaterialInterface>> originalOverlayByMesh;
+    /// <summary>Cached overlay material per mesh to restore after highlight ends.</summary>
+    TMap<TWeakObjectPtr<UMeshComponent>, TObjectPtr<UMaterialInterface>> previousOverlayByMesh;
 
-    UPROPERTY(Transient)
-    TObjectPtr<UMaterialInstanceDynamic> overlayMID = nullptr;
+    bool bOfferActive = false;
+    EDispatchMissionState currentMissionState = EDispatchMissionState::None;
 
 #pragma endregion STATE
 };
