@@ -3,7 +3,7 @@
  * Created by: "0nnen"
  * Last Updated by: "0nnen"
  * Class: "DispatchMissionTypes" - Header
- * Notes: Shared enums/structs for Dispatch mission system.
+ * Notes: Shared enums/structs for Dispatch mission system (centralized types).
  */
 #pragma once
 
@@ -13,6 +13,7 @@
 class UDispatchMissionDefinition;
 class ADispatchMissionSiteActor;
 class APawn;
+class UTexture2D;
 
 #pragma region ENUMS
 
@@ -64,6 +65,15 @@ enum class EDispatchMissionClickProxyKind : uint8
     Mission UMETA(DisplayName="Mission"),
 };
 
+/// <summary>Difficulty metric displayed in the mission details UI.</summary>
+UENUM(BlueprintType)
+enum class EDispatchMissionDifficultyMetric : uint8
+{
+    MonsterChance       UMETA(DisplayName="Monster Chance"),
+    LootChance          UMETA(DisplayName="Loot Chance"),
+    ComplicationChance  UMETA(DisplayName="Complication Chance"),
+};
+
 #pragma endregion ENUMS
 
 #pragma region STRUCTS
@@ -85,6 +95,66 @@ struct FDispatchMissionDifficulty
     /// <summary>Chance (0..10) that an extra complication occurs.</summary>
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Difficulty", meta=(ClampMin="0", ClampMax="10"))
     int32 complicationChance10 = 0;
+};
+
+/// <summary>UI configuration for a difficulty bar (icon/title/slot visuals).</summary>
+USTRUCT(BlueprintType)
+struct FDispatchMissionDifficultyUIConfig
+{
+    GENERATED_BODY()
+
+    /// <summary>Which difficulty metric this row represents.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|UI|MissionDetails|Difficulty")
+    EDispatchMissionDifficultyMetric metric = EDispatchMissionDifficultyMetric::MonsterChance;
+
+    /// <summary>Icon shown in the header line.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|UI|MissionDetails|Difficulty")
+    TObjectPtr<UTexture2D> icon = nullptr;
+
+    /// <summary>Title shown next to the icon.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|UI|MissionDetails|Difficulty")
+    FText title;
+
+    /// <summary>How many slots to render for this metric (default 10).</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|UI|MissionDetails|Difficulty", meta=(ClampMin="1", ClampMax="20"))
+    int32 maxSlots = 10;
+
+    /// <summary>Empty slot background texture.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|UI|MissionDetails|Difficulty")
+    TObjectPtr<UTexture2D> slotBackground = nullptr;
+
+    /// <summary>Filled slot texture (shown for i &lt;= current).</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|UI|MissionDetails|Difficulty")
+    TObjectPtr<UTexture2D> slotFill = nullptr;
+};
+
+/// <summary>Runtime difficulty row data computed from an offer/mission.</summary>
+USTRUCT(BlueprintType)
+struct FDispatchMissionDifficultyUIEntry
+{
+    GENERATED_BODY()
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|UI|MissionDetails|Difficulty")
+    EDispatchMissionDifficultyMetric metric = EDispatchMissionDifficultyMetric::MonsterChance;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|UI|MissionDetails|Difficulty")
+    TObjectPtr<UTexture2D> icon = nullptr;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|UI|MissionDetails|Difficulty")
+    FText title;
+
+    /// <summary>Current filled slots count (0..maxSlots).</summary>
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|UI|MissionDetails|Difficulty")
+    int32 current = 0;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|UI|MissionDetails|Difficulty")
+    int32 maxSlots = 10;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|UI|MissionDetails|Difficulty")
+    TObjectPtr<UTexture2D> slotBackground = nullptr;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|UI|MissionDetails|Difficulty")
+    TObjectPtr<UTexture2D> slotFill = nullptr;
 };
 
 /// <summary>A mission offer generated at runtime from a definition.</summary>
@@ -171,6 +241,10 @@ struct FDispatchActiveMission
     /// <summary>World location.</summary>
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
     FVector worldLocation = FVector::ZeroVector;
+
+    /// <summary>Difficulty values carried over from the source offer (used by UI).</summary>
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
+    FDispatchMissionDifficulty difficulty;
 
     /// <summary>Assigned agents (AI pawns). FPS missions should contain exactly 1 agent (future).</summary>
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")

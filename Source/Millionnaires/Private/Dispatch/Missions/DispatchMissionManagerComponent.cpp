@@ -156,6 +156,7 @@ bool UDispatchMissionManagerComponent::AcceptOffer(const FGuid& OfferId, const T
     Mission.missionLocation = Offer.missionLocation;
     Mission.locationActor = Offer.locationActor;
     Mission.worldLocation = Offer.worldLocation;
+    Mission.difficulty = Offer.difficulty;
     Mission.seed = Offer.seed;
 
     for (APawn* P : SelectedAgents)
@@ -256,171 +257,43 @@ void UDispatchMissionManagerComponent::GenerateOffer()
         return;
     }
 
-    // Prevent multiple offers/missions being present on the same location.
-    auto IsLocationOccupied = [this](EDispatchMissionLocation Location) -> bool
-    {
-        for (const FDispatchMissionOffer& O : offers)
-        {
-            if (O.missionLocation == Location)
-            {
-                return true;
-            }
-        }
-
-        for (const FDispatchActiveMission& M : activeMissions)
-        {
-            const bool bTerminal =
-                (M.state == EDispatchMissionState::Completed) ||
-                (M.state == EDispatchMissionState::Failed) ||
-                (M.state == EDispatchMissionState::Aborted);
-
-            if (!bTerminal && M.missionLocation == Location)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    };
-
-    auto IsSiteOccupied = [this](const ADispatchMissionSiteActor* Site) -> bool
-    {
-        if (!Site)
-        {
-            return false;
-        }
-
-        for (const FDispatchMissionOffer& O : offers)
-        {
-            if (O.locationActor == Site)
-            {
-                return true;
-            }
-        }
-
-        for (const FDispatchActiveMission& M : activeMissions)
-        {
-            const bool bTerminal =
-                (M.state == EDispatchMissionState::Completed) ||
-                (M.state == EDispatchMissionState::Failed) ||
-                (M.state == EDispatchMissionState::Aborted);
-
-            if (!bTerminal && M.locationActor == Site)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    };
-
-    auto PickFreeMissionSite = [this, &IsSiteOccupied](EDispatchMissionLocation Location, FRandomStream& Rng) -> ADispatchMissionSiteActor*
-    {
-        UWorld* World = GetWorld();
-        if (!World)
-        {
-            return nullptr;
-        }
-
-        TArray<ADispatchMissionSiteActor*> Exact;
-        TArray<ADispatchMissionSiteActor*> Any;
-
-        for (TActorIterator<ADispatchMissionSiteActor> It(World); It; ++It)
-        {
-            ADispatchMissionSiteActor* S = *It;
-            if (!S)
-            {
-                continue;
-            }
-
-            if (IsSiteOccupied(S))
-            {
-                continue;
-            }
-
-            if (S->GetMissionLocation() == Location && Location != EDispatchMissionLocation::Any)
-            {
-                Exact.Add(S);
-            }
-            else if (S->GetMissionLocation() == EDispatchMissionLocation::Any)
-            {
-                Any.Add(S);
-            }
-        }
-
-        if (Exact.Num() > 0)
-        {
-            return Exact[Rng.RandRange(0, Exact.Num() - 1)];
-        }
-        if (Any.Num() > 0)
-        {
-            return Any[Rng.RandRange(0, Any.Num() - 1)];
-        }
-
-        // Fallback: no free site for this location right now.
-        return nullptr;
-    };
-
     ++offerCounter;
+
     FRandomStream Rng(runSeed + currentDay * 7919 + offerCounter * 1543);
 
-    const int32 MaxAttempts = FMath::Max(availableDefinitions.Num() * 4, 8);
-    for (int32 Attempt = 0; Attempt < MaxAttempts; ++Attempt)
+    // Pick random definition.
+    UDispatchMissionDefinition* Def = availableDefinitions[Rng.RandRange(0, availableDefinitions.Num() - 1)];
+    if (!Def)
     {
-        UDispatchMissionDefinition* Def = availableDefinitions[Rng.RandRange(0, availableDefinitions.Num() - 1)];
-        if (!Def)
-        {
-            continue;
-        }
-
-        // Enforce uniqueness by location.
-        if (IsLocationOccupied(Def->missionLocation))
-        {
-            continue;
-        }
-
-        FDispatchMissionOffer Offer;
-        Offer.offerId = FGuid::NewGuid();
-        Offer.definition = Def;
-        Offer.missionMode = Def->missionMode;
-        Offer.missionLocation = Def->missionLocation;
-        Offer.dayCreated = currentDay;
-        Offer.seed = Rng.RandRange(0, 999999);
-
-        // Resolve site/world location (also enforce uniqueness by physical site if used).
-        if (bUseMissionSites)
-        {
-            Offer.locationActor = PickFreeMissionSite(Offer.missionLocation, Rng);
-            if (!Offer.locationActor)
-            {
-                continue;
-            }
-        }
-        else
-        {
-            Offer.locationActor = nullptr;
-        }
-
-        Offer.worldLocation = Offer.locationActor ? Offer.locationActor->GetActorLocation() : GetFallbackWorldLocation(Rng);
-        Offer.difficulty = RollDifficulty(Def, Rng);
-
-        const float MinTL = (Def->offerTimeLimitMinSec > 0.f) ? Def->offerTimeLimitMinSec : defaultOfferTimeLimitRangeSec.X;
-        const float MaxTL = (Def->offerTimeLimitMaxSec > 0.f) ? Def->offerTimeLimitMaxSec : defaultOfferTimeLimitRangeSec.Y;
-
-        Offer.timeLimitSec = (FMath::IsNearlyEqual(MinTL, MaxTL)) ? MinTL : Rng.FRandRange(FMath::Min(MinTL, MaxTL), FMath::Max(MinTL, MaxTL));
-        Offer.timeRemainingSec = Offer.timeLimitSec;
-
-        offers.Add(Offer);
-        OnOfferAdded.Broadcast(Offer.offerId);
-
-        UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] Offer added | OfferId=%s | Def=%s | Loc=%d | Time=%.1fs"),
-               *Offer.offerId.ToString(), *GetNameSafe(Def), (int32)Offer.missionLocation, Offer.timeLimitSec);
         return;
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("[DispatchMissions] Offer generation skipped (no free location/site available)."));
-}
+    FDispatchMissionOffer Offer;
+    Offer.offerId = FGuid::NewGuid();
+    Offer.definition = Def;
+    Offer.missionMode = Def->missionMode;
+    Offer.missionLocation = Def->missionLocation;
+    Offer.dayCreated = currentDay;
+    Offer.seed = Rng.RandRange(0, 999999);
 
+    // Resolve site/world location.
+    Offer.locationActor = bUseMissionSites ? PickMissionSite(Offer.missionLocation, Rng) : nullptr;
+    Offer.worldLocation = Offer.locationActor ? Offer.locationActor->GetActorLocation() : GetFallbackWorldLocation(Rng);
+
+    Offer.difficulty = RollDifficulty(Def, Rng);
+
+    const float MinTL = (Def->offerTimeLimitMinSec > 0.f) ? Def->offerTimeLimitMinSec : defaultOfferTimeLimitRangeSec.X;
+    const float MaxTL = (Def->offerTimeLimitMaxSec > 0.f) ? Def->offerTimeLimitMaxSec : defaultOfferTimeLimitRangeSec.Y;
+
+    Offer.timeLimitSec = (FMath::IsNearlyEqual(MinTL, MaxTL)) ? MinTL : Rng.FRandRange(FMath::Min(MinTL, MaxTL), FMath::Max(MinTL, MaxTL));
+    Offer.timeRemainingSec = Offer.timeLimitSec;
+
+    offers.Add(Offer);
+    OnOfferAdded.Broadcast(Offer.offerId);
+
+    UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] Offer added | OfferId=%s | Def=%s | Loc=%d | Time=%.1fs"),
+           *Offer.offerId.ToString(), *GetNameSafe(Def), (int32)Offer.missionLocation, Offer.timeLimitSec);
+}
 
 void UDispatchMissionManagerComponent::UpdateOfferTimers(float DeltaTime)
 {
