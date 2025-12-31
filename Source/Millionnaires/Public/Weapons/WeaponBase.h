@@ -98,6 +98,11 @@ public:
 
 	USkeletalMeshComponent* GetWeaponMesh(){return WeaponMesh;};
 
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void HitScanEnable(bool bShouldEnable);
+
+	void HitScanEnable_Implementation(bool bShouldEnable){};
+	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

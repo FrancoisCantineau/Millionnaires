@@ -14,22 +14,12 @@
 #include "Engine/DataAsset.h"
 
 #include "Weapons/Enum/WeaponsEnum.h"
+#include "Weapons/Struct/WeaponMovementProperties.h"
 
 #include "WeaponData.generated.h"
 
 
-#pragma region ExecutorRef
-
 class UAttackExecutorBase;
-
-
-struct FAttackExecutorSettings;
-struct FLineTraceSettings;
-struct FHitBoxExecutorSettings;
-struct FProjectileExecutorSettings;
-
-#pragma endregion
-
 /**
  * 
  */
@@ -51,16 +41,19 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon Info")
 	bool bFullAuto;
-    
-	/** Stats */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat Stats")
+	
+	/** GAS */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	float BaseDamage = 50.f;
     
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat Stats")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	float AttackRange = 200.f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
+	TSubclassOf<class UGameplayEffect> WeaponStatsEffect;
+	
 	//Attacks per 1 second
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat Stats")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	float AttackRate = 1.f; 
     
 	
@@ -84,7 +77,18 @@ public:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
 	UAnimMontage* AttackMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
+	TSubclassOf<UAnimInstance> AnimInstance;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
+	FName AttachSocketName;
+
+
+	/** Movements */
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
+	FWeaponMovementProperties MovementProperties;
 	
 	/** Executors */
 

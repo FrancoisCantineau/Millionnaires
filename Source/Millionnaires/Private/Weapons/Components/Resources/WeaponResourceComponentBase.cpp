@@ -14,6 +14,14 @@ UWeaponResourceComponentBase::UWeaponResourceComponentBase()
 
 }
 
+void UWeaponResourceComponentBase::SetCurrentAmmo(int CurrentAmmo)
+{
+}
+
+int UWeaponResourceComponentBase::GetCurrentAmmo() const
+{ return 0;
+}
+
 
 bool UWeaponResourceComponentBase::CanReload()
 {

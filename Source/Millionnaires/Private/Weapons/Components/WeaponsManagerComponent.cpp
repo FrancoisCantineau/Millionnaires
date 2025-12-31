@@ -1,0 +1,102 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+
+#include "Weapons/Components/WeaponsManagerComponent.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
+
+// Sets default values for this component's properties
+UWeaponsManagerComponent::UWeaponsManagerComponent()
+{
+	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
+	// off to improve performance if you don't need them.
+	PrimaryComponentTick.bCanEverTick = true;
+
+	// ...
+}
+
+
+// Called when the game starts
+void UWeaponsManagerComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	OwningCharacter = Cast<ACharacter>(GetOwner());
+
+	if (OwningCharacter)
+	{
+		DefaultAnimInstance = OwningCharacter->GetMesh()->GetAnimInstance()->GetClass();
+	}
+	
+}
+
+
+// Called every frame
+void UWeaponsManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	// ...
+}
+
+void UWeaponsManagerComponent::EquipWeapon(TSubclassOf<AWeaponBase> WeaponClass)
+{
+	if (IsValid(OwningCharacter))
+	{
+		FVector Location = OwningCharacter->GetActorLocation();
+		FRotator Rotation = FRotator::ZeroRotator;
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = OwningCharacter;
+		SpawnParams.Instigator = OwningCharacter->GetInstigator();
+
+		EquippedWeapon = GetWorld()->SpawnActor<AWeaponBase>(WeaponClass, Location, Rotation, SpawnParams);
+
+		if (EquippedWeapon)
+		{
+			
+			FName WeaponSocket = EquippedWeapon->WeaponData->AttachSocketName;
+			TSubclassOf<UAnimInstance> WeaponAnimInstance = EquippedWeapon->WeaponData->AnimInstance;
+			
+			FAttachmentTransformRules AttachRules(
+	EAttachmentRule::KeepRelative,
+	EAttachmentRule::KeepRelative,
+	EAttachmentRule::KeepWorld,
+	true
+);
+
+			EquippedWeapon->AttachToComponent(
+				OwningCharacter->GetMesh(),
+				AttachRules,
+				WeaponSocket
+			);
+
+			if (WeaponAnimInstance)
+			{
+				OwningCharacter->GetMesh()->SetAnimInstanceClass(WeaponAnimInstance);
+			}
+
+			UCharacterMovementComponent* OwnerCharacterMovement = OwningCharacter->GetCharacterMovement();
+			
+			OwnerCharacterMovement->MaxWalkSpeed = EquippedWeapon->WeaponData->MovementProperties.MaxWalkSpeed;
+			OwnerCharacterMovement->bOrientRotationToMovement = EquippedWeapon->WeaponData->MovementProperties.OrientRotationToMovement;
+			OwnerCharacterMovement->bUseControllerDesiredRotation= EquippedWeapon->WeaponData->MovementProperties.UseControllerDesiredRotation;
+		}
+		
+	}
+}
+
+void UWeaponsManagerComponent::UnequipWeapon()
+{
+	if (EquippedWeapon)
+	{
+		EquippedWeapon->Destroy();
+		OwningCharacter->GetMesh()->SetAnimInstanceClass(DefaultAnimInstance);
+
+		UCharacterMovementComponent* OwnerCharacterMovement = OwningCharacter->GetCharacterMovement();
+			
+		OwnerCharacterMovement->MaxWalkSpeed = 500;
+		OwnerCharacterMovement->bOrientRotationToMovement = true;
+		OwnerCharacterMovement->bUseControllerDesiredRotation= false;
+	}
+}
+

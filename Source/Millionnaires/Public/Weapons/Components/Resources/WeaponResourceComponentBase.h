@@ -19,6 +19,12 @@ public:
 	UWeaponResourceComponentBase();
 
 	UFUNCTION(BlueprintCallable, Category = "Ammo")
+	virtual void SetCurrentAmmo(int CurrentAmmo);
+
+	UFUNCTION(BlueprintCallable, Category = "Ammo")
+	virtual int GetCurrentAmmo() const;
+	
+	UFUNCTION(BlueprintCallable, Category = "Ammo")
 	virtual bool CanConsume() const;
     
 	// Consume ammo/durability/etc

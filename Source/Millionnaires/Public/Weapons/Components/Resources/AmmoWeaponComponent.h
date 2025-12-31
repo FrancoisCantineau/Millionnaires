@@ -38,6 +38,10 @@ public:
 	
 	virtual FString GetAmmoDisplayText() const override { return TEXT("∞"); }
 	
+	virtual void SetCurrentAmmo(int32 mCurrentAmmo) override { CurrentMagazine = mCurrentAmmo; };
+	
+	virtual int GetCurrentAmmo() const override {return CurrentMagazine;}
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ammo|Magazine")
 	int32 MaxMagazineSize = 30;
     

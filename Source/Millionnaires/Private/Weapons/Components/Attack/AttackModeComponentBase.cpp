@@ -14,6 +14,12 @@
 
 #include <gsl/pointers>
 
+#include "AbilitySystemBlueprintLibrary.h"
+#include "GameplayTagContainer.h"
+#include "AbilitySystemComponent.h"
+#include "Abilities/GameplayAbility.h"
+#include "Abilities/GameplayAbilityTypes.h"
+
 #include "Weapons/Components/Resources/WeaponResourceComponentBase.h"
 
 // Sets default values for this component's properties
@@ -91,7 +97,27 @@ void UAttackModeComponentBase::Attack()
 		return;
 	}
 	OwnerWeapon->SetPendingDamageMultiplier(DamagesMultiplier);
-	OwnerWeapon->StartAttacking();
+	//OwnerWeapon->StartAttacking();
+	//OwnerWeapon->PerformAttack();
+
+	AActor* WeaponOwner = OwnerWeapon->GetOwner(); // Le joueur
+	UAbilitySystemComponent* OwnerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(WeaponOwner);
+    
+	if (!OwnerASC)
+		return;
+
+	
+	FGameplayEventData EventData;
+	EventData.Instigator = WeaponOwner;
+	EventData.Target = OwnerWeapon;
+	EventData.OptionalObject = this; 
+	EventData.EventMagnitude = DamagesMultiplier; 
+    
+	
+	OwnerASC->HandleGameplayEvent(
+		FGameplayTag::RequestGameplayTag(FName("Weapon.Fire")), 
+		&EventData
+	);
 	
 }
 

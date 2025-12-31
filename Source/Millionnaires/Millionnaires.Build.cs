@@ -21,7 +21,10 @@ public class Millionnaires : ModuleRules
 			"Slate",
 			"SlateCore",
 			"Niagara",
-			"GameplayTags"
+			"GameplayTags",
+			"GameplayAbilities",
+			"GameplayTasks"
+			
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

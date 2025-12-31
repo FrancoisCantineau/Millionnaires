@@ -33,7 +33,7 @@ struct FStatModifier
 };
 
 USTRUCT(BlueprintType)
-struct FGameplayAttribute
+struct FCustomModifierAttribute
 {
 	GENERATED_BODY()
     
