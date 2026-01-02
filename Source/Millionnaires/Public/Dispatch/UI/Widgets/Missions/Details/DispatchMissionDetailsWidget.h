@@ -54,7 +54,23 @@ public:
     UPROPERTY(BlueprintReadOnly, Category="Dispatch|UI|MissionDetails")
     TObjectPtr<UTexture2D> iconTexture = nullptr;
 
+    /// <summary>Difficulty rows computed from the current offer/mission. Build your UI from this array.</summary>
+    UPROPERTY(BlueprintReadOnly, Category="Dispatch|UI|MissionDetails|Difficulty")
+    TArray<FDispatchMissionDifficultyUIEntry> difficultyEntries;
+
 #pragma endregion DATA_BINDING
+
+public:
+#pragma region DIFFICULTY_CONFIG
+
+    /// <summary>
+    /// UI config describing how each difficulty metric should be displayed.
+    /// Set this in your WBP defaults to assign icons/titles/slot visuals.
+    /// </summary>
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Dispatch|UI|MissionDetails|Difficulty")
+    TArray<FDispatchMissionDifficultyUIConfig> difficultyDisplayConfigs;
+
+#pragma endregion DIFFICULTY_CONFIG
 
 public:
 #pragma region API
@@ -87,5 +103,20 @@ protected:
     UFUNCTION(BlueprintImplementableEvent, Category="Dispatch|UI|MissionDetails")
     void BP_OnDataUpdated();
 
+    /// <summary>Called after difficultyEntries gets rebuilt.</summary>
+    UFUNCTION(BlueprintImplementableEvent, Category="Dispatch|UI|MissionDetails|Difficulty")
+    void BP_OnDifficultyUpdated();
+
 #pragma endregion BP_EVENTS
+
+private:
+#pragma region INTERNAL
+
+    /// <summary>Builds difficultyEntries from a rolled difficulty struct.</summary>
+    void BuildDifficultyEntriesFromDifficulty(const FDispatchMissionDifficulty& Difficulty);
+
+    /// <summary>Returns the rolled value (0..10) for a metric inside a difficulty struct.</summary>
+    static int32 GetDifficultyMetricValue10(const FDispatchMissionDifficulty& Difficulty, EDispatchMissionDifficultyMetric Metric);
+
+#pragma endregion INTERNAL
 };
