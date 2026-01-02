@@ -119,7 +119,7 @@ void AWeaponBase::StartAttacking()
 
 		return;
 	}
-	PerformAttack();
+	PerformAttack( nullptr);
 }
 
 bool AWeaponBase::CanAttack()
@@ -131,12 +131,12 @@ bool AWeaponBase::CanAttack()
 	return true;
 }
 
-void AWeaponBase::PerformAttack()
+void AWeaponBase::PerformAttack(FGameplayEffectSpecHandle GEHandle)
 {
 	if (AttackExecutor)
 	{
 		RessourceComponent->Consume();
-		AttackExecutor->ExecuteAttack(PendingDamageMultiplier);
+		AttackExecutor->ExecuteAttack(PendingDamageMultiplier, GEHandle);
 	}
 }
 

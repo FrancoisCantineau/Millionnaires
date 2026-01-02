@@ -40,9 +40,9 @@ void ULineTraceExecutor::Initialize(AWeaponBase* Weapon)
 	}
 }
 
-void ULineTraceExecutor::ExecuteAttack(float m_DamageMultiplier)
+void ULineTraceExecutor::ExecuteAttack(float m_DamageMultiplier, FGameplayEffectSpecHandle GEHandle)
 {
-	Super::ExecuteAttack(m_DamageMultiplier);
+	Super::ExecuteAttack(m_DamageMultiplier,GEHandle);
 	
 	if (!OwnerWeapon || !OwnerWeapon->WeaponData)
 		return;

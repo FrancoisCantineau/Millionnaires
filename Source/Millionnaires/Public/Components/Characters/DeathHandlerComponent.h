@@ -24,6 +24,8 @@ protected:
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+	void InitializeComponents();
 	
 	UFUNCTION(BlueprintCallable, Category="Death")
 	void ExecuteDeath();
@@ -31,6 +33,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Death")
 	TArray<TSubclassOf<UDeathBehaviorObjectBase>> BehaviourClasses;
 
-	UPROPERTY(Transient)
+	UPROPERTY(VisibleInstanceOnly, Transient, Category="Death")
 	TArray<UDeathBehaviorObjectBase*> Behaviours;
 };

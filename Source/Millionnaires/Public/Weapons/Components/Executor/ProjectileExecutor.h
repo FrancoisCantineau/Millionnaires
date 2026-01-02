@@ -28,7 +28,7 @@ class MILLIONNAIRES_API UProjectileExecutor : public UAttackExecutorBase
 
 public:
 	
-	virtual void ExecuteAttack(float DamageMultiplier = 1.f) override;
+	virtual void ExecuteAttack(float DamageMultiplier, FGameplayEffectSpecHandle GEHandle) override;
 	
 protected: 
 		

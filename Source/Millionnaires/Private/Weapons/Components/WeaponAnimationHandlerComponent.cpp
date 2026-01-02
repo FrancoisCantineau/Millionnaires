@@ -56,7 +56,7 @@ void UWeaponAnimationHandlerComponent::OnNotifyBegin(FName NotifyName,
 {
 	if (NotifyName == "StartAttack")
 	{
-		OwnerWeapon->PerformAttack();
+		//OwnerWeapon->PerformAttack(nullptr);
 	}
 	else if (NotifyName == "EndAttack")
 	{

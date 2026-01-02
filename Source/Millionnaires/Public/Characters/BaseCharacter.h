@@ -81,8 +81,7 @@ protected:
     EGameplayEffectReplicationMode AscReplicationMode = EGameplayEffectReplicationMode::Mixed;
 
     /** Called when HP is depleted and the character should die */
-    UFUNCTION()
-    void Die();
+    virtual void OnDeadTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
 
     virtual void BeginPlay() override;
 

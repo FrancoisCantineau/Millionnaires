@@ -18,18 +18,7 @@ UDeathHandlerComponent::UDeathHandlerComponent()
 void UDeathHandlerComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
-	AActor* Owner = GetOwner();
-
-	for (auto BehaviourClass : BehaviourClasses)
-	{
-		UDeathBehaviorObjectBase* Behaviour =
-			NewObject<UDeathBehaviorObjectBase>(this, BehaviourClass);
-
-		Behaviour->Owner = Owner;
-		Behaviours.Add(Behaviour);
-	}
-	
+	InitializeComponents();
 }
 
 
@@ -41,9 +30,38 @@ void UDeathHandlerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 	// ...
 }
 
+void UDeathHandlerComponent::InitializeComponents()
+{
+	for (auto BehaviourClass : BehaviourClasses)
+	{
+		if (!BehaviourClass) continue;
+        
+		UDeathBehaviorObjectBase* Behaviour = 
+			NewObject<UDeathBehaviorObjectBase>(
+				this,              // Outer = ce component
+				BehaviourClass,
+				NAME_None,
+				RF_NoFlags,
+				nullptr,
+				true,              // bCopyTransientsFromClassDefaults
+				nullptr
+			);
+        
+		if (Behaviour)
+		{
+			Behaviour->Owner = GetOwner();
+			Behaviours.Add(Behaviour);
+		}
+	}
+	
+}
+
 void UDeathHandlerComponent::ExecuteDeath()
 {
-	if (Behaviours.Num() == 0) return;
+	if (Behaviours.Num() == 0)
+	{
+		InitializeComponents();
+	}
 
 	for (UDeathBehaviorObjectBase* Behaviour : Behaviours)
 	{

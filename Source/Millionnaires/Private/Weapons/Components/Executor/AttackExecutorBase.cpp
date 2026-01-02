@@ -10,10 +10,13 @@
 
 #include "Weapons/Components/Executor/AttackExecutorBase.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Interfaces/DamageableInterface.h"
+#include "AbilitySystemComponent.h"
 
 #include "Engine/OverlapResult.h"
+#include "GameFramework/SaveGame.h"
 #include "Kismet/GameplayStatics.h"
 
 #include "ProfilingDebugging/CookStats.h"
@@ -91,6 +94,42 @@ void UAttackExecutorBase::ExplodeAtLocation(const FHitResult& Hit)
 
 void UAttackExecutorBase::OnHit(const FHitResult& Hit)
 {
+	FGameplayAbilityTargetDataHandle TargetData =
+	UAbilitySystemBlueprintLibrary::AbilityTargetDataFromHitResult(Hit);
+
+	AActor* OwnerActor = OwnerWeapon->GetOwner();
+	if (!OwnerActor) return;
+
+	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OwnerActor);
+	if (!ASC) return;
+
+	// --- ASC du hit actor
+	UAbilitySystemComponent* TargetASC =
+		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Hit.GetActor());
+
+	if (TargetASC && CachedGESpec.IsValid())
+	{
+		// Appliquer le GameplayEffectSpec
+		TargetASC->ApplyGameplayEffectSpecToSelf(*CachedGESpec.Data.Get());
+	}
+
+	// --- GameplayCue
+	if (ImpactCueTag.IsValid())
+	{
+		UAbilitySystemComponent* OwnerASC =
+			UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OwnerWeapon->GetOwner());
+
+		if (OwnerASC)
+		{
+			FGameplayCueParameters CueParams;
+			CueParams.Location = Hit.ImpactPoint;
+			CueParams.Normal = Hit.ImpactNormal;
+			CueParams.PhysicalMaterial = Hit.PhysMaterial.Get();
+
+			OwnerASC->ExecuteGameplayCue(ImpactCueTag, CueParams);
+		}
+	}
+	/*
 	if (ImpactVFX)
 	{
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
@@ -119,13 +158,15 @@ void UAttackExecutorBase::OnHit(const FHitResult& Hit)
 		break;
 
 	default : break;
-	}
+	}*/
 	
 }
 
-void UAttackExecutorBase::ExecuteAttack(float m_DamageMultiplier)
+void UAttackExecutorBase::ExecuteAttack(float m_DamageMultiplier, FGameplayEffectSpecHandle GEHandle)
 {
 	DamageMultiplier = m_DamageMultiplier;
+
+	CachedGESpec = GEHandle;
 }
 
 void UAttackExecutorBase::EndAttackExecution()

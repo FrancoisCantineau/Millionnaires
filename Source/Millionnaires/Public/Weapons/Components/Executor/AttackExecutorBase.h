@@ -11,6 +11,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayEffectTypes.h"
 #include "NiagaraComponent.h"
 #include "Components/ActorComponent.h"
 #include "Weapons/WeaponBase.h"
@@ -28,9 +29,10 @@ public:
 	/**
 	 * Executes the attack. Must be overrided by each child
 	 * @param m_DamageMultiplier , multiplies the damages (used for charging weapons, for exemple)
+	 * @param  GEHandle
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Attack")
-	virtual void ExecuteAttack(float m_DamageMultiplier = 1.f);
+	virtual void ExecuteAttack(float m_DamageMultiplier , FGameplayEffectSpecHandle GEHandle);
 
 	UFUNCTION(BlueprintCallable, Category = "Attack")
 	virtual void EndAttackExecution();
@@ -82,4 +84,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FX")
 	USoundBase* ImpactSFX;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FX")
+	FGameplayTag ImpactCueTag;
+	
+	FGameplayEffectSpecHandle CachedGESpec;
 };

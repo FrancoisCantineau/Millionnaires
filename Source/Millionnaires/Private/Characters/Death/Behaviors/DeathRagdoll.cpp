@@ -3,6 +3,7 @@
 
 #include "Characters/Death/Behaviors/DeathRagdoll.h"
 #include "GameFramework/Character.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 void UDeathRagdoll::Execute()
@@ -12,15 +13,13 @@ void UDeathRagdoll::Execute()
 
 	USkeletalMeshComponent* Mesh = Character->GetMesh();
 	if (!Mesh) return;
-	
-	Character->GetCharacterMovement()->DisableMovement();
-	
-	Mesh->SetCollisionProfileName(TEXT("Ragdoll"));
 	Mesh->SetSimulatePhysics(true);
-	Mesh->WakeAllRigidBodies();
-	
-	Mesh->DetachFromComponent(
-		FDetachmentTransformRules::KeepWorldTransform
-	);
+	Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	Character->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	FVector Impulse = Character->GetActorForwardVector()* -10000;
+	Impulse.Z = 15000;
+	Mesh->AddImpulseAtLocation(Impulse, Character->GetActorLocation());
+	Character->GetCharacterMovement()->DisableMovement();
 	
 }

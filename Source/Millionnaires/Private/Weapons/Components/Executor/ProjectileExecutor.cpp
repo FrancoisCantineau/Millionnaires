@@ -12,9 +12,9 @@
 
 #include "Kismet/GameplayStatics.h"
 
-void UProjectileExecutor::ExecuteAttack(float m_DamageMultiplier)
+void UProjectileExecutor::ExecuteAttack(float m_DamageMultiplier, FGameplayEffectSpecHandle GEHandle)
 {
-	Super::ExecuteAttack(m_DamageMultiplier);
+	Super::ExecuteAttack(m_DamageMultiplier,GEHandle);
 	
 	if (!OwnerWeapon || !ProjectileClass)
 	{

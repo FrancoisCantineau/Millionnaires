@@ -20,9 +20,9 @@ void UHitBoxExecutor::Initialize(AWeaponBase* Weapon)
 	Hitbox_Main->SetGenerateOverlapEvents(true);
 }
 
-void UHitBoxExecutor::ExecuteAttack(float m_DamageMultiplier)
+void UHitBoxExecutor::ExecuteAttack(float m_DamageMultiplier, FGameplayEffectSpecHandle GEHandle)
 {
-	Super::ExecuteAttack(m_DamageMultiplier);
+	Super::ExecuteAttack(m_DamageMultiplier, GEHandle);
 
 	AlreadyHitActors.Empty();
 	Hitbox_Main->SetGenerateOverlapEvents(true);

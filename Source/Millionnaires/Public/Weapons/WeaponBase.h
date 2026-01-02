@@ -25,7 +25,7 @@
 #include "WeaponBase.generated.h"
 
 
-
+struct FGameplayEffectSpecHandle;
 
 UCLASS(Blueprintable, Abstract)
 class MILLIONNAIRES_API AWeaponBase : public AActor
@@ -73,7 +73,7 @@ public:
 	bool CanAttack();
 	
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
-	void PerformAttack();
+	void PerformAttack(FGameplayEffectSpecHandle GEHandle);
 
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void InterruptAttack();

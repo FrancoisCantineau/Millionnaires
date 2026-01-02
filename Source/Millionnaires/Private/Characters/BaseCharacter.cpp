@@ -22,21 +22,21 @@ ABaseCharacter::ABaseCharacter(const FObjectInitializer& ObjectInitializer)
     AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
     AbilitySystemComponent->SetIsReplicated(true);
     AbilitySystemComponent->SetReplicationMode(AscReplicationMode);
+    
 }
 
 void ABaseCharacter::BeginPlay()
 {
     Super::BeginPlay();
 
-    if (StatsComponent)
-    {
-        StatsComponent->OnDeath.AddDynamic(this, &ABaseCharacter::Die);
-    }
     if (IsValid(AbilitySystemComponent))
     {
         BaseAttributesSet = AbilitySystemComponent->GetSet<UBaseAttributeSet>();
         WeaponAttributesSet = AbilitySystemComponent->GetSet<UWeaponAttributeSet>();
     }
+
+    // Tag event registrations
+    AbilitySystemComponent->RegisterGameplayTagEvent(FGameplayTag::RequestGameplayTag("State.Dead")).AddUObject(this, &ABaseCharacter::OnDeadTagChanged);
 }
 
 void ABaseCharacter::ApplyDamage_Implementation(float Damage, AActor* DamageCauser)
@@ -69,9 +69,17 @@ void ABaseCharacter::OnRep_PlayerState()
     }
 }
 
-void ABaseCharacter::Die()
+/**
+ * Deals with death tag update. Mainly call all the on death streamline
+ * @param CallbackTag 
+ * @param NewCount death state tag flag
+ */
+void ABaseCharacter::OnDeadTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
 {
-   DeathHandler->ExecuteDeath();
+    if (NewCount > 0)
+    {
+        DeathHandler->ExecuteDeath();
+    }
 }
 
 
