@@ -71,5 +71,42 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category="Weapon|Ammo")
 	FGameplayAttributeData MaxAmmoReserve;
 	ATTRIBUTE_ACCESSORS(UWeaponAttributeSet, MaxAmmoReserve)
+
+	UPROPERTY(BlueprintReadOnly, Category="Weapon|Ammo")
+	FGameplayAttributeData AttackRate;
+	ATTRIBUTE_ACCESSORS(UWeaponAttributeSet, AttackRate)
+	
+	UPROPERTY(BlueprintReadOnly, Category="Weapon|Ammo")
+	FGameplayAttributeData AttackRange;
+	ATTRIBUTE_ACCESSORS(UWeaponAttributeSet, AttackRange)
+
+	UPROPERTY(BlueprintReadOnly, Category="Weapon|Ammo")
+	FGameplayAttributeData WeaponDamage;
+	ATTRIBUTE_ACCESSORS(UWeaponAttributeSet, WeaponDamage)
 };
 
+UCLASS()
+class MILLIONNAIRES_API UPsychosisAttributeSet : public UAttributeSet
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(BlueprintReadOnly, Category="Psychosis")
+	FGameplayAttributeData Psychosis;
+	ATTRIBUTE_ACCESSORS(UPsychosisAttributeSet, Psychosis)
+
+	UPROPERTY(BlueprintReadOnly, Category="Psychosis")
+	FGameplayAttributeData MaxPsychosis;
+	ATTRIBUTE_ACCESSORS(UPsychosisAttributeSet, MaxPsychosis)
+
+	UPROPERTY(BlueprintReadOnly, Category="Psychosis")
+	FGameplayAttributeData MentalResistance;
+	ATTRIBUTE_ACCESSORS(UPsychosisAttributeSet, MentalResistance)
+
+protected :
+
+	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
+
+	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
+};

@@ -18,7 +18,6 @@
 #include "GameplayAbilitySystem/Attributes/BaseAttributeSet.h"
 
 
-#include "Interfaces/DamageableInterface.h"
 #include "Ennemy/Ability/AbilityHandlerComponentBase.h"
 
 
@@ -27,7 +26,7 @@
 class UCharacterStatsComponent;
 
 UCLASS(Abstract)
-class MILLIONNAIRES_API ABaseCharacter : public ACharacter, public IDamageableInterface, public IAbilitySystemInterface
+class MILLIONNAIRES_API ABaseCharacter : public ACharacter, public IAbilitySystemInterface
 {
     GENERATED_BODY()
 
@@ -37,9 +36,6 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "Character|Components")
     UCharacterStatsComponent* GetStatsComponent() const { return StatsComponent; }
-
-    //* Damages taken interface */
-    virtual void ApplyDamage_Implementation(float Damage,AActor* DamageCauser) override;
 
     //* Returns the ability system component for this actor */
     virtual  UAbilitySystemComponent* GetAbilitySystemComponent() const override;
@@ -63,18 +59,11 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GAS", meta = (AllowPrivateAccess = "true"))
     const class UWeaponAttributeSet* WeaponAttributesSet;
     
-
-    //* END GAS */
-    
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character|Components", meta = (AllowPrivateAccess = "true", ToolTip = "Component that manages health, hunger and basic character data."))
     TObjectPtr<UCharacterStatsComponent> StatsComponent;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character|Components")
     UDeathHandlerComponent* DeathHandler;
-    
-    /** Name of the collision profile to use during ragdoll death */
-    UPROPERTY(EditAnywhere, Category="Damage")
-    FName RagdollCollisionProfile = FName("Ragdoll");
 
     //* GAS SYSTEM */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="AbilitySystem")
@@ -82,6 +71,8 @@ protected:
 
     /** Called when HP is depleted and the character should die */
     virtual void OnDeadTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
+
+    //* END GAS */
 
     virtual void BeginPlay() override;
 

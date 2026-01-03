@@ -39,10 +39,6 @@ void ABaseCharacter::BeginPlay()
     AbilitySystemComponent->RegisterGameplayTagEvent(FGameplayTag::RequestGameplayTag("State.Dead")).AddUObject(this, &ABaseCharacter::OnDeadTagChanged);
 }
 
-void ABaseCharacter::ApplyDamage_Implementation(float Damage, AActor* DamageCauser)
-{
-    StatsComponent->ModifyHealth(Damage);
-}
 
 UAbilitySystemComponent* ABaseCharacter::GetAbilitySystemComponent() const
 {

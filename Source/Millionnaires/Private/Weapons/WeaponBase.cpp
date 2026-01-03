@@ -31,7 +31,10 @@ AWeaponBase::AWeaponBase()
 
 	BuffComponent = CreateDefaultSubobject<UWeaponBuffComponent>(TEXT("BuffComponent"));
 
-	AnimationComponent= CreateDefaultSubobject<UWeaponAnimationHandlerComponent>(TEXT("AnimationComponent"));
+	//Add the ability system component
+	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(AscReplicationMode);
 	
 }
 
@@ -62,13 +65,53 @@ void AWeaponBase::BeginPlay()
 	{
 		AttackExecutor->Initialize(this);
 	}
+
+	if (!bAttributesInitialized)
+	{
+		InitializeWeaponAttributes();
+		bAttributesInitialized = true;
+	}
 	
 	GetComponents<UWeaponEffectBaseComponent>(Effects);
 
 	RessourceComponent = FindComponentByClass<UWeaponResourceComponentBase>();
 	
 	ApplyWeaponData();
+
+	if (IsValid(AbilitySystemComponent))
+	{
+		WeaponAttributesSet = AbilitySystemComponent->GetSet<UWeaponAttributeSet>();
+	}
 	
+}
+
+void AWeaponBase::InitializeWeaponAttributes()
+{
+	if (!AbilitySystemComponent || !WeaponData) return;
+
+	FGameplayEffectContextHandle Context =
+		AbilitySystemComponent->MakeEffectContext();
+
+	FGameplayEffectSpecHandle Spec =
+		AbilitySystemComponent->MakeOutgoingSpec(
+			InitialStatsGameplayEffect,
+			1.f,
+			Context
+		);
+
+	if (!Spec.IsValid()) return;
+
+	Spec.Data->SetSetByCallerMagnitude(
+		FGameplayTag::RequestGameplayTag("Data.Weapon.Damage"),
+		WeaponData->BaseDamage
+	);
+
+	Spec.Data->SetSetByCallerMagnitude(
+		FGameplayTag::RequestGameplayTag("Data.Weapon.AttackRate"),
+		WeaponData->AttackRate
+	);
+
+	AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data);
 }
 
 void AWeaponBase::ApplyWeaponData()
@@ -92,9 +135,6 @@ void AWeaponBase::ApplyWeaponData()
 			WeaponData->AttackRate,
 			WeaponData->AttackRange
 		);
-		
-		UE_LOG(LogTemp, Warning, TEXT("✅ BuffComponent initialized - FireRate: %.2f"), 
-			   BuffComponent->GetFireRate());
 	}
 }
 
@@ -108,18 +148,9 @@ void AWeaponBase::Tick(float DeltaTime)
 
 }
 
-void AWeaponBase::StartAttacking()
+UAbilitySystemComponent* AWeaponBase::GetAbilitySystemComponent() const
 {
-	if (AnimationComponent && WeaponData->AttackMontage)
-	{
-		ACharacter* CharacterOwner = Cast<ACharacter>(Owner);
-			
-		float PlayRate = WeaponData->AttackRate;
-		AnimationComponent->PlayMontage(WeaponData->AttackMontage, CharacterOwner->GetMesh(), PlayRate);
-
-		return;
-	}
-	PerformAttack( nullptr);
+	return AbilitySystemComponent;
 }
 
 bool AWeaponBase::CanAttack()

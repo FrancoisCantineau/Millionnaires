@@ -1,5 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+/*
+ * Millionaire Project, 2026
+ * Created by:  "Francki"
+ * Last Updated by: "Francki"
+ * Class: "ProjectileBase" - Source
+ * Notes: Base template for the projectile class. Overrided by every projectile
+ */
 
 #include "Weapons/Projectiles/ProjectileBase.h"
 

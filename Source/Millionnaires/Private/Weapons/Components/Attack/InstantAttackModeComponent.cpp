@@ -19,7 +19,7 @@ void UInstantAttackModeComponent::Attack()
 	}
 	// update the time of our last attack
 	TimeOfLastAttack = GetWorld()->GetTimeSeconds();
-	const float AttacksPerSecond = OwnerWeapon->BuffComponent->GetFireRate();
+	const float AttacksPerSecond = OwnerWeapon->WeaponAttributesSet->GetAttackRate();
 	CooldownBetweenAttacks = 1.f / AttacksPerSecond;
 	
 	Super::Attack();

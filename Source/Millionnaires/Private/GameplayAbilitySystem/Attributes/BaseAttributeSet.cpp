@@ -1,11 +1,19 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
+/*
+ * Millionaire Project, 2026
+ * Created by:  "Francki"
+ * Last Updated by: "Francki"
+ * Class: "BaseAttributeSet" - Source
+ * Notes: Hold attributes, the basic ones, for the GAS system mainly
+ */
 
 
 #include "GameplayAbilitySystem/Attributes/BaseAttributeSet.h"
 #include "GameplayEffectExtension.h"
 
+
+#pragma region BaseAttributeSet
 
 void UBaseAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
 {
@@ -42,3 +50,42 @@ void UBaseAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute,
 		GetOwningAbilitySystemComponent()->TryActivateAbilitiesByTag(DeathAbilityTagContainer);
 	}
 }
+#pragma endregion BaseAttributeSet
+
+#pragma region PsychosisAttributeSet
+
+void UPsychosisAttributeSet::PreAttributeChange(
+	const FGameplayAttribute& Attribute,
+	float& NewValue)
+{
+	Super::PreAttributeChange(Attribute, NewValue);
+
+	if (Attribute == GetPsychosisAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.f, GetMaxPsychosis());
+	}
+}
+
+void UPsychosisAttributeSet::PostGameplayEffectExecute(
+	const FGameplayEffectModCallbackData& Data)
+{
+	Super::PostGameplayEffectExecute(Data);
+
+	if (Data.EvaluatedData.Attribute == GetPsychosisAttribute())
+	{
+		SetPsychosis(GetPsychosis());
+
+		UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+		if (!ASC) return;
+
+		if (GetPsychosis() <= 0.f)
+		{
+			FGameplayTagContainer TagsToRemove;
+			TagsToRemove.AddTag(FGameplayTag::RequestGameplayTag("State.Psychosis"));
+
+			ASC->RemoveActiveEffectsWithGrantedTags(TagsToRemove);
+
+		}
+	}
+}
+#pragma endregion PsychosisAttributeSet

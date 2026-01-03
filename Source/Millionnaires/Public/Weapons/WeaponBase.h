@@ -13,10 +13,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/WeaponAnimationHandlerComponent.h"
 #include "Components/Effect/WeaponEffectBaseComponent.h"
 #include "Components/Resources/WeaponResourceComponentBase.h"
 #include "GameFramework/Actor.h"
+
+//*GAS */
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
+#include "GameplayAbilitySystem/Attributes/BaseAttributeSet.h"
 
 #include "Weapons/Data/WeaponData.h"
 #include "Weapons/Struct/WeaponStruct.h"
@@ -28,7 +32,7 @@
 struct FGameplayEffectSpecHandle;
 
 UCLASS(Blueprintable, Abstract)
-class MILLIONNAIRES_API AWeaponBase : public AActor
+class MILLIONNAIRES_API AWeaponBase : public AActor, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 	
@@ -42,9 +46,6 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UWeaponBuffComponent* BuffComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	UWeaponAnimationHandlerComponent* AnimationComponent;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Components")
 	UWeaponResourceComponentBase*RessourceComponent;
@@ -58,13 +59,16 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	USkeletalMeshComponent* WeaponMesh;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GAS", meta = (AllowPrivateAccess = "true"))
+	const class UWeaponAttributeSet* WeaponAttributesSet;
+
 	/** Functions */
+
+	//* Returns the ability system component for this actor */
+	virtual  UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	
 	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent, Category = "Weapon")
 	void CallAttack();
-
-	UFUNCTION(BlueprintCallable, Category = "Weapon")
-	void StartAttacking();
 
 	UFUNCTION(BlueprintCallable,BlueprintImplementableEvent, Category = "Weapon")
 	void StopAttacking();
@@ -107,6 +111,8 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	virtual void InitializeWeaponAttributes();
+
 	//** Properties */
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Components")
@@ -116,6 +122,25 @@ protected:
 	UAttackExecutorBase* AttackExecutor;
 	
 	float PendingDamageMultiplier = 1.f;
+
+	
+
+	//* GAS */
+	
+    
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AbilitySystem")
+	UAbilitySystemComponent* AbilitySystemComponent;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="AbilitySystem")
+	EGameplayEffectReplicationMode AscReplicationMode = EGameplayEffectReplicationMode::Mixed;
+	
+	UPROPERTY()
+	bool bAttributesInitialized = false;
+
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<UGameplayEffect> InitialStatsGameplayEffect;
+	
+	//* END GAS */
 
 public:	
 	// Called every frame

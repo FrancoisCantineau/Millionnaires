@@ -12,7 +12,6 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "NiagaraFunctionLibrary.h"
-#include "Interfaces/DamageableInterface.h"
 #include "AbilitySystemComponent.h"
 
 #include "Engine/OverlapResult.h"
@@ -48,7 +47,7 @@ void UAttackExecutorBase::ApplyDamage(const FHitResult& Hit, AActor* AttackedAct
 	OwnerWeapon->ApplyEffects(Hit, OwnerWeapon);
 	
 	float DamageAmount = -GetFinalDamage(DamageMultiplier);
-	
+	/*
 	if (AttackedActor && AttackedActor->Implements<UDamageableInterface>())
 	{
 		const FHitResult& Hit2 = Hit;
@@ -58,7 +57,7 @@ void UAttackExecutorBase::ApplyDamage(const FHitResult& Hit, AActor* AttackedAct
 			OwnerWeapon->GetOwner()
 			
 		);
-	}
+	}*/
 
 }
 
