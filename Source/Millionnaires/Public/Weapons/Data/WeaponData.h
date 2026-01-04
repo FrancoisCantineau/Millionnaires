@@ -50,7 +50,10 @@ public:
 	float AttackRange = 200.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
-	TSubclassOf<class UGameplayEffect> WeaponStatsEffect;
+	TSubclassOf<UGameplayEffect> WeaponStatsEffect;
+
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly, Category = "GAS")
+	TArray<TSubclassOf<UGameplayEffect>> Effects;
 	
 	//Attacks per 1 second
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")

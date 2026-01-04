@@ -128,6 +128,7 @@ void UAttackExecutorBase::OnHit(const FHitResult& Hit)
 			OwnerASC->ExecuteGameplayCue(ImpactCueTag, CueParams);
 		}
 	}
+	OwnerWeapon->ApplyEffects(Hit, OwnerWeapon);
 	/*
 	if (ImpactVFX)
 	{

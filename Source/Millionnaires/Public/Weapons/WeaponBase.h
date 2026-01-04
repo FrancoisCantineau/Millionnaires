@@ -21,6 +21,7 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "GameplayAbilitySystem/Attributes/BaseAttributeSet.h"
+#include "GameplayAbilitySystem/Attributes/WeaponAttributeSet.h"
 
 #include "Weapons/Data/WeaponData.h"
 #include "Weapons/Struct/WeaponStruct.h"
@@ -60,7 +61,7 @@ public:
 	USkeletalMeshComponent* WeaponMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GAS", meta = (AllowPrivateAccess = "true"))
-	const class UWeaponAttributeSet* WeaponAttributesSet;
+	const UWeaponAttributeSet* WeaponAttributesSet;
 
 	/** Functions */
 

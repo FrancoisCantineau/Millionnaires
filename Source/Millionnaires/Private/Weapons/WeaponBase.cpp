@@ -12,6 +12,7 @@
 
 #include "Weapons//WeaponBase.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
 #include "GameFramework/Character.h"
 #include "Weapons/Components/Executor/AttackExecutorBase.h"
 
@@ -181,8 +182,24 @@ void AWeaponBase::InterruptAttack()
 
 void AWeaponBase::ApplyEffects(const FHitResult& Hit, AActor* Instigatorr)
 {
-	for (UWeaponEffectBaseComponent* Effect : Effects)
+
+	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Hit.GetActor());
+	UAbilitySystemComponent* InstigatorASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Owner);
+	
+	for (TSubclassOf<UGameplayEffect> EffectClass : WeaponData->Effects)
 	{
-		Effect->ApplyEffect(Hit, Instigatorr);
+		if (EffectClass)
+		{
+			FGameplayEffectContextHandle Context = InstigatorASC->MakeEffectContext();
+			Context.AddHitResult(Hit);
+                
+			FGameplayEffectSpecHandle SpecHandle = InstigatorASC->MakeOutgoingSpec(
+				EffectClass, 1.0f, Context);
+                    
+			if (SpecHandle.IsValid())
+			{
+				InstigatorASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
+			}
+		}
 	}
 }
