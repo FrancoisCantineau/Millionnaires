@@ -25,6 +25,7 @@ public class Millionnaires : ModuleRules
 			"ItemSystem",
 			"GameInterfaces",
 			"GameplayTags",
+			"DayNightCycleSystem",
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
