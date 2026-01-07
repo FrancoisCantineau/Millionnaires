@@ -22,6 +22,7 @@ public class MillionnairesEditorTarget : TargetRules
 			"InteractionSystem",
 			"GameInterfaces",
 			"ItemSystem",
+			"DayNightCycleSystem",
 		});
 	}
 }
