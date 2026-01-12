@@ -40,17 +40,6 @@ void UDamageCalculation::Execute_Implementation(const FGameplayEffectCustomExecu
         
     }
     
-    FGameplayTag OnFireTag = FGameplayTag::RequestGameplayTag(FName("Status.OnFire"));
-    if (TargetASC->HasMatchingGameplayTag(OnFireTag))
-    {
-        BaseDamage += 20.f;
-    }
-    
-    FGameplayTag PoisonedTag = FGameplayTag::RequestGameplayTag(FName("Status.Poisoned"));
-    if (TargetASC->HasMatchingGameplayTag(PoisonedTag))
-    {
-        BaseDamage *= 1.5f; 
-    }
 
     if (BaseDamage > 0.f)
     {

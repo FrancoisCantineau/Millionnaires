@@ -10,6 +10,8 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "GameplayAbilitySystem/Data/AbilityPriorityStruct.h"
+
 #include "CharacterDefinition.generated.h"
 
 class UTexture2D;
@@ -82,4 +84,9 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "Visual|FirstPerson")
     TSubclassOf<UAnimInstance> GetFirstPersonAnimClass() const { return FirstPersonAnimClass; }
+
+    /** GAS */
+    
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS")
+    TArray<FAbilityPriorityStruct> Abilities;
 };

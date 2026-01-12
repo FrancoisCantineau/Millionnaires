@@ -31,7 +31,20 @@ void UBaseAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectMo
 
 	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
+		UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+		if (!ASC) return;
 		SetHealth(GetHealth());
+
+		FGameplayTag LowHealthTag = FGameplayTag::RequestGameplayTag(FName("State.Health.Low"));
+		float HealthPercent = GetHealth() / GetMaxHealth();
+		
+		if (HealthPercent <= 0.30f) {
+			ASC->AddLooseGameplayTag(LowHealthTag);
+			
+		} else {
+			ASC->RemoveLooseGameplayTag(LowHealthTag);
+		}
+
 		
 		FGameplayTagContainer HitReactionTagContainer;
 		HitReactionTagContainer.AddTag(FGameplayTag::RequestGameplayTag(FName("GameplayAbility.HitReaction")));

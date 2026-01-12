@@ -15,7 +15,9 @@
 //*GAS */
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "Data/CharacterDefinition.h"
 #include "GameplayAbilitySystem/Attributes/BaseAttributeSet.h"
+#include "GameplayAbilitySystem/Attributes/StatusAttributeSet.h"
 
 
 #include "Ennemy/Ability/AbilityHandlerComponentBase.h"
@@ -44,6 +46,11 @@ public:
 
     virtual void OnRep_PlayerState() override;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UCharacterDefinition* DataCharacter;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    TArray<FAbilityPriorityStruct> AbilitiesSorted;
 
     
 protected:
@@ -54,10 +61,10 @@ protected:
     UAbilitySystemComponent* AbilitySystemComponent;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GAS", meta = (AllowPrivateAccess = "true"))
-    const class UBaseAttributeSet* BaseAttributesSet;
+    const  UBaseAttributeSet* BaseAttributesSet;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GAS", meta = (AllowPrivateAccess = "true"))
-    const class UWeaponAttributeSet* WeaponAttributesSet;
+    const UStatusAttributeSet* StatusAttributesSet;
     
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character|Components", meta = (AllowPrivateAccess = "true", ToolTip = "Component that manages health, hunger and basic character data."))
     TObjectPtr<UCharacterStatsComponent> StatsComponent;
@@ -65,12 +72,18 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character|Components")
     UDeathHandlerComponent* DeathHandler;
 
+   
+
     //* GAS SYSTEM */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="AbilitySystem")
     EGameplayEffectReplicationMode AscReplicationMode = EGameplayEffectReplicationMode::Mixed;
 
     /** Called when HP is depleted and the character should die */
     virtual void OnDeadTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
+
+    /**Initialize the abilites */
+    UFUNCTION(BlueprintCallable)
+    void GiveAbilities();
 
     //* END GAS */
 

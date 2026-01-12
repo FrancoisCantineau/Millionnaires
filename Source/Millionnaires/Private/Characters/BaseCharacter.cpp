@@ -32,11 +32,13 @@ void ABaseCharacter::BeginPlay()
     if (IsValid(AbilitySystemComponent))
     {
         BaseAttributesSet = AbilitySystemComponent->GetSet<UBaseAttributeSet>();
-        WeaponAttributesSet = AbilitySystemComponent->GetSet<UWeaponAttributeSet>();
+        StatusAttributesSet = AbilitySystemComponent->GetSet<UStatusAttributeSet>();
     }
 
     // Tag event registrations
     AbilitySystemComponent->RegisterGameplayTagEvent(FGameplayTag::RequestGameplayTag("State.Dead")).AddUObject(this, &ABaseCharacter::OnDeadTagChanged);
+
+    GiveAbilities();
 }
 
 
@@ -76,6 +78,42 @@ void ABaseCharacter::OnDeadTagChanged(const FGameplayTag CallbackTag, int32 NewC
     {
         DeathHandler->ExecuteDeath();
     }
+}
+
+void ABaseCharacter::GiveAbilities()
+{
+    if (DataCharacter && AbilitySystemComponent)
+    {
+
+        AbilitiesSorted.Empty();
+        
+        for (const FAbilityPriorityStruct& Entry : DataCharacter->Abilities)
+        {
+            if (!Entry.Ability)
+            {
+                continue;
+            }
+
+            AbilitiesSorted.Add(Entry);
+
+            FGameplayAbilitySpec Spec(
+                Entry.Ability,
+                1,          
+                INDEX_NONE,
+                this      
+            );
+
+            AbilitySystemComponent->GiveAbility(Spec);
+        }
+        AbilitiesSorted.Sort([](const FAbilityPriorityStruct& A, const FAbilityPriorityStruct& B)
+    {
+        return A.Priority < B.Priority;
+    });
+
+        AbilitySystemComponent->InitAbilityActorInfo(this, this);
+    }
+
+    
 }
 
 
