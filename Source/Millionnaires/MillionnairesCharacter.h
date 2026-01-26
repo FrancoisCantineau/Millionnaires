@@ -7,6 +7,9 @@
 #include "ItemData.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
+#include "QuestManagerComponent.h"
+#include "UI/QuestTrackerWidget.h"
+
 #include "MillionnairesCharacter.generated.h"
 
 class UFlashlightEquipmentComponent;
@@ -178,6 +181,15 @@ protected:
 
 #pragma endregion
 	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Quest")
+	UQuestManagerComponent* QuestManagerComponent;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UQuestTrackerWidget> QuestTrackerWidgetClass;
+
+	UPROPERTY()
+	UQuestTrackerWidget* QuestTrackerWidget;
+	
 #pragma region UI
 
 	/** Multi-inventory widget class */
@@ -323,5 +335,8 @@ public:
 	/** Get flashlight component */
 	FORCEINLINE UFlashlightEquipmentComponent* GetFlashlightComponent() const { return FlashlightComponent; }
 	
+	/** Get quest manager component */
+	FORCEINLINE UQuestManagerComponent* GetQuestManager() const { return QuestManagerComponent; }
+
 #pragma endregion
 };

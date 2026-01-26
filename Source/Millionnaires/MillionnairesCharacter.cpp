@@ -13,6 +13,7 @@
 #include "InventoryComponent.h"
 #include "RestrictedInventoryComponent.h"
 #include "DropComponent.h"
+#include "QuestManagerComponent.h"
 #include "UI/MultiInventoryWidget.h"
 #include "UI/InteractionWidget.h"
 #include "UI/InventoryWidget.h"
@@ -148,6 +149,9 @@ AMillionnairesCharacter::AMillionnairesCharacter()
 
 	// Create flashlight component
 	FlashlightComponent = CreateDefaultSubobject<UFlashlightEquipmentComponent>(TEXT("FlashlightComponent"));
+	
+	QuestManagerComponent = CreateDefaultSubobject<UQuestManagerComponent>(TEXT("QuestManagerComponent"));
+
 }
 
 void AMillionnairesCharacter::BeginPlay()
@@ -165,11 +169,20 @@ void AMillionnairesCharacter::BeginPlay()
 	{
 		ConsumableComponent->CacheInventoryComponents();
         
-		// Debug : vérifiez combien d'inventaires sont trouvés
 		if (ConsumableComponent->bDebugMode)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Character has %d cached inventories"), 
 				ConsumableComponent->GetAllInventories().Num());
+		}
+	}
+
+	if (QuestTrackerWidgetClass && IsValid(QuestManagerComponent))
+	{
+		QuestTrackerWidget = CreateWidget<UQuestTrackerWidget>(GetWorld(), QuestTrackerWidgetClass);
+		if (IsValid(QuestTrackerWidget))
+		{
+			QuestTrackerWidget->AddToViewport();
+			QuestTrackerWidget->InitializeTracker(QuestManagerComponent);
 		}
 	}
 }
