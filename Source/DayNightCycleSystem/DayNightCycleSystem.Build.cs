@@ -22,7 +22,10 @@ public class DayNightCycleSystem : ModuleRules
                 "InputCore",
                 "UMG",
                 "Slate",
-                "SlateCore" 
+                "SlateCore",
+                "DaySequence",
+                "MovieScene",   
+                "LevelSequence"  
             }
         );
     }

@@ -181,6 +181,8 @@ protected:
 
 #pragma endregion
 	
+#pragma region Quests
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Quest")
 	UQuestManagerComponent* QuestManagerComponent;
 
@@ -190,6 +192,18 @@ protected:
 	UPROPERTY()
 	UQuestTrackerWidget* QuestTrackerWidget;
 	
+#pragma endregion 
+	
+#pragma region Day/Night
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class UDayNightWidget> DayNightWidgetClass;
+
+	UPROPERTY()
+	class UDayNightWidget* DayNightWidget;
+	
+#pragma endregion 
+
 #pragma region UI
 
 	/** Multi-inventory widget class */

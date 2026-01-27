@@ -1,6 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "MillionnairesCharacter.h"
+
+#include "DayNightWidget.h"
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -165,6 +167,15 @@ void AMillionnairesCharacter::BeginPlay()
 		InteractionWidget->AddToViewport();
 		InteractionWidget->SetInteractionVisible(false);
 	}
+	if (DayNightWidgetClass)
+	{
+		DayNightWidget = CreateWidget<UDayNightWidget>(GetWorld(), DayNightWidgetClass);
+		if (DayNightWidget)
+		{
+			DayNightWidget->AddToViewport();
+		}
+	}
+	
 	if (ConsumableComponent)
 	{
 		ConsumableComponent->CacheInventoryComponents();
