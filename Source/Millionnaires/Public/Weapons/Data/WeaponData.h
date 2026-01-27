@@ -18,7 +18,7 @@
 
 #include "WeaponData.generated.h"
 
-
+class UGameplayEffect;
 class UAttackExecutorBase;
 /**
  * 

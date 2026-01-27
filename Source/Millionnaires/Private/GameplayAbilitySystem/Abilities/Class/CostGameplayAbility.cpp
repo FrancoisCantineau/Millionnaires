@@ -3,3 +3,10 @@
 
 #include "GameplayAbilitySystem/Abilities/Class/CostGameplayAbility.h"
 
+void UCostGameplayAbility::CheckActivationConditions(AActor* OptionalTarget) const
+{
+	if (OptionalTarget)
+	{
+		return;
+	}
+}

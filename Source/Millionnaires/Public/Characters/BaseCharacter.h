@@ -50,7 +50,10 @@ public:
     UCharacterDefinition* DataCharacter;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-    TArray<FAbilityPriorityStruct> AbilitiesSorted;
+    TArray<FAbilityInfosStruct> AbilitiesSorted;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    AActor* Target;
 
     
 protected:

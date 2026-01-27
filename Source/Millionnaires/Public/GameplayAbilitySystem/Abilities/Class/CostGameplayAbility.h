@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
+#include "GameplayAbilitySystem/Data/AbilityInfosStruct.h"
 #include "CostGameplayAbility.generated.h"
 
 /**
@@ -21,4 +22,10 @@ public :
 
 	UPROPERTY(EditDefaultsOnly)
 	float Cooldown;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	FAbilityInfosStruct Infos;
+	
+	UFUNCTION(BlueprintCallable, Category = "AI")
+	void CheckActivationConditions(AActor* OptionalTarget = nullptr) const;
 };

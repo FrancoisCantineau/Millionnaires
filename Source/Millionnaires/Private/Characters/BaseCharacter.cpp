@@ -87,7 +87,7 @@ void ABaseCharacter::GiveAbilities()
 
         AbilitiesSorted.Empty();
         
-        for (const FAbilityPriorityStruct& Entry : DataCharacter->Abilities)
+        for (const FAbilityInfosStruct& Entry : DataCharacter->Abilities)
         {
             if (!Entry.Ability)
             {
@@ -105,7 +105,7 @@ void ABaseCharacter::GiveAbilities()
 
             AbilitySystemComponent->GiveAbility(Spec);
         }
-        AbilitiesSorted.Sort([](const FAbilityPriorityStruct& A, const FAbilityPriorityStruct& B)
+        AbilitiesSorted.Sort([](const FAbilityInfosStruct& A, const FAbilityInfosStruct& B)
     {
         return A.Priority < B.Priority;
     });
