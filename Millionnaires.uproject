@@ -60,6 +60,10 @@
 		{
 			"Name": "GameplayStateTree",
 			"Enabled": true
+		},
+		{
+			"Name": "DaySequence",
+			"Enabled": true
 		}
 	],
 	"TargetPlatforms": [
