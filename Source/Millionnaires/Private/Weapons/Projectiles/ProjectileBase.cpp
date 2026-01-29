@@ -1,5 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+/*
+ * Millionaire Project, 2026
+ * Created by:  "Francki"
+ * Last Updated by: "Francki"
+ * Class: "ProjectileBase" - Source
+ * Notes: Base template for the projectile class. Overrided by every projectile
+ */
 
 #include "Weapons/Projectiles/ProjectileBase.h"
 
@@ -33,7 +40,7 @@ AProjectileBase::AProjectileBase()
 	ProjectileMovement->InitialSpeed = 2000.f;
 	ProjectileMovement->MaxSpeed = 2000.f;
 	ProjectileMovement->bRotationFollowsVelocity = true;
-	ProjectileMovement->bShouldBounce = false;
+	ProjectileMovement->bShouldBounce = bShouldBounce;
 
 	InitialLifeSpan = LifeTime;
 }
@@ -63,17 +70,42 @@ void AProjectileBase::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
 							UPrimitiveComponent* OtherComp, FVector NormalImpulse, 
 							const FHitResult& Hit)
 {
-	if (OtherActor && OtherActor != GetOwner())
+	StoredHit = Hit;
+	ProcessHit();
+}
+
+void AProjectileBase::ProcessHit()
+{
+	if (StoredHit.IsValidBlockingHit() && StoredHit.GetActor() && StoredHit.GetActor() != GetOwner())
 	{
-
-		UGameplayStatics::ApplyDamage(OtherActor, Damage, GetInstigatorController(), this, nullptr);
-
-
+		OnProjectileHit.Broadcast(StoredHit);
+		
 		if (ProjectileData->ImpactParticle)
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ProjectileData->ImpactParticle, Hit.ImpactPoint, FRotator::ZeroRotator);
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ProjectileData->ImpactParticle, StoredHit.ImpactPoint, FRotator::ZeroRotator);
 		if (ProjectileData->ImpactSound)
-			UGameplayStatics::PlaySoundAtLocation(this, ProjectileData->ImpactSound, Hit.ImpactPoint);
+			UGameplayStatics::PlaySoundAtLocation(this, ProjectileData->ImpactSound, StoredHit.ImpactPoint);
 
-		Destroy();
+		if (ProjectileData->ImpactDecal)
+		{
+			FVector DecalSize = FVector(10.f, 10.f, 10.f);
+			FRotator DecalRotation = StoredHit.ImpactNormal.Rotation();
+			DecalRotation.Roll = FMath::FRandRange(0.f, 360.f);
+			
+			UGameplayStatics::SpawnDecalAtLocation(
+				GetWorld(),
+				ProjectileData->ImpactDecal,
+				DecalSize,
+				StoredHit.ImpactPoint,
+				DecalRotation,
+				10.f
+			);
+		}
 	}
+	End();
+	
+}
+
+void AProjectileBase::End()
+{
+	Destroy();
 }

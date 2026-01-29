@@ -14,7 +14,13 @@
 
 #include <gsl/pointers>
 
-#include "Weapons/Components/AmmoBaseComponent.h"
+#include "AbilitySystemBlueprintLibrary.h"
+#include "GameplayTagContainer.h"
+#include "AbilitySystemComponent.h"
+#include "Abilities/GameplayAbility.h"
+#include "Abilities/GameplayAbilityTypes.h"
+
+#include "Weapons/Components/Resources/WeaponResourceComponentBase.h"
 
 // Sets default values for this component's properties
 UAttackModeComponentBase::UAttackModeComponentBase()
@@ -37,7 +43,6 @@ void UAttackModeComponentBase::BeginPlay()
 	// ...
 	
 }
-
 
 // Called every frame
 void UAttackModeComponentBase::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -87,13 +92,32 @@ void UAttackModeComponentBase::StopAttacking()
 void UAttackModeComponentBase::Attack()
 {
 	
-	UAmmoBaseComponent*AmmoComponent = OwnerWeapon->FindComponentByClass<UAmmoBaseComponent>();
-	
-	if (!AmmoComponent->Consume())
+	if (!OwnerWeapon->CanAttack())
 	{
 		return;
 	}
-	OwnerWeapon->PerformAttack(DamagesMultiplier);
+	OwnerWeapon->SetPendingDamageMultiplier(DamagesMultiplier);
+	//OwnerWeapon->StartAttacking();
+	//OwnerWeapon->PerformAttack();
+
+	AActor* WeaponOwner = OwnerWeapon->GetOwner(); // Le joueur
+	UAbilitySystemComponent* OwnerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(WeaponOwner);
+    
+	if (!OwnerASC)
+		return;
+
+	
+	FGameplayEventData EventData;
+	EventData.Instigator = WeaponOwner;
+	EventData.Target = OwnerWeapon;
+	EventData.OptionalObject = this; 
+	EventData.EventMagnitude = DamagesMultiplier; 
+    
+	
+	OwnerASC->HandleGameplayEvent(
+		FGameplayTag::RequestGameplayTag(FName("Weapon.Fire")), 
+		&EventData
+	);
 	
 }
 

@@ -67,6 +67,7 @@ protected:
 	float CooldownBetweenAttacks = 0.f;
 
 	float DamagesMultiplier = 1.f;
+
 	
 
 public:	

@@ -19,12 +19,19 @@ public class Millionnaires : ModuleRules
 			"GameplayStateTreeModule",
 			"UMG",
 			"Slate",
+			"SlateCore",
 			"Niagara",
+
+			// Gameplay
+			"GameplayTags",
+			"GameplayAbilities",
+			"GameplayTasks",
+
+			// Systems custom
 			"InventorySystem",
 			"InteractionSystem",
 			"ItemSystem",
 			"GameInterfaces",
-			"GameplayTags",
 			"DayNightCycleSystem",
 			"QuestSystem",
 		});

@@ -15,6 +15,9 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "ProjectileBase.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnProjectileHit,const FHitResult&,Hit);
+
+
 UCLASS(Blueprintable)
 class MILLIONNAIRES_API AProjectileBase : public AActor
 {
@@ -26,8 +29,9 @@ public:
 	
 	// Sets default values for this actor's properties
 	AProjectileBase();
-	
-	void SetDamage(float InDamage) { Damage = InDamage; }
+
+	UPROPERTY(BlueprintAssignable)
+	FOnProjectileHit OnProjectileHit;
 
 	//* Properties */
 	
@@ -58,12 +62,21 @@ protected:
 	virtual void BeginPlay() override;
 
 	UFUNCTION()
-	void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, 
+	virtual void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, 
 			   UPrimitiveComponent* OtherComp, FVector NormalImpulse, 
 			   const FHitResult& Hit);
 
-public:	
+	virtual void End();
+
+	FHitResult StoredHit;
+
+public:		
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+	
+	virtual void ProcessHit();
 
+	//** Properties */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config")
+	bool bShouldBounce = false;
 };

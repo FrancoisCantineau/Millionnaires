@@ -40,15 +40,15 @@ void UWeaponBuffComponent::BuildAttributeMap()
     AttributeMap.Add("CriticalMultiplier", &CriticalMultiplier);
 }
 
-FGameplayAttribute* UWeaponBuffComponent::GetAttributeByName(FName AttributeName)
+FCustomModifierAttribute* UWeaponBuffComponent::GetAttributeByName(FName AttributeName)
 {
-    FGameplayAttribute** Found = AttributeMap.Find(AttributeName);
+    FCustomModifierAttribute** Found = AttributeMap.Find(AttributeName);
     return Found ? *Found : nullptr;
 }
 
 void UWeaponBuffComponent::AddModifierToAttribute(FName AttributeName, const FStatModifier& Modifier)
 {
-    FGameplayAttribute* Attr = GetAttributeByName(AttributeName);
+    FCustomModifierAttribute* Attr = GetAttributeByName(AttributeName);
     if (!Attr) return;
 
     FStatModifier NewMod = Modifier;
@@ -58,7 +58,7 @@ void UWeaponBuffComponent::AddModifierToAttribute(FName AttributeName, const FSt
 
 void UWeaponBuffComponent::RemoveModifierFromAttribute(FName AttributeName, FName ModifierTag)
 {
-    FGameplayAttribute* Attr = GetAttributeByName(AttributeName);
+    FCustomModifierAttribute* Attr = GetAttributeByName(AttributeName);
     if (!Attr) return;
 
     Attr->RemoveModifier(ModifierTag);

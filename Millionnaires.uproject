@@ -11,7 +11,9 @@
 			"AdditionalDependencies": [
 				"Engine",
 				"AIModule",
-				"UMG"
+				"UMG",
+				"CoreUObject",
+				"GameplayAbilities"
 			]
 		},
 		{
@@ -59,6 +61,10 @@
 		},
 		{
 			"Name": "GameplayStateTree",
+			"Enabled": true
+		},
+		{
+			"Name": "GameplayAbilities",
 			"Enabled": true
 		},
 		{

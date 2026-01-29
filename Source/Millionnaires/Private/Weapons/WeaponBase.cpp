@@ -12,10 +12,13 @@
 
 #include "Weapons//WeaponBase.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
+#include "GameFramework/Character.h"
+#include "Weapons/Components/Executor/AttackExecutorBase.h"
+
 
 
 #pragma region Setup
-
 
 // Sets default values
 AWeaponBase::AWeaponBase()
@@ -28,7 +31,18 @@ AWeaponBase::AWeaponBase()
 	RootComponent = WeaponMesh;
 
 	BuffComponent = CreateDefaultSubobject<UWeaponBuffComponent>(TEXT("BuffComponent"));
+
+	//Add the ability system component
+	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(AscReplicationMode);
 	
+}
+
+
+void AWeaponBase::SetPendingDamageMultiplier(float DamagesMultiplier)
+{
+	PendingDamageMultiplier = DamagesMultiplier;
 }
 
 /**
@@ -46,8 +60,59 @@ void AWeaponBase::BeginPlay()
 {
 	Super::BeginPlay();
 
+	AttackExecutor = WeaponData->ExecutorType;
+
+	if (AttackExecutor)
+	{
+		AttackExecutor->Initialize(this);
+	}
+
+	if (!bAttributesInitialized)
+	{
+		InitializeWeaponAttributes();
+		bAttributesInitialized = true;
+	}
+	
 	GetComponents<UWeaponEffectBaseComponent>(Effects);
+
+	RessourceComponent = FindComponentByClass<UWeaponResourceComponentBase>();
+	
 	ApplyWeaponData();
+
+	if (IsValid(AbilitySystemComponent))
+	{
+		WeaponAttributesSet = AbilitySystemComponent->GetSet<UWeaponAttributeSet>();
+	}
+	
+}
+
+void AWeaponBase::InitializeWeaponAttributes()
+{
+	if (!AbilitySystemComponent || !WeaponData) return;
+
+	FGameplayEffectContextHandle Context =
+		AbilitySystemComponent->MakeEffectContext();
+
+	FGameplayEffectSpecHandle Spec =
+		AbilitySystemComponent->MakeOutgoingSpec(
+			InitialStatsGameplayEffect,
+			1.f,
+			Context
+		);
+
+	if (!Spec.IsValid()) return;
+
+	Spec.Data->SetSetByCallerMagnitude(
+		FGameplayTag::RequestGameplayTag("Data.Weapon.Damage"),
+		WeaponData->BaseDamage
+	);
+
+	Spec.Data->SetSetByCallerMagnitude(
+		FGameplayTag::RequestGameplayTag("Data.Weapon.AttackRate"),
+		WeaponData->AttackRate
+	);
+
+	AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data);
 }
 
 void AWeaponBase::ApplyWeaponData()
@@ -71,20 +136,9 @@ void AWeaponBase::ApplyWeaponData()
 			WeaponData->AttackRate,
 			WeaponData->AttackRange
 		);
-            
-		// Debug pour vérifier
-		UE_LOG(LogTemp, Warning, TEXT("✅ BuffComponent initialized - FireRate: %.2f"), 
-			   BuffComponent->GetFireRate());
 	}
 }
 
-void AWeaponBase::ApplyEffects(const FHitResult& Hit, AActor* Instigatorr)
-{
-	for (UWeaponEffectBaseComponent* Effect : Effects)
-	{
-		Effect->ApplyEffect(Hit, Instigatorr);
-	}
-}
 
 #pragma endregion
 
@@ -93,4 +147,59 @@ void AWeaponBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+}
+
+UAbilitySystemComponent* AWeaponBase::GetAbilitySystemComponent() const
+{
+	return AbilitySystemComponent;
+}
+
+bool AWeaponBase::CanAttack()
+{
+	if (RessourceComponent)
+	{
+		return RessourceComponent->CanConsume();
+	}
+	return true;
+}
+
+void AWeaponBase::PerformAttack(FGameplayEffectSpecHandle GEHandle)
+{
+	if (AttackExecutor)
+	{
+		RessourceComponent->Consume();
+		AttackExecutor->ExecuteAttack(PendingDamageMultiplier, GEHandle);
+	}
+}
+
+void AWeaponBase::InterruptAttack()
+{
+	if (AttackExecutor)
+	{
+		AttackExecutor->EndAttackExecution();
+	}
+}
+
+void AWeaponBase::ApplyEffects(const FHitResult& Hit, AActor* Instigatorr)
+{
+
+	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Hit.GetActor());
+	UAbilitySystemComponent* InstigatorASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Owner);
+	
+	for (TSubclassOf<UGameplayEffect> EffectClass : WeaponData->Effects)
+	{
+		if (EffectClass)
+		{
+			FGameplayEffectContextHandle Context = InstigatorASC->MakeEffectContext();
+			Context.AddHitResult(Hit);
+                
+			FGameplayEffectSpecHandle SpecHandle = InstigatorASC->MakeOutgoingSpec(
+				EffectClass, 1.0f, Context);
+                    
+			if (SpecHandle.IsValid())
+			{
+				InstigatorASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
+			}
+		}
+	}
 }

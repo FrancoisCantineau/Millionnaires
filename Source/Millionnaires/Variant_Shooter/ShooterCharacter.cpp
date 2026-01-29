@@ -20,11 +20,21 @@ AShooterCharacter::AShooterCharacter()
 
 	// configure movement
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 600.0f, 0.0f);
+
+	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 }
 
 void AShooterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (IsValid(AbilitySystemComponent))
+	{
+		BaseAttributesSet = AbilitySystemComponent->GetSet<UBaseAttributeSet>();
+		WeaponAttributesSet = AbilitySystemComponent->GetSet<UWeaponAttributeSet>();
+	}
 
 	// reset HP to max
 	CurrentHP = MaxHP;

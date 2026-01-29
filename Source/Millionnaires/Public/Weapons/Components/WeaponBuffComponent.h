@@ -28,19 +28,19 @@ public:
     
     //** Properties */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat Attributes")
-    FGameplayAttribute Damage;
+    FCustomModifierAttribute Damage;
     
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat Attributes")
-    FGameplayAttribute FireRate;
+    FCustomModifierAttribute FireRate;
     
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat Attributes")
-    FGameplayAttribute Range;
+    FCustomModifierAttribute Range;
     
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat Attributes")
-    FGameplayAttribute CriticalChance;
+    FCustomModifierAttribute CriticalChance;
     
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat Attributes")
-    FGameplayAttribute CriticalMultiplier;
+    FCustomModifierAttribute CriticalMultiplier;
     
     //** Public Functions */
     UFUNCTION(BlueprintCallable, Category = "Attributes")
@@ -53,7 +53,7 @@ public:
     void ClearAllModifiers();
     
 
-    FGameplayAttribute* GetAttributeByName(FName AttributeName);
+    FCustomModifierAttribute* GetAttributeByName(FName AttributeName);
     
     // Helpers
     UFUNCTION(BlueprintPure, Category = "Attributes")
@@ -81,7 +81,7 @@ protected:
     void CleanupExpiredModifiers();
     
     // Map pour accès dynamique par nom
-    TMap<FName, FGameplayAttribute*> AttributeMap;
+    TMap<FName, FCustomModifierAttribute*> AttributeMap;
     
     void BuildAttributeMap();
 };

@@ -5,6 +5,11 @@
 #include "CoreMinimal.h"
 #include "MillionnairesCharacter.h"
 #include "ShooterWeaponHolder.h"
+
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
+#include "GameplayAbilitySystem/Attributes/BaseAttributeSet.h"
+
 #include "ShooterCharacter.generated.h"
 
 class AShooterWeapon;
@@ -21,7 +26,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDamagedDelegate, float, LifePercent
  *  Manages health and death
  */
 UCLASS(abstract)
-class MILLIONNAIRES_API AShooterCharacter : public AMillionnairesCharacter, public IShooterWeaponHolder
+class MILLIONNAIRES_API AShooterCharacter : public AMillionnairesCharacter, public IShooterWeaponHolder, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 	
@@ -31,6 +36,17 @@ class MILLIONNAIRES_API AShooterCharacter : public AMillionnairesCharacter, publ
 
 protected:
 
+	//* PROPERTIES */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AbilitySystem")
+	UAbilitySystemComponent* AbilitySystemComponent;
+
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GAS", meta = (AllowPrivateAccess = "true"))
+	const class UBaseAttributeSet* BaseAttributesSet;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GAS", meta = (AllowPrivateAccess = "true"))
+	const class UWeaponAttributeSet* WeaponAttributesSet;
+	
 	/** Fire weapon input action */
 	UPROPERTY(EditAnywhere, Category ="Input")
 	UInputAction* FireAction;
@@ -106,6 +122,12 @@ public:
 	/** Handle incoming damage */
 	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
+	//* Returns the ability system component for this actor */
+	virtual class UAbilitySystemComponent* GetAbilitySystemComponent() const override
+	{
+		return AbilitySystemComponent;
+	}
+	
 public:
 
 	/** Handles aim inputs from either controls or UI interfaces */

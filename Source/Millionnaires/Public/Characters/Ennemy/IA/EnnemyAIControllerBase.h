@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+#include "Characters/Ennemy/BaseEnnemyCharacter.h"
 #include "EnnemyAIControllerBase.generated.h"
 
 /**
@@ -21,11 +22,14 @@ protected:
 	virtual void OnPossess(APawn* InPawn) override;
 
 	/** Blackboard */
-	UPROPERTY(EditDefaultsOnly, Category="AI")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AI")
 	UBlackboardData* BlackboardAsset;
 
 	/** Behavior Tree */
-	UPROPERTY(EditDefaultsOnly, Category="AI")
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite, Category="AI")
 	UBehaviorTree* BehaviorTreeAsset;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="AI")
+	ABaseEnnemyCharacter* EnemyOwner;
 	
 };

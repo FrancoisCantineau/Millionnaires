@@ -14,3 +14,11 @@ enum class EWeaponType : uint8
     Melee UMETA(DisplayName = "Melee"),
     Ranged UMETA(DisplayName = "Ranged")
 };
+
+UENUM(BlueprintType)
+enum class EAttackAreaType : uint8
+{
+	Single,
+	Sphere,
+	Cone
+};
