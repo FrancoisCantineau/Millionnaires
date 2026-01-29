@@ -3,149 +3,45 @@
  * Created by: "0nnen"
  * Last Updated by: "0nnen"
  * Class: "DispatchMissionSiteActor" - Source
- * Notes: Represents a building/zone group that can be targeted by missions and highlighted via Overlay Material.
+ * Notes: Represents a mission site in the Dispatch map and supports highlight + click targets.
  */
 #include "Dispatch/Map/DispatchMissionSiteActor.h"
 
+#include "Components/PrimitiveComponent.h"
 #include "Components/MeshComponent.h"
 #include "Materials/MaterialInterface.h"
-#include "Materials/MaterialInstanceDynamic.h"
+
+#pragma region LIFECYCLE
 
 ADispatchMissionSiteActor::ADispatchMissionSiteActor()
 {
-    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = false;
 }
 
-void ADispatchMissionSiteActor::BeginPlay()
-{
-    Super::BeginPlay();
-
-    CacheMeshes();
-    RestoreOriginalOverlays();
-
-    if (bDebugLogs)
-    {
-        UE_LOG(LogTemp, Log, TEXT("[DispatchSite] BeginPlay | %s | Meshes=%d | Overlay=%s"),
-            *GetName(), cachedMeshes.Num(), *GetNameSafe(highlightOverlayMaterial));
-    }
-}
-
-void ADispatchMissionSiteActor::Tick(float DeltaSeconds)
-{
-    Super::Tick(DeltaSeconds);
-
-    if (!bSmoothFade)
-    {
-        return;
-    }
-
-    if (!highlightOverlayMaterial || cachedMeshes.Num() == 0)
-    {
-        return;
-    }
-
-    const float Speed = (targetAlpha > currentAlpha) ? fadeInSpeed : fadeOutSpeed;
-    currentAlpha = FMath::FInterpConstantTo(currentAlpha, targetAlpha, DeltaSeconds, FMath::Max(0.01f, Speed));
-
-    ApplyInstant(currentAlpha);
-}
+#pragma endregion LIFECYCLE
 
 #pragma region API
 
-void ADispatchMissionSiteActor::SetVisualState(EDispatchMissionSiteVisualState NewState)
-{
-    if (visualState == NewState)
-    {
-        return;
-    }
-
-    if (cachedMeshes.Num() == 0)
-    {
-        CacheMeshes();
-    }
-
-    visualState = NewState;
-    targetAlpha = GetTargetAlphaForState(visualState);
-
-    if (bDebugLogs)
-    {
-        UE_LOG(LogTemp, Log, TEXT("[DispatchSite] SetVisualState | %s | State=%d | TargetAlpha=%.2f | Meshes=%d"),
-            *GetName(), (int32)visualState, targetAlpha, cachedMeshes.Num());
-    }
-
-    // IMPORTANT: Apply instantly at least once, so it works even if tick is disabled.
-    if (!bSmoothFade)
-    {
-        currentAlpha = targetAlpha;
-        ApplyInstant(currentAlpha);
-    }
-    else
-    {
-        ApplyInstant(FMath::Max(currentAlpha, (targetAlpha > 0.f ? 0.02f : 0.f)));
-    }
-}
-
-void ADispatchMissionSiteActor::SetOfferActive(bool bActive)
-{
-    if (bDebugLogs)
-    {
-        UE_LOG(LogTemp, Log, TEXT("[DispatchSite] SetOfferActive | %s | Active=%s"), *GetName(), bActive ? TEXT("true") : TEXT("false"));
-    }
-
-    SetVisualState(bActive ? EDispatchMissionSiteVisualState::Offer : EDispatchMissionSiteVisualState::None);
-}
-
-void ADispatchMissionSiteActor::SetMissionState(EDispatchMissionState NewMissionState)
-{
-    switch (NewMissionState)
-    {
-        case EDispatchMissionState::Accepted:
-        case EDispatchMissionState::Traveling:
-        case EDispatchMissionState::Working:
-        case EDispatchMissionState::Returning:
-            SetVisualState(EDispatchMissionSiteVisualState::Running);
-            break;
-
-        case EDispatchMissionState::Completed:
-            SetVisualState(EDispatchMissionSiteVisualState::Completed);
-            break;
-
-        case EDispatchMissionState::Failed:
-        case EDispatchMissionState::Aborted:
-            SetVisualState(EDispatchMissionSiteVisualState::Failed);
-            break;
-
-        default:
-            break;
-    }
-}
-
 void ADispatchMissionSiteActor::RebuildMeshCache()
 {
-    CacheMeshes();
-
-    if (bDebugLogs)
-    {
-        UE_LOG(LogTemp, Log, TEXT("[DispatchSite] RebuildMeshCache | %s | Meshes=%d"), *GetName(), cachedMeshes.Num());
-    }
-}
-
-#pragma endregion API
-
-#pragma region INTERNAL
-
-void ADispatchMissionSiteActor::CacheMeshes()
-{
+    cachedPrimitives.Reset();
     cachedMeshes.Reset();
-    originalOverlayByMesh.Reset();
+    previousOverlayByMesh.Reset();
 
-    auto GatherFromActor = [&](AActor* Actor)
+    // Collect primitives + meshes from self.
     {
-        if (!Actor) return;
+        TArray<UPrimitiveComponent*> Prims;
+        GetComponents(Prims);
+        for (UPrimitiveComponent* P : Prims)
+        {
+            if (P)
+            {
+                cachedPrimitives.Add(P);
+            }
+        }
 
         TArray<UMeshComponent*> Meshes;
-        Actor->GetComponents<UMeshComponent>(Meshes, /*bIncludeFromChildActors=*/true);
-
+        GetComponents(Meshes);
         for (UMeshComponent* M : Meshes)
         {
             if (M)
@@ -153,98 +49,139 @@ void ADispatchMissionSiteActor::CacheMeshes()
                 cachedMeshes.Add(M);
             }
         }
-    };
-
-    if (bIncludeSelfMeshes)
-    {
-        GatherFromActor(this);
     }
 
+    // Collect primitives + meshes from targets.
     for (AActor* A : targetActors)
     {
-        GatherFromActor(A);
-    }
+        if (!A) continue;
 
-    originalOverlayByMesh.Reserve(cachedMeshes.Num());
-    for (UMeshComponent* M : cachedMeshes)
-    {
-        originalOverlayByMesh.Add(M ? M->GetOverlayMaterial() : nullptr);
-    }
-
-    if (bDebugLogs)
-    {
-        UE_LOG(LogTemp, Log, TEXT("[DispatchSite] CacheMeshes | %s | Targets=%d | Meshes=%d"),
-            *GetName(), targetActors.Num(), cachedMeshes.Num());
-    }
-}
-
-void ADispatchMissionSiteActor::ApplyOverlayToMeshes(UMaterialInterface* Overlay)
-{
-    for (UMeshComponent* M : cachedMeshes)
-    {
-        if (M)
+        TArray<UPrimitiveComponent*> Prims;
+        A->GetComponents(Prims);
+        for (UPrimitiveComponent* P : Prims)
         {
-            M->SetOverlayMaterial(Overlay);
+            if (P)
+            {
+                cachedPrimitives.Add(P);
+            }
+        }
+
+        TArray<UMeshComponent*> Meshes;
+        A->GetComponents(Meshes);
+        for (UMeshComponent* M : Meshes)
+        {
+            if (M)
+            {
+                cachedMeshes.Add(M);
+            }
         }
     }
+
+    // Re-apply current highlight state.
+    const bool bShouldHighlight = bOfferActive || (currentMissionState != EDispatchMissionState::None
+        && currentMissionState != EDispatchMissionState::Completed
+        && currentMissionState != EDispatchMissionState::Failed
+        && currentMissionState != EDispatchMissionState::Aborted);
+
+    ApplyHighlight(bShouldHighlight, customDepthStencilValue);
 }
 
-void ADispatchMissionSiteActor::RestoreOriginalOverlays()
+void ADispatchMissionSiteActor::SetOfferActive(bool bActive)
 {
-    for (int32 i = 0; i < cachedMeshes.Num(); ++i)
-    {
-        UMeshComponent* M = cachedMeshes[i];
-        if (!M) continue;
+    bOfferActive = bActive;
 
-        UMaterialInterface* Original = originalOverlayByMesh.IsValidIndex(i) ? originalOverlayByMesh[i] : nullptr;
-        M->SetOverlayMaterial(Original);
+    if (cachedPrimitives.Num() == 0)
+    {
+        RebuildMeshCache();
     }
+
+    // Offer highlight enabled unless mission already ended.
+    const bool bEnable = bOfferActive;
+    ApplyHighlight(bEnable, customDepthStencilValue);
 }
 
-void ADispatchMissionSiteActor::EnsureOverlayMID()
+void ADispatchMissionSiteActor::SetMissionState(EDispatchMissionState NewState)
 {
-    if (overlayMID || !highlightOverlayMaterial)
+    currentMissionState = NewState;
+
+    if (cachedPrimitives.Num() == 0)
     {
-        return;
+        RebuildMeshCache();
     }
 
-    overlayMID = UMaterialInstanceDynamic::Create(highlightOverlayMaterial, this);
+    const bool bEnded = (NewState == EDispatchMissionState::Completed || NewState == EDispatchMissionState::Failed || NewState == EDispatchMissionState::Aborted);
+    ApplyHighlight(!bEnded, customDepthStencilValue);
 }
 
-float ADispatchMissionSiteActor::GetTargetAlphaForState(EDispatchMissionSiteVisualState State) const
+#pragma endregion API
+
+#pragma region INTERNAL
+
+void ADispatchMissionSiteActor::ApplyHighlight(bool bEnabled, int32 Stencil)
 {
-    switch (State)
+    // 1) OverlayMaterial highlight (preferred).
+    if (bUseOverlayMaterialHighlight)
     {
-        case EDispatchMissionSiteVisualState::Offer: return 1.f;
-        case EDispatchMissionSiteVisualState::Running: return 1.f;
-        case EDispatchMissionSiteVisualState::Failed: return 1.f;
-        case EDispatchMissionSiteVisualState::Completed: return 1.f;
-        default: return 0.f;
-    }
-}
+        if (!overlayHighlightMaterial)
+        {
+            // We still allow CustomDepth highlight even if overlay material is not set.
+            UE_LOG(LogTemp, Warning, TEXT("[DispatchSite] Overlay highlight enabled but overlayHighlightMaterial is null on %s"), *GetName());
+        }
 
-void ADispatchMissionSiteActor::ApplyInstant(float Alpha)
-{
-    if (!highlightOverlayMaterial || cachedMeshes.Num() == 0)
-    {
-        return;
+        for (UMeshComponent* M : cachedMeshes)
+        {
+            if (!M) continue;
+
+            if (bEnabled)
+            {
+                if (bRestorePreviousOverlayMaterial && !previousOverlayByMesh.Contains(M))
+                {
+                    previousOverlayByMesh.Add(M, M->GetOverlayMaterial());
+                }
+
+                if (overlayHighlightMaterial)
+                {
+                    M->SetOverlayMaterial(overlayHighlightMaterial);
+                }
+            }
+            else
+            {
+                if (bRestorePreviousOverlayMaterial)
+                {
+                    if (TObjectPtr<UMaterialInterface>* Prev = previousOverlayByMesh.Find(M))
+                    {
+                        M->SetOverlayMaterial(Prev->Get());
+                        previousOverlayByMesh.Remove(M);
+                    }
+                    else
+                    {
+                        // If we didn't cache anything (rare), clear it.
+                        M->SetOverlayMaterial(nullptr);
+                    }
+                }
+                else
+                {
+                    M->SetOverlayMaterial(nullptr);
+                }
+            }
+        }
     }
 
-    if (Alpha <= 0.f)
+    // 2) CustomDepth outline highlight (optional secondary).
+    if (bUseCustomDepthHighlight)
     {
-        RestoreOriginalOverlays();
-        return;
-    }
+        for (UPrimitiveComponent* P : cachedPrimitives)
+        {
+            if (!P) continue;
 
-    EnsureOverlayMID();
-    if (overlayMID)
-    {
-        overlayMID->SetScalarParameterValue(highlightAlphaParamName, Alpha);
-        ApplyOverlayToMeshes(overlayMID);
-    }
-    else
-    {
-        ApplyOverlayToMeshes(highlightOverlayMaterial);
+            P->SetRenderCustomDepth(bEnabled);
+
+            // Only set stencil when enabled to avoid overwriting other systems when disabled.
+            if (bEnabled)
+            {
+                P->SetCustomDepthStencilValue(Stencil);
+            }
+        }
     }
 }
 
