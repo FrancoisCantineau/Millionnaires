@@ -89,7 +89,7 @@ void ABaseCharacter::GiveAbilities()
         
         for (const FAbilityInfosStruct& Entry : DataCharacter->Abilities)
         {
-            if (!Entry.Ability)
+            if (!Entry.Ability || !Entry.ShouldActivate)
             {
                 continue;
             }

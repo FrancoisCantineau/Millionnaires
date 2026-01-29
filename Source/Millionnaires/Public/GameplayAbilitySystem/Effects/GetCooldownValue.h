@@ -1,5 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+/*
+* Millionaire Project, 2026
+ * Created by:  "Francki"
+ * Last Updated by: "Francki"
+ * Class: "DamageCalculation" - Header
+ * Notes: Helper to get custom cooldown value, based of the ability setting.
+ */
+
 #pragma once
 
 #include "CoreMinimal.h"

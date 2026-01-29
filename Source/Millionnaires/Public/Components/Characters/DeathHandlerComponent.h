@@ -1,4 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
+/*
+ * Millionaire Project, 2026
+ * Created by:  "Francki"
+ * Last Updated by: "Francki"
+ * Class: "DeathHandlerComponent " - Header
+ * Notes: Component to manage the death. This will execute all the different routines called whenever something dies.
+ */
+
 
 #pragma once
 

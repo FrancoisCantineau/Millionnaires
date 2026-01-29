@@ -21,6 +21,4 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Blackboard")
 	FBlackboardKeySelector SelectedAbilityIndexKey;
 
-	UPROPERTY(EditAnywhere, Category = "Blackboard")
-	FGameplayTag SelectedAbilityTag;
 };

@@ -1,4 +1,12 @@
-﻿#pragma once
+﻿/*
+* Millionaire Project, 2026
+ * Created by:  "Francki"
+ * Last Updated by: "Francki"
+ * Class: "AbilityInfosStruct" - Header
+ * Notes: Abilities struct.
+ */
+
+#pragma once
 
 #include "CoreMinimal.h"
 #include "AbilityInfosStruct.generated.h"
@@ -19,4 +27,8 @@ struct FAbilityInfosStruct
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS")
 	int32 Priority;
+
+	//* DEBUG MODE TO ACTIVATE/DEACTIVATE */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS")
+	bool ShouldActivate = true;
 };

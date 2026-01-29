@@ -5,7 +5,7 @@
  * Created by:  "Francki"
  * Last Updated by: "Francki"
  * Class: "BaseAttributeSet" - Source
- * Notes: Hold attributes, the basic ones, for the GAS system mainly
+ * Notes: Hold weapon attributes, the basic ones, for the GAS system mainly. Such as fire rate, etc
  */
 
 
