@@ -10,6 +10,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Dispatch/Missions/DispatchMissionTypes.h"
 #include "CharacterStatsComponent.generated.h"
 
 class UCharacterDefinition;
@@ -60,6 +61,26 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "Definition")
     UCharacterDefinition* GetCharacterDefinition() const { return CharacterDefinition; }
+
+    /// <summary>Returns stable character id used by dispatch missions.</summary>
+    UFUNCTION(BlueprintPure, Category = "Dispatch|Profile")
+    FName GetCharacterId() const;
+
+    /// <summary>Returns rating (0..10) for a given mission skill.</summary>
+    UFUNCTION(BlueprintPure, Category = "Dispatch|Profile")
+    int32 GetSkillRating10(EDispatchMissionSkill Skill) const;
+
+    /// <summary>Returns location affinity multiplier (1.0 neutral).</summary>
+    UFUNCTION(BlueprintPure, Category = "Dispatch|Profile")
+    float GetLocationAffinityMultiplier(EDispatchMissionLocation Location) const;
+
+    /// <summary>Flat bonus added to success chance for this character (0..1).</summary>
+    UFUNCTION(BlueprintPure, Category = "Dispatch|Profile")
+    float GetFlatSuccessBonus01() const;
+
+    /// <summary>Equipment bonus placeholder (0..1). Later should come from inventory/equipment.</summary>
+    UFUNCTION(BlueprintPure, Category = "Dispatch|Profile")
+    float GetEquipmentBonus01() const;
 
 protected:
 

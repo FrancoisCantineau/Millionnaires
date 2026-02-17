@@ -14,6 +14,7 @@ class UDispatchMissionDefinition;
 class ADispatchMissionSiteActor;
 class APawn;
 class UTexture2D;
+class UCharacterDefinition;
 
 #pragma region ENUMS
 
@@ -74,7 +75,137 @@ enum class EDispatchMissionDifficultyMetric : uint8
     ComplicationChance  UMETA(DisplayName="Complication Chance"),
 };
 
+
+/// <summary>Skills used to compute mission success chance. Extend freely.</summary>
+UENUM(BlueprintType)
+enum class EDispatchMissionSkill : uint8
+{
+    Combat       UMETA(DisplayName="Combat"),
+    Engineering  UMETA(DisplayName="Engineering"),
+    Medical      UMETA(DisplayName="Medical"),
+    Security     UMETA(DisplayName="Security"),
+    Science      UMETA(DisplayName="Science"),
+    Diplomacy    UMETA(DisplayName="Diplomacy"),
+    Logistics    UMETA(DisplayName="Logistics"),
+};
+
 #pragma endregion ENUMS
+
+
+
+/// <summary>Success chance model used by mission definitions.</summary>
+USTRUCT(BlueprintType)
+struct FDispatchMissionSuccessModel
+{
+    GENERATED_BODY()
+
+    /// <summary>Minimum number of agents required to accept the mission.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success", meta=(ClampMin="1", ClampMax="8"))
+    int32 minAgents = 1;
+
+    /// <summary>Maximum number of agents allowed for this mission.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success", meta=(ClampMin="1", ClampMax="8"))
+    int32 maxAgents = 3;
+
+    /// <summary>Base success chance before bonuses/penalties (0..1).</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success", meta=(ClampMin="0.0", ClampMax="1.0"))
+    float baseSuccessChance01 = 0.55f;
+
+    /// <summary>
+    /// Skill weights used to compute a weighted average skill score on 10.
+    /// If empty, Combat=1 is assumed.
+    /// </summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success")
+    TMap<EDispatchMissionSkill, float> skillWeights;
+
+    /// <summary>How much 1 point of weighted skill score (on 10) adds to success chance.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success", meta=(ClampMin="0.0", ClampMax="0.2"))
+    float perSkillPoint10ToChance01 = 0.02f;
+
+    /// <summary>Which difficulty metric applies a penalty to success chance.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success")
+    EDispatchMissionDifficultyMetric difficultyPenaltyMetric = EDispatchMissionDifficultyMetric::ComplicationChance;
+
+    /// <summary>How much 1 point of difficulty (on 10) subtracts from success chance.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success", meta=(ClampMin="0.0", ClampMax="0.2"))
+    float difficultyPenaltyPerPoint10 = 0.02f;
+
+    /// <summary>How much agent location affinity modifies success chance: (Affinity-1) * weight.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success", meta=(ClampMin="0.0", ClampMax="1.0"))
+    float affinityBonusWeight = 0.15f;
+
+    /// <summary>Multiplier applied to equipment bonus (placeholder for inventory system).</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success", meta=(ClampMin="0.0", ClampMax="2.0"))
+    float equipmentBonusWeight = 1.0f;
+
+    /// <summary>Clamp min success chance.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success", meta=(ClampMin="0.0", ClampMax="1.0"))
+    float clampMin01 = 0.05f;
+
+    /// <summary>Clamp max success chance.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success", meta=(ClampMin="0.0", ClampMax="1.0"))
+    float clampMax01 = 0.95f;
+};
+
+/// <summary>Computed breakdown (useful for UI debugging).</summary>
+USTRUCT(BlueprintType)
+struct FDispatchMissionSuccessBreakdown
+{
+    GENERATED_BODY()
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success")
+    float baseChance01 = 0.f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success")
+    float skillBonus01 = 0.f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success")
+    float affinityBonus01 = 0.f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success")
+    float equipmentBonus01 = 0.f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success")
+    float difficultyPenalty01 = 0.f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success")
+    float finalChance01 = 0.f;
+};
+
+/// <summary>UI entry representing a selectable agent (character) for missions.</summary>
+USTRUCT(BlueprintType)
+struct FDispatchSelectableAgentEntry
+{
+    GENERATED_BODY()
+
+    /// <summary>Pawn in the world representing the agent.</summary>
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|UI|Agents")
+    TObjectPtr<APawn> agentPawn = nullptr;
+
+    /// <summary>Character definition used for display/stats.</summary>
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|UI|Agents")
+    TObjectPtr<UCharacterDefinition> characterDefinition = nullptr;
+
+    /// <summary>Stable character id (from definition).</summary>
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|UI|Agents")
+    FName characterId = NAME_None;
+
+    /// <summary>Display name.</summary>
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|UI|Agents")
+    FText displayName;
+
+    /// <summary>Portrait for UI.</summary>
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|UI|Agents")
+    TObjectPtr<UTexture2D> portrait = nullptr;
+
+    /// <summary>Whether this agent is already assigned to another active mission.</summary>
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|UI|Agents")
+    bool bIsBusy = false;
+
+    /// <summary>Whether this agent is selected for the currently viewed mission.</summary>
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|UI|Agents")
+    bool bIsSelected = false;
+};
 
 #pragma region STRUCTS
 
@@ -245,6 +376,15 @@ struct FDispatchActiveMission
     /// <summary>Difficulty values carried over from the source offer (used by UI).</summary>
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
     FDispatchMissionDifficulty difficulty;
+
+
+    /// <summary>Computed success chance at accept time (0..1).</summary>
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success")
+    float successChance01 = 0.0f;
+
+    /// <summary>Assigned character definitions (used for UI & persistence).</summary>
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")
+    TArray<TObjectPtr<UCharacterDefinition>> assignedCharacters;
 
     /// <summary>Assigned agents (AI pawns). FPS missions should contain exactly 1 agent (future).</summary>
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dispatch|Missions")

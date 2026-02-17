@@ -52,6 +52,15 @@ public:
 
 #pragma endregion GENERAL
 
+#pragma region SUCCESS_MODEL
+
+    /// <summary>Defines how success chance is computed when selecting characters.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Missions|Success")
+    FDispatchMissionSuccessModel successModel;
+
+#pragma endregion SUCCESS_MODEL
+
+
 #pragma region TIME_LIMIT
 
     /// <summary>Offer time limit (seconds): if the player doesn't accept in time, the offer expires.</summary>
