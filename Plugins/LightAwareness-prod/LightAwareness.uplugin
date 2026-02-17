@@ -1,0 +1,23 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "LightAwareness",
+	"Description": "Standalone Lightweight Light Detection System",
+	"Category": "Other",
+	"CreatedBy": "Cem Akkaya",
+	"CreatedByURL": "https://www.cemakkaya.com",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"Installed": true,
+	"Modules": [
+		{
+		  "Name": "LightAwareness",
+		  "Type": "Runtime",
+          "LoadingPhase": "PostConfigInit",
+          "ShaderDirectoryMappings": {"/Plugin/LightAwareness": "Shaders"}
+        }
+	]
+}

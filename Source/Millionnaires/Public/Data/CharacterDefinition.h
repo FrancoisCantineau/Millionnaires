@@ -10,6 +10,8 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "GameplayAbilitySystem/Data/AbilityInfosStruct.h"
+
 #include "CharacterDefinition.generated.h"
 
 class UTexture2D;
@@ -82,4 +84,18 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "Visual|FirstPerson")
     TSubclassOf<UAnimInstance> GetFirstPersonAnimClass() const { return FirstPersonAnimClass; }
+
+    /** GAS */
+    
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS")
+    TArray<FAbilityInfosStruct> Abilities;
+
+    /** AI COMBAT */
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
+    float MinStraffingDistance = 0;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
+    float MaxStraffingDistance = 0;
+    
 };

@@ -20,7 +20,20 @@ public class Millionnaires : ModuleRules
 			"UMG",
 			"Slate",
 			"SlateCore",
-			"Niagara"
+			"Niagara",
+
+			// Gameplay
+			"GameplayTags",
+			"GameplayAbilities",
+			"GameplayTasks",
+
+			// Systems custom
+			"InventorySystem",
+			"InteractionSystem",
+			"ItemSystem",
+			"GameInterfaces",
+			"DayNightCycleSystem",
+			"QuestSystem",
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

@@ -3,6 +3,8 @@
 
 #include "Characters/Ennemy/IA/EnnemyAIControllerBase.h"
 
+#include "Characters/Ennemy/BaseEnnemyCharacter.h"
+
 AEnnemyAIControllerBase::AEnnemyAIControllerBase()
 {
 }
@@ -10,10 +12,13 @@ AEnnemyAIControllerBase::AEnnemyAIControllerBase()
 void AEnnemyAIControllerBase::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
-	
-	if (BehaviorTreeAsset)
+
+	EnemyOwner = Cast<ABaseEnnemyCharacter>(InPawn);
+	if (!EnemyOwner || !EnemyOwner->BehaviorTree)
 	{
-		RunBehaviorTree(BehaviorTreeAsset);
+		return;
 	}
+
+	RunBehaviorTree(EnemyOwner->BehaviorTree);
 }
 

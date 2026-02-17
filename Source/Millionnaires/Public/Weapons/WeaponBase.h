@@ -14,7 +14,14 @@
 
 #include "CoreMinimal.h"
 #include "Components/Effect/WeaponEffectBaseComponent.h"
+#include "Components/Resources/WeaponResourceComponentBase.h"
 #include "GameFramework/Actor.h"
+
+//*GAS */
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
+#include "GameplayAbilitySystem/Attributes/BaseAttributeSet.h"
+#include "GameplayAbilitySystem/Attributes/WeaponAttributeSet.h"
 
 #include "Weapons/Data/WeaponData.h"
 #include "Weapons/Struct/WeaponStruct.h"
@@ -23,8 +30,10 @@
 #include "WeaponBase.generated.h"
 
 
+struct FGameplayEffectSpecHandle;
+
 UCLASS(Blueprintable, Abstract)
-class MILLIONNAIRES_API AWeaponBase : public AActor
+class MILLIONNAIRES_API AWeaponBase : public AActor, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 	
@@ -39,6 +48,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UWeaponBuffComponent* BuffComponent;
 	
+	UPROPERTY(BlueprintReadOnly, Category = "Components")
+	UWeaponResourceComponentBase*RessourceComponent;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	UWeaponData* WeaponData;
 
@@ -48,21 +60,27 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	USkeletalMeshComponent* WeaponMesh;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GAS", meta = (AllowPrivateAccess = "true"))
+	const UWeaponAttributeSet* WeaponAttributesSet;
+
 	/** Functions */
+
+	//* Returns the ability system component for this actor */
+	virtual  UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	
 	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent, Category = "Weapon")
-	void Attack();
-
-	UFUNCTION(BlueprintCallable,BlueprintImplementableEvent, Category = "Weapon")
-	void StartAttacking();
+	void CallAttack();
 
 	UFUNCTION(BlueprintCallable,BlueprintImplementableEvent, Category = "Weapon")
 	void StopAttacking();
 
-	UFUNCTION(BlueprintCallable,BlueprintImplementableEvent, Category = "Weapon")
-	void PerformAttack(float DamagesMultiplicator);
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	bool CanAttack();
+	
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	void PerformAttack(FGameplayEffectSpecHandle GEHandle);
 
-	UFUNCTION(BlueprintCallable,BlueprintImplementableEvent, Category = "Weapon")
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void InterruptAttack();
 	
 	UFUNCTION(BlueprintPure, Category = "Weapon")
@@ -70,6 +88,12 @@ public:
     
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	float GetRange() const { return WeaponData ? WeaponData->AttackRange : 0.f; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetAttackRate() const { return WeaponData ? WeaponData->AttackRate : 0.f; }
+
+	UFUNCTION(BlueprintCallable)
+	void SetPendingDamageMultiplier(float DamagesMultiplier);
 
 	virtual void OnConstruction(const FTransform& Transform) override;
 
@@ -79,14 +103,45 @@ public:
 
 	USkeletalMeshComponent* GetWeaponMesh(){return WeaponMesh;};
 
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void HitScanEnable(bool bShouldEnable);
+
+	void HitScanEnable_Implementation(bool bShouldEnable){};
+	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	virtual void InitializeWeaponAttributes();
 
 	//** Properties */
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Components")
 	TArray<UWeaponEffectBaseComponent*> Effects;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Components")
+	UAttackExecutorBase* AttackExecutor;
+	
+	float PendingDamageMultiplier = 1.f;
+
+	
+
+	//* GAS */
+	
+    
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AbilitySystem")
+	UAbilitySystemComponent* AbilitySystemComponent;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="AbilitySystem")
+	EGameplayEffectReplicationMode AscReplicationMode = EGameplayEffectReplicationMode::Mixed;
+	
+	UPROPERTY()
+	bool bAttributesInitialized = false;
+
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<UGameplayEffect> InitialStatsGameplayEffect;
+	
+	//* END GAS */
 
 public:	
 	// Called every frame

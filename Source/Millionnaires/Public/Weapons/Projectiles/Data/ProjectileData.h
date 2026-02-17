@@ -47,6 +47,9 @@ public :
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effects")
 	UParticleSystem* TrailParticle;
+
+	UPROPERTY(EditDefaultsOnly, Category="Effects")
+	UMaterialInterface* ImpactDecal;
 	
 };
 

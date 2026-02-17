@@ -11,18 +11,15 @@
 
 #include "Weapons/Components/Attack/InstantAttackModeComponent.h"
 
-#include "Weapons/Components/AmmoBaseComponent.h"
-
 void UInstantAttackModeComponent::Attack()
 {
 	if (!bIsAttacking || !CanAttack())
 	{
 		return;
 	}
-	GEngine->AddOnScreenDebugMessage(-1, 8.f, FColor::Blue, FString::Printf(TEXT("aaaaFFF %f"), OwnerWeapon->BuffComponent->GetFireRate()));
 	// update the time of our last attack
 	TimeOfLastAttack = GetWorld()->GetTimeSeconds();
-	const float AttacksPerSecond = OwnerWeapon->BuffComponent->GetFireRate();
+	const float AttacksPerSecond = OwnerWeapon->WeaponAttributesSet->GetAttackRate();
 	CooldownBetweenAttacks = 1.f / AttacksPerSecond;
 	
 	Super::Attack();
