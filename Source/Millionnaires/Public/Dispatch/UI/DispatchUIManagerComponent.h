@@ -148,6 +148,18 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|UI|Missions")
     bool bPauseMissionTimeWhenDetailsOpen = true;
 
+    /// <summary>If true, only pawns with dispatchAgentTag are shown in the mission agent selection list.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|UI|Missions|Agents")
+    bool bRequireDispatchAgentTag = true;
+
+    /// <summary>Tag used to identify selectable dispatch agents in the level.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|UI|Missions|Agents")
+    FName dispatchAgentTag = FName("DispatchAgent");
+
+    /// <summary>If true, busy agents are still displayed but marked as busy (not selectable).</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|UI|Missions|Agents")
+    bool bShowBusyAgents = true;
+
 #pragma endregion SETTINGS
 
 protected:
@@ -196,6 +208,14 @@ protected:
     /// <summary>Details widget close callback.</summary>
     UFUNCTION()
     void HandleDetailsCloseRequested();
+
+    
+    /// <summary>Details widget accept callback.</summary>
+    UFUNCTION()
+    void HandleDetailsAcceptRequested(const FGuid& OfferId, const TArray<APawn*>& SelectedAgents);
+
+    /// <summary>Gather selectable agents in the world.</summary>
+    void GatherSelectableAgents(TArray<APawn*>& OutAgents) const;
 
 #pragma endregion INTERNAL_CALLBACKS
 

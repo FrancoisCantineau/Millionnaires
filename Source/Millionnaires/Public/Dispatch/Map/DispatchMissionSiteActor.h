@@ -8,6 +8,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "TimerManager.h"
 #include "GameFramework/Actor.h"
 #include "Dispatch/Missions/DispatchMissionTypes.h"
 #include "DispatchMissionSiteActor.generated.h"
@@ -54,6 +55,18 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Highlight")
     TObjectPtr<UMaterialInterface> overlayHighlightMaterial = nullptr;
 
+    /// <summary>Material to apply in the OverlayMaterial slot for the short expiry pulse (offer expired without accept).</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Highlight")
+    TObjectPtr<UMaterialInterface> offerExpiredPulseOverlayMaterial = nullptr;
+
+    /// <summary>Duration (seconds) of the short expiry pulse highlight.</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Highlight", meta=(ClampMin="0.01", ClampMax="5.0"))
+    float offerExpiredPulseDurationSec = 0.25f;
+
+    /// <summary>Material to apply in the OverlayMaterial slot while a mission is running (travel/work/return).</summary>
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Highlight")
+    TObjectPtr<UMaterialInterface> activeMissionOverlayMaterial = nullptr;
+
     /// <summary>If true, restores the previous OverlayMaterial when highlight is disabled.</summary>
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dispatch|Map|Highlight")
     bool bRestorePreviousOverlayMaterial = true;
@@ -83,6 +96,10 @@ public:
     UFUNCTION(BlueprintCallable, Category="Dispatch|Map|Site")
     void SetOfferActive(bool bActive);
 
+    /// <summary>Plays a short pulse highlight when an offer expires (no agents sent).</summary>
+    UFUNCTION(BlueprintCallable, Category="Dispatch|Map|Site")
+    void PlayOfferExpiredPulse();
+
     /// <summary>Sets highlight state based on mission state.</summary>
     UFUNCTION(BlueprintCallable, Category="Dispatch|Map|Site")
     void SetMissionState(EDispatchMissionState NewState);
@@ -91,6 +108,12 @@ public:
 
 protected:
 #pragma region INTERNAL
+
+    /// <summary>Refreshes highlight by evaluating offer/mission/pulse state and choosing the right material.</summary>
+    void RefreshHighlight();
+
+    /// <summary>Ends the offer expired pulse and restores the correct highlight state.</summary>
+    void EndOfferExpiredPulse();
 
     /// <summary>Applies highlight to cached components (OverlayMaterial and/or CustomDepth).</summary>
     void ApplyHighlight(bool bEnabled, int32 Stencil);
@@ -108,6 +131,9 @@ private:
 
     /// <summary>Cached overlay material per mesh to restore after highlight ends.</summary>
     TMap<TWeakObjectPtr<UMeshComponent>, TObjectPtr<UMaterialInterface>> previousOverlayByMesh;
+
+    bool bOfferExpiredPulseActive = false;
+    FTimerHandle offerExpiredPulseTimerHandle;
 
     bool bOfferActive = false;
     EDispatchMissionState currentMissionState = EDispatchMissionState::None;

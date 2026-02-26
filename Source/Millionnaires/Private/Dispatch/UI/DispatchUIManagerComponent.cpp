@@ -20,6 +20,8 @@
 #include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
 
+#include "Components/Characters/CharacterStatsComponent.h"
+
 namespace
 {
     static AActor* FindFirstActorWithTag(UWorld* World, const FName Tag)
@@ -212,6 +214,22 @@ void UDispatchUIManagerComponent::OpenMissionDetailsForOffer(const FGuid& OfferI
     missionDetailsWidget->SetFromOffer(OfferId, Offer);
     missionDetailsWidget->SetVisibility(ESlateVisibility::Visible);
 
+    // Provide selectable agents to the details menu.
+    {
+        TArray<APawn*> Agents;
+        GatherSelectableAgents(Agents);
+        missionDetailsWidget->SetAvailableAgents(Agents);
+
+        // Mark busy agents (already assigned).
+        if (missionManager.IsValid() && bShowBusyAgents)
+        {
+            for (APawn* P : Agents)
+            {
+                missionDetailsWidget->SetAgentBusy(P, missionManager->IsAgentBusy(P));
+            }
+        }
+    }
+
     bIsMissionDetailsOpen = true;
 
     // Pause mission time while menu is open.
@@ -402,6 +420,7 @@ void UDispatchUIManagerComponent::EnsureMissionDetailsWidget()
     }
 
     missionDetailsWidget->OnCloseRequested.AddDynamic(this, &UDispatchUIManagerComponent::HandleDetailsCloseRequested);
+    missionDetailsWidget->OnAcceptRequested.AddDynamic(this, &UDispatchUIManagerComponent::HandleDetailsAcceptRequested);
     missionDetailsWidget->AddToViewport(missionDetailsZOrder);
     missionDetailsWidget->SetVisibility(ESlateVisibility::Hidden);
 }
@@ -469,5 +488,73 @@ void UDispatchUIManagerComponent::HandleDetailsCloseRequested()
 {
     CloseMissionDetails();
 }
+
+
+void UDispatchUIManagerComponent::HandleDetailsAcceptRequested(const FGuid& OfferId, const TArray<APawn*>& SelectedAgents)
+{
+    if (!missionManager.IsValid() || !OfferId.IsValid())
+    {
+        return;
+    }
+
+    if (missionManager->AcceptOffer(OfferId, SelectedAgents))
+    {
+        // Optional: retrieve the created MissionId for logging/debug.
+        FDispatchActiveMission NewMission;
+        if (missionManager->TryGetActiveMissionFromOffer(OfferId, NewMission))
+        {
+            UE_LOG(LogTemp, Log, TEXT("[DispatchUI] Accepted offer %s -> mission %s"), *OfferId.ToString(), *NewMission.missionId.ToString());
+        }
+        else
+        {
+            UE_LOG(LogTemp, Log, TEXT("[DispatchUI] Accepted offer %s"), *OfferId.ToString());
+        }
+
+        // Close menu after accepting.
+        CloseMissionDetails();
+    }
+}
+
+void UDispatchUIManagerComponent::GatherSelectableAgents(TArray<APawn*>& OutAgents) const
+{
+    OutAgents.Reset();
+
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        return;
+    }
+
+    for (TActorIterator<APawn> It(World); It; ++It)
+    {
+        APawn* P = *It;
+        if (!P)
+        {
+            continue;
+        }
+
+        // Filter by tag if requested.
+        if (bRequireDispatchAgentTag && !dispatchAgentTag.IsNone() && !P->ActorHasTag(dispatchAgentTag))
+        {
+            continue;
+        }
+
+        // Must have CharacterStatsComponent to be selectable.
+        if (!P->FindComponentByClass<UCharacterStatsComponent>())
+        {
+            continue;
+        }
+
+        // Busy filtering: either show and mark, or hide them.
+        const bool bBusy = missionManager.IsValid() ? missionManager->IsAgentBusy(P) : false;
+        if (bBusy && !bShowBusyAgents)
+        {
+            continue;
+        }
+
+        OutAgents.Add(P);
+    }
+}
+
 
 #pragma endregion INTERNAL_CALLBACKS

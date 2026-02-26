@@ -181,3 +181,33 @@ void UCharacterStatsComponent::ClampStats()
         CurrentHunger = 0.0f;
     }
 }
+
+
+#pragma region DISPATCH_PROFILE
+
+FName UCharacterStatsComponent::GetCharacterId() const
+{
+    return CharacterDefinition ? CharacterDefinition->GetCharacterId() : NAME_None;
+}
+
+int32 UCharacterStatsComponent::GetSkillRating10(EDispatchMissionSkill Skill) const
+{
+    return CharacterDefinition ? CharacterDefinition->GetSkillRating10(Skill) : 0;
+}
+
+float UCharacterStatsComponent::GetLocationAffinityMultiplier(EDispatchMissionLocation Location) const
+{
+    return CharacterDefinition ? CharacterDefinition->GetLocationAffinityMultiplier(Location) : 1.0f;
+}
+
+float UCharacterStatsComponent::GetFlatSuccessBonus01() const
+{
+    return CharacterDefinition ? CharacterDefinition->GetFlatSuccessBonus01() : 0.0f;
+}
+
+float UCharacterStatsComponent::GetEquipmentBonus01() const
+{
+    return CharacterDefinition ? CharacterDefinition->GetEquipmentBonus01() : 0.0f;
+}
+
+#pragma endregion DISPATCH_PROFILE
