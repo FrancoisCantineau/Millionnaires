@@ -51,26 +51,25 @@ void UWeaponsManagerComponent::EquipWeapon(TSubclassOf<AWeaponBase> WeaponClass)
 {
 	if (IsValid(OwningCharacter))
 	{
-		FVector Location = OwningCharacter->GetActorLocation();
-		FRotator Rotation = FRotator::ZeroRotator;
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Owner = OwningCharacter;
 		SpawnParams.Instigator = OwningCharacter->GetInstigator();
 
-		EquippedWeapon = GetWorld()->SpawnActor<AWeaponBase>(WeaponClass, Location, Rotation, SpawnParams);
+		EquippedWeapon = GetWorld()->SpawnActor<AWeaponBase>(
+	   WeaponClass,
+	   FTransform::Identity,
+	   SpawnParams
+   );
 
-		if (EquippedWeapon)
+		if (!EquippedWeapon)
+			return;
 		{
 			
 			FName WeaponSocket = EquippedWeapon->WeaponData->AttachSocketName;
 			TSubclassOf<UAnimInstance> WeaponAnimInstance = EquippedWeapon->WeaponData->AnimInstance;
 			
-			FAttachmentTransformRules AttachRules(
-	EAttachmentRule::KeepRelative,
-	EAttachmentRule::KeepRelative,
-	EAttachmentRule::KeepWorld,
-	true
-);
+			FAttachmentTransformRules AttachRules =
+				FAttachmentTransformRules::SnapToTargetIncludingScale;
 
 			EquippedWeapon->AttachToComponent(
 				OwningCharacter->GetMesh(),
