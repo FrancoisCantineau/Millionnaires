@@ -218,6 +218,12 @@ bool UDispatchMissionManagerComponent::AcceptOffer(const FGuid& OfferId, const T
     SetMissionState(Mission, EDispatchMissionState::Accepted);
     activeMissions.Add(Mission);
 
+    // Stop offer highlight on this site (we're transitioning to mission highlight).
+    if (ADispatchMissionSiteActor* SiteActor = Offer.locationActor.Get())
+    {
+        SiteActor->SetOfferActive(false);
+    }
+
     // Remove offer.
     offers.RemoveAt(Index);
     OnOfferAccepted.Broadcast(OfferId);
@@ -230,10 +236,21 @@ bool UDispatchMissionManagerComponent::AcceptOffer(const FGuid& OfferId, const T
     SetMissionState(activeMissions.Last(), EDispatchMissionState::Traveling);
 
     return true;
-}
-
-bool UDispatchMissionManagerComponent::DeclineOffer(const FGuid& OfferId)
+}bool UDispatchMissionManagerComponent::DeclineOffer(const FGuid& OfferId)
 {
+    // Stop highlight on the related site (player declined, no expiry pulse).
+    for (const FDispatchMissionOffer& O : offers)
+    {
+        if (O.offerId == OfferId)
+        {
+            if (ADispatchMissionSiteActor* Site = O.locationActor.Get())
+            {
+                Site->SetOfferActive(false);
+            }
+            break;
+        }
+    }
+
     const int32 Before = offers.Num();
     offers.RemoveAll([&](const FDispatchMissionOffer& O) { return O.offerId == OfferId; });
 
@@ -246,6 +263,7 @@ bool UDispatchMissionManagerComponent::DeclineOffer(const FGuid& OfferId)
     UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] Offer declined | OfferId=%s"), *OfferId.ToString());
     return true;
 }
+
 
 #pragma endregion API_OFFERS
 
@@ -505,6 +523,11 @@ void UDispatchMissionManagerComponent::GenerateOffer()
         offers.Add(Offer);
         OnOfferAdded.Broadcast(Offer.offerId);
 
+        if (ADispatchMissionSiteActor* SiteActor = Offer.locationActor.Get())
+        {
+            SiteActor->SetOfferActive(true);
+        }
+
         UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] Offer added | OfferId=%s | Def=%s | Loc=%d | Time=%.1fs"),
                *Offer.offerId.ToString(), *GetNameSafe(Def), (int32)Offer.missionLocation, Offer.timeLimitSec);
 
@@ -538,6 +561,25 @@ void UDispatchMissionManagerComponent::UpdateOfferTimers(float DeltaTime)
 
     for (const FGuid& Id : Expired)
     {
+        // Capture the offer before removal so we can drive highlights (pulse) correctly.
+        ADispatchMissionSiteActor* Site = nullptr;
+
+        for (const FDispatchMissionOffer& O : offers)
+        {
+            if (O.offerId == Id)
+            {
+                Site = O.locationActor.Get();
+                break;
+            }
+        }
+
+        // Stop the offer highlight and play a short pulse (offer expired without accept).
+        if (Site)
+        {
+            Site->SetOfferActive(false);
+            Site->PlayOfferExpiredPulse();
+        }
+
         offers.RemoveAll([&](const FDispatchMissionOffer& O) { return O.offerId == Id; });
 
         OnOfferExpired.Broadcast(Id);
@@ -718,6 +760,11 @@ void UDispatchMissionManagerComponent::SetMissionState(FDispatchActiveMission& M
     const float Min = FMath::Min(Range.X, Range.Y);
     const float Max = FMath::Max(Range.X, Range.Y);
     Mission.stageDuration = (FMath::IsNearlyEqual(Min, Max)) ? Min : Rng.FRandRange(Min, Max);
+
+    if (ADispatchMissionSiteActor* SiteActor = Mission.locationActor.Get())
+    {
+        SiteActor->SetMissionState(NewState);
+    }
 
     OnMissionStateChanged.Broadcast(Mission.missionId, NewState);
 }

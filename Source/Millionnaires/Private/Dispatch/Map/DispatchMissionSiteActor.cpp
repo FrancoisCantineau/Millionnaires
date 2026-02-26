@@ -10,6 +10,27 @@
 #include "Components/PrimitiveComponent.h"
 #include "Components/MeshComponent.h"
 #include "Materials/MaterialInterface.h"
+#include "Engine/World.h"
+#include "TimerManager.h"
+
+
+namespace DispatchSiteHighlight
+{
+    static bool IsMissionActiveState(const EDispatchMissionState State)
+    {
+        return State == EDispatchMissionState::Accepted
+            || State == EDispatchMissionState::Traveling
+            || State == EDispatchMissionState::Working
+            || State == EDispatchMissionState::Returning;
+    }
+
+    static bool IsMissionEndedState(const EDispatchMissionState State)
+    {
+        return State == EDispatchMissionState::Completed
+            || State == EDispatchMissionState::Failed
+            || State == EDispatchMissionState::Aborted;
+    }
+}
 
 #pragma region LIFECYCLE
 
@@ -26,7 +47,13 @@ void ADispatchMissionSiteActor::RebuildMeshCache()
 {
     cachedPrimitives.Reset();
     cachedMeshes.Reset();
-    previousOverlayByMesh.Reset();
+
+    // NOTE: we keep previousOverlayByMesh to restore the *original* overlay when highlight fully ends.
+    // If you rebuild cache while highlighted, we should not lose previous overlays for already tracked meshes.
+    if (bRestorePreviousOverlayMaterial)
+    {
+        previousOverlayByMesh.Reset();
+    }
 
     // Collect primitives + meshes from self.
     {
@@ -77,40 +104,114 @@ void ADispatchMissionSiteActor::RebuildMeshCache()
         }
     }
 
-    // Re-apply current highlight state.
-    const bool bShouldHighlight = bOfferActive || (currentMissionState != EDispatchMissionState::None
-        && currentMissionState != EDispatchMissionState::Completed
-        && currentMissionState != EDispatchMissionState::Failed
-        && currentMissionState != EDispatchMissionState::Aborted);
-
-    ApplyHighlight(bShouldHighlight, customDepthStencilValue);
+    RefreshHighlight();
 }
+
 
 void ADispatchMissionSiteActor::SetOfferActive(bool bActive)
 {
     bOfferActive = bActive;
 
-    if (cachedPrimitives.Num() == 0)
+    // If an offer comes back, stop any expiry pulse.
+    if (bActive)
     {
-        RebuildMeshCache();
+        bOfferExpiredPulseActive = false;
+        if (UWorld* World = GetWorld())
+        {
+            World->GetTimerManager().ClearTimer(offerExpiredPulseTimerHandle);
+        }
     }
 
-    // Offer highlight enabled unless mission already ended.
-    const bool bEnable = bOfferActive;
-    ApplyHighlight(bEnable, customDepthStencilValue);
+    if (cachedPrimitives.Num() == 0 && cachedMeshes.Num() == 0)
+    {
+        RebuildMeshCache();
+        return;
+    }
+
+    RefreshHighlight();
 }
+
 
 void ADispatchMissionSiteActor::SetMissionState(EDispatchMissionState NewState)
 {
     currentMissionState = NewState;
 
-    if (cachedPrimitives.Num() == 0)
+    // When a mission is running, an offer shouldn't keep highlighting this place.
+    if (DispatchSiteHighlight::IsMissionActiveState(NewState))
+    {
+        bOfferActive = false;
+
+        // Also stop any expiry pulse.
+        bOfferExpiredPulseActive = false;
+        if (UWorld* World = GetWorld())
+        {
+            World->GetTimerManager().ClearTimer(offerExpiredPulseTimerHandle);
+        }
+    }
+
+    if (cachedPrimitives.Num() == 0 && cachedMeshes.Num() == 0)
+    {
+        RebuildMeshCache();
+        return;
+    }
+
+    RefreshHighlight();
+}
+
+
+
+void ADispatchMissionSiteActor::PlayOfferExpiredPulse()
+{
+    // If a mission is currently running here, we do not play the expired pulse.
+    if (DispatchSiteHighlight::IsMissionActiveState(currentMissionState))
+    {
+        return;
+    }
+
+    // The offer is gone by definition.
+    bOfferActive = false;
+
+    if (cachedPrimitives.Num() == 0 && cachedMeshes.Num() == 0)
     {
         RebuildMeshCache();
     }
 
-    const bool bEnded = (NewState == EDispatchMissionState::Completed || NewState == EDispatchMissionState::Failed || NewState == EDispatchMissionState::Aborted);
-    ApplyHighlight(!bEnded, customDepthStencilValue);
+    bOfferExpiredPulseActive = true;
+    RefreshHighlight();
+
+    if (UWorld* World = GetWorld())
+    {
+        World->GetTimerManager().ClearTimer(offerExpiredPulseTimerHandle);
+        World->GetTimerManager().SetTimer(
+            offerExpiredPulseTimerHandle,
+            this,
+            &ADispatchMissionSiteActor::EndOfferExpiredPulse,
+            FMath::Max(0.01f, offerExpiredPulseDurationSec),
+            false
+        );
+    }
+}
+
+void ADispatchMissionSiteActor::RefreshHighlight()
+{
+    const bool bMissionActive = DispatchSiteHighlight::IsMissionActiveState(currentMissionState);
+    const bool bMissionEnded = DispatchSiteHighlight::IsMissionEndedState(currentMissionState);
+
+    // Safety: if mission ended, we don't highlight unless we are mid-pulse (shouldn't happen).
+    if (bMissionEnded && !bOfferExpiredPulseActive)
+    {
+        ApplyHighlight(false, customDepthStencilValue);
+        return;
+    }
+
+    const bool bShouldHighlight = bOfferExpiredPulseActive || bMissionActive || bOfferActive;
+    ApplyHighlight(bShouldHighlight, customDepthStencilValue);
+}
+
+void ADispatchMissionSiteActor::EndOfferExpiredPulse()
+{
+    bOfferExpiredPulseActive = false;
+    RefreshHighlight();
 }
 
 #pragma endregion API
@@ -119,13 +220,31 @@ void ADispatchMissionSiteActor::SetMissionState(EDispatchMissionState NewState)
 
 void ADispatchMissionSiteActor::ApplyHighlight(bool bEnabled, int32 Stencil)
 {
+    const bool bMissionActive = DispatchSiteHighlight::IsMissionActiveState(currentMissionState);
+
     // 1) OverlayMaterial highlight (preferred).
     if (bUseOverlayMaterialHighlight)
     {
-        if (!overlayHighlightMaterial)
+        UMaterialInterface* DesiredOverlay = nullptr;
+
+        // Priority: Expired pulse > Active mission > Offer.
+        if (bEnabled && bOfferExpiredPulseActive)
         {
-            // We still allow CustomDepth highlight even if overlay material is not set.
-            UE_LOG(LogTemp, Warning, TEXT("[DispatchSite] Overlay highlight enabled but overlayHighlightMaterial is null on %s"), *GetName());
+            DesiredOverlay = offerExpiredPulseOverlayMaterial;
+        }
+        if (bEnabled && !DesiredOverlay && bMissionActive)
+        {
+            DesiredOverlay = activeMissionOverlayMaterial ? activeMissionOverlayMaterial : overlayHighlightMaterial;
+        }
+        if (bEnabled && !DesiredOverlay && bOfferActive)
+        {
+            DesiredOverlay = overlayHighlightMaterial;
+        }
+
+        if (bEnabled && !DesiredOverlay)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("[DispatchSite] Highlight enabled but no overlay material is set on %s (Offer=%d MissionActive=%d Pulse=%d)"),
+                *GetName(), bOfferActive ? 1 : 0, bMissionActive ? 1 : 0, bOfferExpiredPulseActive ? 1 : 0);
         }
 
         for (UMeshComponent* M : cachedMeshes)
@@ -139,9 +258,9 @@ void ADispatchMissionSiteActor::ApplyHighlight(bool bEnabled, int32 Stencil)
                     previousOverlayByMesh.Add(M, M->GetOverlayMaterial());
                 }
 
-                if (overlayHighlightMaterial)
+                if (DesiredOverlay)
                 {
-                    M->SetOverlayMaterial(overlayHighlightMaterial);
+                    M->SetOverlayMaterial(DesiredOverlay);
                 }
             }
             else
@@ -155,7 +274,6 @@ void ADispatchMissionSiteActor::ApplyHighlight(bool bEnabled, int32 Stencil)
                     }
                     else
                     {
-                        // If we didn't cache anything (rare), clear it.
                         M->SetOverlayMaterial(nullptr);
                     }
                 }
@@ -184,5 +302,6 @@ void ADispatchMissionSiteActor::ApplyHighlight(bool bEnabled, int32 Stencil)
         }
     }
 }
+
 
 #pragma endregion INTERNAL
