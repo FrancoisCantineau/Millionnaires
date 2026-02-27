@@ -43,9 +43,7 @@ protected:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GAS", meta = (AllowPrivateAccess = "true"))
 	const class UBaseAttributeSet* BaseAttributesSet;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GAS", meta = (AllowPrivateAccess = "true"))
-	const class UWeaponAttributeSet* WeaponAttributesSet;
+	
 	
 	/** Fire weapon input action */
 	UPROPERTY(EditAnywhere, Category ="Input")

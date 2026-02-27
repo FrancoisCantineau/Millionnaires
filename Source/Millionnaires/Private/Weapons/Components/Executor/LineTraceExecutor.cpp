@@ -66,19 +66,17 @@ void ULineTraceExecutor::ExecuteAttack(float m_DamageMultiplier, FGameplayEffect
 		Params
 	);
 
+	FVector TraceEndPoint = bDidHit ? Hit.ImpactPoint : End;
+
+	if (TraceParticle)
+	{
+		TraceParticle->Activate();
+		TraceParticle->SetNiagaraVariableVec3(ParticleVariable, TraceEndPoint);
+	}
+
 	if (bDidHit)
 	{
 		OnHit(Hit);
-	}
-	else
-	{
-		if (TraceParticle)
-		{
-			TraceParticle->Activate();
-			
-			TraceParticle->SetNiagaraVariableVec3(ParticleVariable, Hit.TraceEnd);
-		}
-		
 	}
 	
 	

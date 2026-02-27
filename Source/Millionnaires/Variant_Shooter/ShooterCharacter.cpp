@@ -33,7 +33,6 @@ void AShooterCharacter::BeginPlay()
 	if (IsValid(AbilitySystemComponent))
 	{
 		BaseAttributesSet = AbilitySystemComponent->GetSet<UBaseAttributeSet>();
-		WeaponAttributesSet = AbilitySystemComponent->GetSet<UWeaponAttributeSet>();
 	}
 
 	// reset HP to max
