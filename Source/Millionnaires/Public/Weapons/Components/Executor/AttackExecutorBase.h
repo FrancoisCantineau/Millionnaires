@@ -50,7 +50,7 @@ protected:
 	//** Functions */
 
 	UFUNCTION()
-	virtual void OnHit(const FHitResult& Hit) ;
+	virtual void OnHit(const FHitResult& Hit, FVector ImpactPoint, AActor* TargetActor) ;
 
 	void ApplyDamage(const FHitResult& Hit, AActor* AttackedActor);
 	

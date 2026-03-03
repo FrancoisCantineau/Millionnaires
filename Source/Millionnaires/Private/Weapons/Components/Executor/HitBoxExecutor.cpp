@@ -38,7 +38,10 @@ void UHitBoxExecutor::OnOverlap(UPrimitiveComponent* OverlappedComp, AActor* Oth
 	if (OtherActor != OwnerWeapon->Owner && OtherActor != OwnerWeapon && !AlreadyHitActors.Contains(OtherActor))
 	{
 		AlreadyHitActors.Add(OtherActor);
-		OnHit(SweepResult);
+
+		FVector ImpactPoint = OverlappedComp->GetComponentLocation();
+
+		OnHit(SweepResult, ImpactPoint, OtherActor);
 	}
 }
 

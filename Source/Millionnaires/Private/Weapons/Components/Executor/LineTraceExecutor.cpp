@@ -51,18 +51,22 @@ void ULineTraceExecutor::ExecuteAttack(FWeaponContextStruct ContextStruct)
 	
 	const FVector Start = Mesh->GetSocketLocation("Muzzle");
 	const FVector Forward = Mesh->GetSocketRotation("Muzzle").Vector();
-	const FVector End = Start + Forward * ContextStruct.Range;
+		const FVector End = Start + Forward * ContextStruct.Range;
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(OwnerWeapon);
 	Params.AddIgnoredActor(OwnerWeapon->GetOwner());
+	
+	FCollisionObjectQueryParams ObjectParams;
+	ObjectParams.AddObjectTypesToQuery(ECC_Pawn);       
+	ObjectParams.AddObjectTypesToQuery(ECC_WorldStatic); 
 
-	const bool bDidHit = GetWorld()->LineTraceSingleByChannel(
+	bool bDidHit = OwnerWeapon->GetWorld()->LineTraceSingleByObjectType(
 		Hit,
 		Start,
 		End,
-		ECC_Visibility,
+		ObjectParams,
 		Params
 	);
 
@@ -76,14 +80,14 @@ void ULineTraceExecutor::ExecuteAttack(FWeaponContextStruct ContextStruct)
 
 	if (bDidHit)
 	{
-		OnHit(Hit);
+		OnHit(Hit, Hit.ImpactPoint, Hit.GetActor());
 	}
 	
 	EndAttackExecution();
 }
 
 
-void ULineTraceExecutor::OnHit(const FHitResult& Hit)
+void ULineTraceExecutor::OnHit(const FHitResult& Hit, FVector ImpactPoint, AActor* TargetActor)
 {
 	if (ParticleVariable != "None")
 	{
@@ -96,7 +100,7 @@ void ULineTraceExecutor::OnHit(const FHitResult& Hit)
 		
 	}
 
-	Super::OnHit(Hit);
+	Super::OnHit(Hit, Hit.ImpactPoint, Hit.GetActor());
 }
 
 void ULineTraceExecutor::EndAttackExecution()

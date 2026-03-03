@@ -26,7 +26,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDamagedDelegate, float, LifePercent
  *  Manages health and death
  */
 UCLASS(abstract)
-class MILLIONNAIRES_API AShooterCharacter : public AMillionnairesCharacter, public IShooterWeaponHolder, public IAbilitySystemInterface
+class MILLIONNAIRES_API AShooterCharacter : public AMillionnairesCharacter, public IShooterWeaponHolder
 {
 	GENERATED_BODY()
 	
@@ -35,14 +35,7 @@ class MILLIONNAIRES_API AShooterCharacter : public AMillionnairesCharacter, publ
 	UPawnNoiseEmitterComponent* PawnNoiseEmitter;
 
 protected:
-
-	//* PROPERTIES */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AbilitySystem")
-	UAbilitySystemComponent* AbilitySystemComponent;
-
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GAS", meta = (AllowPrivateAccess = "true"))
-	const class UBaseAttributeSet* BaseAttributesSet;
 	
 	
 	/** Fire weapon input action */
@@ -127,18 +120,7 @@ public:
 	}
 	
 public:
-
-	/** Handles aim inputs from either controls or UI interfaces */
-	virtual void DoAim(float Yaw, float Pitch) override;
-
-	/** Handles move inputs from either controls or UI interfaces */
-	virtual void DoMove(float Right, float Forward)  override;
-
-	/** Handles jump start inputs from either controls or UI interfaces */
-	virtual void DoJumpStart()  override;
-
-	/** Handles jump end inputs from either controls or UI interfaces */
-	virtual void DoJumpEnd()  override;
+	
 
 	/** Handles start firing input */
 	UFUNCTION(BlueprintCallable, Category="Input")

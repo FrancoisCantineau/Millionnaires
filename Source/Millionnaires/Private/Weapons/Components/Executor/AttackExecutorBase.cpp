@@ -13,6 +13,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "NiagaraFunctionLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "Combat/Damages/DamageStatic.h"
 
 #include "Engine/OverlapResult.h"
 #include "GameFramework/SaveGame.h"
@@ -61,10 +62,21 @@ void UAttackExecutorBase::ExplodeAtLocation(const FHitResult& Hit)
 	}
 }
 
-void UAttackExecutorBase::OnHit(const FHitResult& Hit)
+void UAttackExecutorBase::OnHit(const FHitResult& Hit, FVector ImpactPoint, AActor* TargetActor)
 {
-	ApplyGameplayEffect(Hit);
-	ExecuteImpactCue(Hit);
+	//ApplyGameplayEffect(Hit);
+	//ExecuteImpactCue(Hit);
+	
+	if (!Hit.GetActor())
+		return;
+
+	UDamageStatic::ApplyImpactDamageToActor(CurrentDamageData,TargetActor, ImpactPoint);
+	
+	if (CurrentDamageData.Radius > 0.f)
+	{
+		UDamageStatic::ApplyRadialDamage(CurrentDamageData,ImpactPoint);
+	}
+	/*
 	FGameplayAbilityTargetDataHandle TargetData =
 	UAbilitySystemBlueprintLibrary::AbilityTargetDataFromHitResult(Hit);
 

@@ -36,9 +36,6 @@ public:
 
     ABaseCharacter(const FObjectInitializer& ObjectInitializer);
 
-    UFUNCTION(BlueprintPure, Category = "Character|Components")
-    UCharacterStatsComponent* GetStatsComponent() const { return StatsComponent; }
-
     //* Returns the ability system component for this actor */
     virtual  UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 

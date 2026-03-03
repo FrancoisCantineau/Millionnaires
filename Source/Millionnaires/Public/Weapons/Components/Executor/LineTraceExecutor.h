@@ -37,7 +37,7 @@ public:
 
 	virtual void EndAttackExecution() override;
 
-	virtual void OnHit(const FHitResult& Hit) override;
+	virtual void OnHit(const FHitResult& Hit, FVector ImpactPoint, AActor* TargetActor) override;
 
 protected :
 

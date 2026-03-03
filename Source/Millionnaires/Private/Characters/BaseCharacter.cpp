@@ -83,36 +83,41 @@ void ABaseCharacter::OnRep_PlayerState()
 
 void ABaseCharacter::InitAttributes()
 {
-    UE_LOG(LogTemp, Warning, TEXT("=== InitAttributes ==="));
-    UE_LOG(LogTemp, Warning, TEXT("AttributeSet present: %s"), AbilitySystemComponent->GetSet<UBaseAttributeSet>() ? TEXT("OUI") : TEXT("NON"));
+    if (!AbilitySystemComponent || !DataCharacter)
+    {
+        UE_LOG(LogTemp, Error, TEXT("ASC ou DataCharacter NULL"));
+        return;
+    }
 
     InitialStatsEffect = DataCharacter->InitAttributesEffect;
-    
-    if (!AbilitySystemComponent || !DataCharacter || !InitialStatsEffect)
-        return;
+
     if (!InitialStatsEffect)
     {
         UE_LOG(LogTemp, Error, TEXT("InitialStatsEffect is NULL !"));
         return;
     }
+
     FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
     Context.AddSourceObject(this);
 
-    FGameplayEffectSpecHandle Spec = AbilitySystemComponent->MakeOutgoingSpec(
-        InitialStatsEffect,
-        1.f,
-        Context
-    );
+    FGameplayEffectSpecHandle Spec =
+        AbilitySystemComponent->MakeOutgoingSpec(InitialStatsEffect, 1.f, Context);
 
-    if (!Spec.IsValid()) return;
-    
-    Spec.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Base.Health.Current"),DataCharacter->GetMaxHealth());
-    Spec.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Base.Health.Max"),DataCharacter->GetMaxHealth());
-    
-    FActiveGameplayEffectHandle Handle = AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+    if (!Spec.IsValid())
+        return;
+
+    Spec.Data->SetSetByCallerMagnitude(
+        FGameplayTag::RequestGameplayTag("Data.Base.Health.Current"),
+        DataCharacter->GetMaxHealth());
+
+    Spec.Data->SetSetByCallerMagnitude(
+        FGameplayTag::RequestGameplayTag("Data.Base.Health.Max"),
+        DataCharacter->GetMaxHealth());
+
+    FActiveGameplayEffectHandle Handle =
+        AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
 
     UE_LOG(LogTemp, Warning, TEXT("GE Handle valide: %s"), Handle.IsValid() ? TEXT("OUI") : TEXT("NON"));
-    UE_LOG(LogTemp, Warning, TEXT("Health apres init: %f"), BaseAttributesSet ? BaseAttributesSet->GetHealth() : -1.f);
 }
 
 /**
