@@ -110,7 +110,19 @@ public:
 
 #pragma endregion API_OFFERS
 
-#pragma region API_MISSIONS
+#pragma region API_SUCCESS
+
+    /// <summary>Returns whether a pawn is already assigned to any active mission.</summary>
+    UFUNCTION(BlueprintPure, Category="Dispatch|Missions|Agents")
+    bool IsAgentBusy(APawn* Agent) const;
+
+    /// <summary>Computes success chance for an offer given selected agents (0..1) and outputs a breakdown.</summary>
+    UFUNCTION(BlueprintCallable, Category="Dispatch|Missions|Success")
+    bool ComputeOfferSuccessChance(const FGuid& OfferId, const TArray<APawn*>& SelectedAgents, float& OutChance01, FDispatchMissionSuccessBreakdown& OutBreakdown) const;
+
+#pragma endregion API_SUCCESS
+
+ #pragma region API_MISSIONS
 
     /// <summary>Returns a copy of all active missions.</summary>
     UFUNCTION(BlueprintPure, Category="Dispatch|Missions")
