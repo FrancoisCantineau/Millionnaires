@@ -12,10 +12,49 @@
 
 #include "Kismet/GameplayStatics.h"
 
-void UProjectileExecutor::ExecuteAttack(float m_DamageMultiplier, FGameplayEffectSpecHandle GEHandle)
+void UProjectileExecutor::ExecuteAttack(FWeaponContextStruct ContextStruct)
 {
-	Super::ExecuteAttack(m_DamageMultiplier,GEHandle);
+	if (!OwnerWeapon || !ProjectileClass)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ProjectileExecutor: Missing weapon or projectile class"));
+		return;
+	}
 	
+	Super::ExecuteAttack(ContextStruct);
+
+	USkeletalMeshComponent* Mesh = OwnerWeapon->GetWeaponMesh();
+	FVector MuzzleLocation = Mesh->GetSocketLocation(MuzzleSocketName);
+	FVector SpawnLocation = OwnerWeapon->GetWeaponMesh()->GetSocketLocation(MuzzleSocketName);
+	FRotator MuzzleRotation =  OwnerWeapon->GetWeaponMesh()->GetSocketRotation(MuzzleSocketName);
+	
+	int32 Num = FMath::Max(ContextStruct.ProjectileCount, 1);
+	float TotalSpread = ContextStruct.SpreadAngle;
+	float HalfSpread = TotalSpread / 2.f;
+	
+	for (int32 i = 0; i < ContextStruct.ProjectileCount; i++)
+	{
+		float LerpAlpha = (Num == 1) ? 0.5f : float(i) / float(Num - 1);
+		float YawOffset = FMath::Lerp(-HalfSpread, HalfSpread, LerpAlpha);
+
+		FRotator SpawnRotation = MuzzleRotation;
+		SpawnRotation.Yaw += YawOffset;
+
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = OwnerWeapon;
+		SpawnParams.Instigator = ContextStruct.Instigator;
+
+		AProjectileBase* Projectile = OwnerWeapon->GetWorld()->SpawnActor<AProjectileBase>(
+			ProjectileClass,
+			SpawnLocation,
+			SpawnRotation,
+			SpawnParams
+		);
+		if (Projectile)
+		{
+			Projectile->InitializeProjectile(CurrentDamageData);
+		}
+	}
+	/*
 	if (!OwnerWeapon || !ProjectileClass)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ProjectileExecutor: Missing weapon or projectile class"));
@@ -69,5 +108,6 @@ void UProjectileExecutor::ExecuteAttack(float m_DamageMultiplier, FGameplayEffec
 	if (Projectile)
 	{
 		Projectile->OnProjectileHit.AddDynamic(this, &UProjectileExecutor::OnHit);
-	}
+	}*/
+	EndAttackExecution();
 }

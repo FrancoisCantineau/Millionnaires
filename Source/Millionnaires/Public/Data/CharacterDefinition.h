@@ -14,6 +14,7 @@
 
 #include "CharacterDefinition.generated.h"
 
+class UGameplayEffect;
 class UTexture2D;
 class USkeletalMesh;
 class UAnimInstance;
@@ -86,6 +87,9 @@ public:
     TSubclassOf<UAnimInstance> GetFirstPersonAnimClass() const { return FirstPersonAnimClass; }
 
     /** GAS */
+
+    UPROPERTY(EditDefaultsOnly, Category = "GAS")
+    TSubclassOf<UGameplayEffect> InitAttributesEffect;
     
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS")
     TArray<FAbilityInfosStruct> Abilities;

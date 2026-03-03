@@ -40,9 +40,9 @@ void ULineTraceExecutor::Initialize(AWeaponBase* Weapon)
 	}
 }
 
-void ULineTraceExecutor::ExecuteAttack(float m_DamageMultiplier, FGameplayEffectSpecHandle GEHandle)
+void ULineTraceExecutor::ExecuteAttack(FWeaponContextStruct ContextStruct)
 {
-	Super::ExecuteAttack(m_DamageMultiplier,GEHandle);
+	Super::ExecuteAttack(ContextStruct);
 	
 	if (!OwnerWeapon || !OwnerWeapon->WeaponData)
 		return;
@@ -51,7 +51,7 @@ void ULineTraceExecutor::ExecuteAttack(float m_DamageMultiplier, FGameplayEffect
 	
 	const FVector Start = Mesh->GetSocketLocation("Muzzle");
 	const FVector Forward = Mesh->GetSocketRotation("Muzzle").Vector();
-	const FVector End = Start + Forward * TraceDistance;
+	const FVector End = Start + Forward * ContextStruct.Range;
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
@@ -79,11 +79,7 @@ void ULineTraceExecutor::ExecuteAttack(float m_DamageMultiplier, FGameplayEffect
 		OnHit(Hit);
 	}
 	
-	
-	float FinalDamage = GetFinalDamage(DamageMultiplier);
-	
-	GEngine->AddOnScreenDebugMessage(-1, 5, FColor::Red, FString::Printf(TEXT("Fired projectile with %.2f damage (multiplier: %.2f)"), 
-			   FinalDamage, DamageMultiplier));
+	EndAttackExecution();
 }
 
 

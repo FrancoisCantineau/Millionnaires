@@ -91,15 +91,6 @@ void UAttackModeComponentBase::StopAttacking()
 
 void UAttackModeComponentBase::Attack()
 {
-	/*
-	if (!OwnerWeapon->CanAttack())
-	{
-		return;
-	}*/
-	OwnerWeapon->SetPendingDamageMultiplier(DamagesMultiplier);
-	//OwnerWeapon->StartAttacking();
-	//OwnerWeapon->PerformAttack();
-
 	AActor* WeaponOwner = OwnerWeapon->GetOwner(); // Le joueur
 	UAbilitySystemComponent* OwnerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(WeaponOwner);
     

@@ -75,12 +75,18 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character|Components")
     UDeathHandlerComponent* DeathHandler;
 
-   
+    void InitAttributes();
 
     //* GAS SYSTEM */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="AbilitySystem")
     EGameplayEffectReplicationMode AscReplicationMode = EGameplayEffectReplicationMode::Mixed;
 
+    UPROPERTY()
+    bool bAttributesInitialized = false;
+
+    UPROPERTY(EditDefaultsOnly, Category = "GAS")
+    TSubclassOf<UGameplayEffect> InitialStatsEffect;
+    
     /** Called when HP is depleted and the character should die */
     virtual void OnDeadTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
 
