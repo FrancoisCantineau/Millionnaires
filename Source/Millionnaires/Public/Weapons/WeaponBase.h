@@ -9,12 +9,9 @@
  */
 
 
-
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/Effect/WeaponEffectBaseComponent.h"
-#include "Components/Resources/WeaponResourceComponentBase.h"
 #include "GameFramework/Actor.h"
 
 //*GAS */
@@ -24,12 +21,11 @@
 #include "GameplayAbilitySystem/Attributes/WeaponAttributeSet.h"
 
 #include "Weapons/Data/WeaponData.h"
-#include "Weapons/Struct/WeaponStruct.h"
-#include "Weapons/Components/WeaponBuffComponent.h"
 
 #include "WeaponBase.generated.h"
 
 
+struct FWeaponContextStruct;
 struct FGameplayEffectSpecHandle;
 
 UCLASS(Blueprintable, Abstract)
@@ -44,19 +40,10 @@ public:
 	/** Properties */
 
 	//----Components----//
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	UWeaponBuffComponent* BuffComponent;
-	
-	UPROPERTY(BlueprintReadOnly, Category = "Components")
-	UWeaponResourceComponentBase*RessourceComponent;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	UWeaponData* WeaponData;
-
-	UPROPERTY(VisibleAnywhere)
-	FWeaponStats RuntimeStats;
-
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	USkeletalMeshComponent* WeaponMesh;
 
@@ -70,43 +57,17 @@ public:
 	
 	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent, Category = "Weapon")
 	void CallAttack();
-
-	UFUNCTION(BlueprintCallable,BlueprintImplementableEvent, Category = "Weapon")
-	void StopAttacking();
-
-	UFUNCTION(BlueprintCallable, Category = "Weapon")
-	bool CanAttack();
 	
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
-	void PerformAttack(FGameplayEffectSpecHandle GEHandle);
+	void PerformAttack(FWeaponContextStruct ContextStruct);
 
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void InterruptAttack();
-	
-	UFUNCTION(BlueprintPure, Category = "Weapon")
-	float GetDamage() const { return WeaponData ? WeaponData->BaseDamage : 0.f; }
-    
-	UFUNCTION(BlueprintPure, Category = "Weapon")
-	float GetRange() const { return WeaponData ? WeaponData->AttackRange : 0.f; }
-
-	UFUNCTION(BlueprintPure, Category = "Weapon")
-	float GetAttackRate() const { return WeaponData ? WeaponData->AttackRate : 0.f; }
-
-	UFUNCTION(BlueprintCallable)
-	void SetPendingDamageMultiplier(float DamagesMultiplier);
 
 	virtual void OnConstruction(const FTransform& Transform) override;
 
-	virtual void ApplyWeaponData();
-
-	virtual void ApplyEffects(const FHitResult& Hit, AActor* Instigatorr);
-
 	USkeletalMeshComponent* GetWeaponMesh(){return WeaponMesh;};
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void HitScanEnable(bool bShouldEnable);
-
-	void HitScanEnable_Implementation(bool bShouldEnable){};
 	
 protected:
 	// Called when the game starts or when spawned
@@ -114,18 +75,9 @@ protected:
 
 	virtual void InitializeWeaponAttributes();
 
-	//** Properties */
-
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Components")
-	TArray<UWeaponEffectBaseComponent*> Effects;
-
 	UPROPERTY(BlueprintReadOnly, Category = "Components")
 	UAttackExecutorBase* AttackExecutor;
 	
-	float PendingDamageMultiplier = 1.f;
-
-	
-
 	//* GAS */
 	
     

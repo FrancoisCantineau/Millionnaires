@@ -29,7 +29,7 @@ public:
 
 	void Initialize(AWeaponBase* Weapon) override;
 	
-	virtual void ExecuteAttack(float m_DamageMultiplier, FGameplayEffectSpecHandle GEHandle) override;
+	virtual void ExecuteAttack(FWeaponContextStruct ContextStruct) override;
 
 protected:
 

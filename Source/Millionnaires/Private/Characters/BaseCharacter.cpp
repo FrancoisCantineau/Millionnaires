@@ -15,8 +15,6 @@
 ABaseCharacter::ABaseCharacter(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
 {
-    StatsComponent = CreateDefaultSubobject<UCharacterStatsComponent>(TEXT("BPC_StatsComponent"));
-    DeathHandler = CreateDefaultSubobject<UDeathHandlerComponent>(TEXT("BPC_DeathHandlerComponent"));
 
     //Add the ability system component
     AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -29,16 +27,29 @@ void ABaseCharacter::BeginPlay()
 {
     Super::BeginPlay();
 
+    UE_LOG(LogTemp, Warning, TEXT("BeginPlay called on: %s"), *GetName());
+    UE_LOG(LogTemp, Warning, TEXT("DataCharacter: %s"), DataCharacter ? TEXT("OK") : TEXT("NULL"));
+    UE_LOG(LogTemp, Warning, TEXT("InitAttributesEffect: %s"), (DataCharacter && DataCharacter->InitAttributesEffect) ? TEXT("OK") : TEXT("NULL"));
+    UE_LOG(LogTemp, Warning, TEXT("GetMaxHealth: %f"), DataCharacter ? DataCharacter->GetMaxHealth() : -1.f);
+    
     if (IsValid(AbilitySystemComponent))
     {
+        AbilitySystemComponent->InitAbilityActorInfo(this, this);
         BaseAttributesSet = AbilitySystemComponent->GetSet<UBaseAttributeSet>();
         StatusAttributesSet = AbilitySystemComponent->GetSet<UStatusAttributeSet>();
-    }
 
+        
+    }
+    if (!bAttributesInitialized)
+    {
+        
+        InitAttributes();
+        GiveAbilities();
+        bAttributesInitialized = true;
+    }
+    
     // Tag event registrations
     AbilitySystemComponent->RegisterGameplayTagEvent(FGameplayTag::RequestGameplayTag("State.Dead")).AddUObject(this, &ABaseCharacter::OnDeadTagChanged);
-
-    GiveAbilities();
 }
 
 
@@ -50,10 +61,13 @@ UAbilitySystemComponent* ABaseCharacter::GetAbilitySystemComponent() const
 void ABaseCharacter::PossessedBy(AController* NewController)
 {
     Super::PossessedBy(NewController);
-
+    
     if (AbilitySystemComponent)
     {
         AbilitySystemComponent->InitAbilityActorInfo(this, this);
+        GiveAbilities(); 
+        InitAttributes();
+        bAttributesInitialized = true;
     }
 }
 
@@ -65,6 +79,45 @@ void ABaseCharacter::OnRep_PlayerState()
     {
         AbilitySystemComponent->InitAbilityActorInfo(this, this);
     }
+}
+
+void ABaseCharacter::InitAttributes()
+{
+    if (!AbilitySystemComponent || !DataCharacter)
+    {
+        UE_LOG(LogTemp, Error, TEXT("ASC ou DataCharacter NULL"));
+        return;
+    }
+
+    InitialStatsEffect = DataCharacter->InitAttributesEffect;
+
+    if (!InitialStatsEffect)
+    {
+        UE_LOG(LogTemp, Error, TEXT("InitialStatsEffect is NULL !"));
+        return;
+    }
+
+    FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+    Context.AddSourceObject(this);
+
+    FGameplayEffectSpecHandle Spec =
+        AbilitySystemComponent->MakeOutgoingSpec(InitialStatsEffect, 1.f, Context);
+
+    if (!Spec.IsValid())
+        return;
+
+    Spec.Data->SetSetByCallerMagnitude(
+        FGameplayTag::RequestGameplayTag("Data.Base.Health.Current"),
+        DataCharacter->GetMaxHealth());
+
+    Spec.Data->SetSetByCallerMagnitude(
+        FGameplayTag::RequestGameplayTag("Data.Base.Health.Max"),
+        DataCharacter->GetMaxHealth());
+
+    FActiveGameplayEffectHandle Handle =
+        AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+
+    UE_LOG(LogTemp, Warning, TEXT("GE Handle valide: %s"), Handle.IsValid() ? TEXT("OUI") : TEXT("NON"));
 }
 
 /**
@@ -109,8 +162,6 @@ void ABaseCharacter::GiveAbilities()
     {
         return A.Priority < B.Priority;
     });
-
-        AbilitySystemComponent->InitAbilityActorInfo(this, this);
     }
 
     

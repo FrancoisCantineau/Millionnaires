@@ -56,5 +56,10 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category="Weapon|Ammo")
 	FGameplayAttributeData WeaponDamage;
 	ATTRIBUTE_ACCESSORS(UWeaponAttributeSet, WeaponDamage)
+	
+	UPROPERTY(BlueprintReadOnly, Category="Weapon|Ammo")
+	FGameplayAttributeData ProjectileCountPerAttack;
+	ATTRIBUTE_ACCESSORS(UWeaponAttributeSet, ProjectileCountPerAttack)
+
 };
 

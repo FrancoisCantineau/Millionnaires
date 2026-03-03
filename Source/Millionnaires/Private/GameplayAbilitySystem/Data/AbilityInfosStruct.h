@@ -28,6 +28,9 @@ struct FAbilityInfosStruct
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS")
 	int32 Priority;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS")
+	bool CanBeCasted = true;
+
 	//* DEBUG MODE TO ACTIVATE/DEACTIVATE */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS")
 	bool ShouldActivate = true;

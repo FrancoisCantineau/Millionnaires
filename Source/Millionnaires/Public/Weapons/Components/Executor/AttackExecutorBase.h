@@ -13,8 +13,10 @@
 #include "CoreMinimal.h"
 #include "GameplayEffectTypes.h"
 #include "NiagaraComponent.h"
+#include "Combat/Damages/Data/DamageData.h"
 #include "Components/ActorComponent.h"
 #include "Weapons/WeaponBase.h"
+#include "Weapons/Struct/WeaponContextStruct.h"
 #include "AttackExecutorBase.generated.h"
 
 
@@ -28,11 +30,10 @@ public:
 	
 	/**
 	 * Executes the attack. Must be overrided by each child
-	 * @param m_DamageMultiplier , multiplies the damages (used for charging weapons, for exemple)
-	 * @param  GEHandle
+	 * @param ContextStruct
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Attack")
-	virtual void ExecuteAttack(float m_DamageMultiplier , FGameplayEffectSpecHandle GEHandle);
+	virtual void ExecuteAttack(FWeaponContextStruct ContextStruct);
 
 	UFUNCTION(BlueprintCallable, Category = "Attack")
 	virtual void EndAttackExecution();
@@ -49,15 +50,15 @@ protected:
 	//** Functions */
 
 	UFUNCTION()
-	virtual void OnHit(const FHitResult& Hit) ;
-	
-	float GetFinalDamage(float Multiplier = 1.f) const;
-	
-	float GetFinalRange() const;
+	virtual void OnHit(const FHitResult& Hit, FVector ImpactPoint, AActor* TargetActor) ;
 
 	void ApplyDamage(const FHitResult& Hit, AActor* AttackedActor);
 	
 	void ExplodeAtLocation(const FHitResult& Hit);
+	
+	void ApplyGameplayEffect(const FHitResult& Hit);
+
+	void ExecuteImpactCue(const FHitResult& Hit);
 
 	//** Properties */
 
@@ -65,8 +66,10 @@ protected:
 	UPROPERTY()
 	AWeaponBase* OwnerWeapon;
 
-	float DamageMultiplier = 1.f;
+	FWeaponContextStruct CurrentContextStruct;
 
+	FDamageData CurrentDamageData;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "Projectile")
 	FName MuzzleSocketName = TEXT("Muzzle");
 	

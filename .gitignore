@@ -111,3 +111,7 @@ DerivedDataCache/*
 *.exe
 *.out
 *.app
+
+
+# Assets 
+Content/06-Assets/Galaxy/Maps*

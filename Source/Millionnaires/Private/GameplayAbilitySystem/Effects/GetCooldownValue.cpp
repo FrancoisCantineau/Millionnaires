@@ -16,7 +16,7 @@
 float UGetCooldownValue::CalculateBaseMagnitude_Implementation(const FGameplayEffectSpec& Spec) const
 {
 	const UCostGameplayAbility* Ability = Cast<UCostGameplayAbility>(Spec.GetContext().GetAbility());
-
+	
 	if (!Ability)
 	{
 		return 0.1f;

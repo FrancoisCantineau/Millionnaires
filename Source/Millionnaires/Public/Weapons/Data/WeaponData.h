@@ -55,10 +55,15 @@ public:
 	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly, Category = "GAS")
 	TArray<TSubclassOf<UGameplayEffect>> Effects;
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Ranged Stats", meta = (EditCondition = "WeaponType == EWeaponType::Ranged"))
+	int32 ProjectilesPerShot = 1;
+	
 	//Attacks per 1 second
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	float AttackRate = 1.f; 
     
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Ranged Stats", meta = (EditCondition = "WeaponType == EWeaponType::Ranged"))
+	int32 BaseAmmo = 30;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Ranged Stats", meta = (EditCondition = "WeaponType == EWeaponType::Ranged"))
 	int32 MaxAmmo = 30;

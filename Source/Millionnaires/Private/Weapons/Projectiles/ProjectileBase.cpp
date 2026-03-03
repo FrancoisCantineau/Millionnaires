@@ -10,7 +10,11 @@
 
 #include "Weapons/Projectiles/ProjectileBase.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
 #include "Kismet/GameplayStatics.h"
+#include "Engine/OverlapResult.h"
+#include "AbilitySystemComponent.h"
+#include "Combat/Damages/DamageStatic.h"
 
 // Sets default values
 AProjectileBase::AProjectileBase()
@@ -20,7 +24,10 @@ AProjectileBase::AProjectileBase()
 
 	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComponent"));
 	CollisionComponent->InitSphereRadius(5.f);
-	CollisionComponent->SetCollisionProfileName(TEXT("Projectile"));
+
+	
+	CollisionComponent->SetCollisionProfileName(TEXT("WeaponProjectile"));
+	
 	CollisionComponent->OnComponentHit.AddDynamic(this, &AProjectileBase::OnHit);
 	RootComponent = CollisionComponent;
 
@@ -40,9 +47,13 @@ AProjectileBase::AProjectileBase()
 	ProjectileMovement->InitialSpeed = 2000.f;
 	ProjectileMovement->MaxSpeed = 2000.f;
 	ProjectileMovement->bRotationFollowsVelocity = true;
-	ProjectileMovement->bShouldBounce = bShouldBounce;
 
 	InitialLifeSpan = LifeTime;
+}
+
+void AProjectileBase::InitializeProjectile(const FDamageData& DamageData)
+{
+	CurrentDamageData = DamageData;
 }
 
 // Called when the game starts or when spawned
@@ -76,33 +87,42 @@ void AProjectileBase::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
 
 void AProjectileBase::ProcessHit()
 {
-	if (StoredHit.IsValidBlockingHit() && StoredHit.GetActor() && StoredHit.GetActor() != GetOwner())
-	{
-		OnProjectileHit.Broadcast(StoredHit);
-		
-		if (ProjectileData->ImpactParticle)
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ProjectileData->ImpactParticle, StoredHit.ImpactPoint, FRotator::ZeroRotator);
-		if (ProjectileData->ImpactSound)
-			UGameplayStatics::PlaySoundAtLocation(this, ProjectileData->ImpactSound, StoredHit.ImpactPoint);
+	if (!StoredHit.IsValidBlockingHit() || !StoredHit.GetActor() || StoredHit.GetActor() == GetOwner())
+		return;
 
-		if (ProjectileData->ImpactDecal)
-		{
-			FVector DecalSize = FVector(10.f, 10.f, 10.f);
-			FRotator DecalRotation = StoredHit.ImpactNormal.Rotation();
-			DecalRotation.Roll = FMath::FRandRange(0.f, 360.f);
-			
-			UGameplayStatics::SpawnDecalAtLocation(
-				GetWorld(),
-				ProjectileData->ImpactDecal,
-				DecalSize,
-				StoredHit.ImpactPoint,
-				DecalRotation,
-				10.f
-			);
-		}
-	}
-	End();
+	OnProjectileHit.Broadcast(StoredHit);
+
+	UDamageStatic::ApplyImpactDamageToActor(CurrentDamageData,StoredHit.GetActor(), StoredHit.ImpactPoint);
 	
+	if (CurrentDamageData.Radius > 0.f)
+	{
+		UDamageStatic::ApplyRadialDamage(CurrentDamageData, StoredHit.ImpactPoint);
+	}
+	
+	// Spawn VFX/SFX
+	if (ProjectileData->ImpactParticle)
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ProjectileData->ImpactParticle, StoredHit.ImpactPoint);
+	if (ProjectileData->ImpactSound)
+		UGameplayStatics::PlaySoundAtLocation(this, ProjectileData->ImpactSound, StoredHit.ImpactPoint);
+
+	// Decal
+	if (ProjectileData->ImpactDecal)
+	{
+		FVector DecalSize(10.f, 10.f, 10.f);
+		FRotator DecalRotation = StoredHit.ImpactNormal.Rotation();
+		DecalRotation.Roll = FMath::FRandRange(0.f, 360.f);
+
+		UGameplayStatics::SpawnDecalAtLocation(
+			GetWorld(),
+			ProjectileData->ImpactDecal,
+			DecalSize,
+			StoredHit.ImpactPoint,
+			DecalRotation,
+			10.f
+		);
+	}
+
+	End();
 }
 
 void AProjectileBase::End()

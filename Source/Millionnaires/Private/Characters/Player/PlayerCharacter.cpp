@@ -77,13 +77,7 @@ void APlayerCharacter::BeginPlay()
     {
         ApplyCharacterDefinition(SelectedDefinition);
     }
-    else if (UCharacterStatsComponent* Stats = GetStatsComponent())
-    {
-        if (Stats->GetCharacterDefinition())
-        {
-            ApplyCharacterDefinition(Stats->GetCharacterDefinition());
-        }
-    }
+
 
     // Ensure the desired movement speed matches the initial state.
     UpdateMovementSpeed();
@@ -329,10 +323,7 @@ void APlayerCharacter::ApplyCharacterDefinition(UCharacterDefinition* Definition
         return;
     }
 
-    if (UCharacterStatsComponent* Stats = GetStatsComponent())
-    {
-        Stats->InitializeFromDefinition(Definition);
-    }
+    
 
     ApplyVisualsFromDefinition(Definition);
 }

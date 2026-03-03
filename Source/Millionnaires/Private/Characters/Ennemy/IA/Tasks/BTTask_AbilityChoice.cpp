@@ -38,6 +38,11 @@ EBTNodeResult::Type UBTTask_AbilityChoice::ExecuteTask(UBehaviorTreeComponent& O
 	
 	for (int32 i = 0; i < BaseCharacter->AbilitiesSorted.Num(); ++i)
 	{
+		if (!BaseCharacter->AbilitiesSorted[i].CanBeCasted)
+		{
+			continue;
+		}
+		
 		const FAbilityInfosStruct& Ability = BaseCharacter->AbilitiesSorted[i];
 		FGameplayAbilitySpec* Spec = ASC->FindAbilitySpecFromClass(Ability.Ability);
 		

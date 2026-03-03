@@ -9,13 +9,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Combat/Damages/Data/DamageData.h"
 #include "Components/SphereComponent.h"
 #include "Data/ProjectileData.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "ProjectileBase.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnProjectileHit,const FHitResult&,Hit);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnProjectileHit, const FHitResult&, Hit);
 
 
 UCLASS(Blueprintable)
@@ -33,6 +34,9 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnProjectileHit OnProjectileHit;
 
+	UFUNCTION()
+	void InitializeProjectile(const FDamageData& DamageData);
+	
 	//* Properties */
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
@@ -58,7 +62,10 @@ public:
 
 
 protected:
-	// Called when the game starts or when spawned
+
+	UPROPERTY(BlueprintReadOnly)
+	FDamageData CurrentDamageData;
+	
 	virtual void BeginPlay() override;
 
 	UFUNCTION()
@@ -75,8 +82,5 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	
 	virtual void ProcessHit();
-
-	//** Properties */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config")
-	bool bShouldBounce = false;
+	
 };

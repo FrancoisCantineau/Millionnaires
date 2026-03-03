@@ -20,9 +20,9 @@ void UHitBoxExecutor::Initialize(AWeaponBase* Weapon)
 	Hitbox_Main->SetGenerateOverlapEvents(true);
 }
 
-void UHitBoxExecutor::ExecuteAttack(float m_DamageMultiplier, FGameplayEffectSpecHandle GEHandle)
+void UHitBoxExecutor::ExecuteAttack(FWeaponContextStruct ContextStruct)
 {
-	Super::ExecuteAttack(m_DamageMultiplier, GEHandle);
+	Super::ExecuteAttack(ContextStruct);
 
 	AlreadyHitActors.Empty();
 	Hitbox_Main->SetGenerateOverlapEvents(true);
@@ -38,7 +38,10 @@ void UHitBoxExecutor::OnOverlap(UPrimitiveComponent* OverlappedComp, AActor* Oth
 	if (OtherActor != OwnerWeapon->Owner && OtherActor != OwnerWeapon && !AlreadyHitActors.Contains(OtherActor))
 	{
 		AlreadyHitActors.Add(OtherActor);
-		OnHit(SweepResult);
+
+		FVector ImpactPoint = OverlappedComp->GetComponentLocation();
+
+		OnHit(SweepResult, ImpactPoint, OtherActor);
 	}
 }
 

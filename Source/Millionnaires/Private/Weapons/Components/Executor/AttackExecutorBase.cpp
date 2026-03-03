@@ -13,6 +13,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "NiagaraFunctionLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "Combat/Damages/DamageStatic.h"
 
 #include "Engine/OverlapResult.h"
 #include "GameFramework/SaveGame.h"
@@ -26,39 +27,9 @@ void UAttackExecutorBase::Initialize(AWeaponBase* Weapon)
 	OwnerWeapon = Weapon;
 }
 
-float UAttackExecutorBase::GetFinalDamage(float Multiplier) const
-{
-	if (!OwnerWeapon || !OwnerWeapon->BuffComponent)
-		return 10.f;
-    
-	return OwnerWeapon->BuffComponent->GetDamage() * Multiplier;
-}
-
-float UAttackExecutorBase::GetFinalRange() const
-{
-	if (!OwnerWeapon || !OwnerWeapon->BuffComponent)
-		return 1000.f;
-    
-	return OwnerWeapon->BuffComponent->GetRange();
-}
-
 void UAttackExecutorBase::ApplyDamage(const FHitResult& Hit, AActor* AttackedActor)
 {
-	OwnerWeapon->ApplyEffects(Hit, OwnerWeapon);
 	
-	float DamageAmount = -GetFinalDamage(DamageMultiplier);
-	/*
-	if (AttackedActor && AttackedActor->Implements<UDamageableInterface>())
-	{
-		const FHitResult& Hit2 = Hit;
-		IDamageableInterface::Execute_ApplyDamage(
-			AttackedActor,
-			DamageAmount,
-			OwnerWeapon->GetOwner()
-			
-		);
-	}*/
-
 }
 
 void UAttackExecutorBase::ExplodeAtLocation(const FHitResult& Hit)
@@ -91,8 +62,21 @@ void UAttackExecutorBase::ExplodeAtLocation(const FHitResult& Hit)
 	}
 }
 
-void UAttackExecutorBase::OnHit(const FHitResult& Hit)
+void UAttackExecutorBase::OnHit(const FHitResult& Hit, FVector ImpactPoint, AActor* TargetActor)
 {
+	//ApplyGameplayEffect(Hit);
+	//ExecuteImpactCue(Hit);
+	
+	if (!Hit.GetActor())
+		return;
+
+	UDamageStatic::ApplyImpactDamageToActor(CurrentDamageData,TargetActor, ImpactPoint);
+	
+	if (CurrentDamageData.Radius > 0.f)
+	{
+		UDamageStatic::ApplyRadialDamage(CurrentDamageData,ImpactPoint);
+	}
+	/*
 	FGameplayAbilityTargetDataHandle TargetData =
 	UAbilitySystemBlueprintLibrary::AbilityTargetDataFromHitResult(Hit);
 
@@ -128,7 +112,6 @@ void UAttackExecutorBase::OnHit(const FHitResult& Hit)
 			OwnerASC->ExecuteGameplayCue(ImpactCueTag, CueParams);
 		}
 	}
-	OwnerWeapon->ApplyEffects(Hit, OwnerWeapon);
 	/*
 	if (ImpactVFX)
 	{
@@ -162,13 +145,62 @@ void UAttackExecutorBase::OnHit(const FHitResult& Hit)
 	
 }
 
-void UAttackExecutorBase::ExecuteAttack(float m_DamageMultiplier, FGameplayEffectSpecHandle GEHandle)
+void UAttackExecutorBase::ApplyGameplayEffect(const FHitResult& Hit)
 {
-	DamageMultiplier = m_DamageMultiplier;
+	if (!CurrentContextStruct.DamageSpec.IsValid())
+		return;
 
-	CachedGESpec = GEHandle;
+	UAbilitySystemComponent* TargetASC =
+		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Hit.GetActor());
+
+	if (TargetASC)
+	{
+		TargetASC->ApplyGameplayEffectSpecToSelf(
+			*CurrentContextStruct.DamageSpec.Data.Get()
+		);
+	}
+}
+
+void UAttackExecutorBase::ExecuteImpactCue(const FHitResult& Hit)
+{
+	if (!CurrentContextStruct.ImpactCueTag.IsValid())
+		return;
+
+	UAbilitySystemComponent* InstigatorASC =
+		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(CurrentContextStruct.Instigator);
+
+	if (!InstigatorASC)
+		return;
+
+	FGameplayCueParameters Params;
+	Params.Location = Hit.ImpactPoint;
+	Params.Normal = Hit.ImpactNormal;
+
+	InstigatorASC->ExecuteGameplayCue(CurrentContextStruct.ImpactCueTag, Params);
+}
+
+void UAttackExecutorBase::ExecuteAttack(FWeaponContextStruct ContextStruct)
+{
+	CurrentContextStruct = ContextStruct;
+	CurrentDamageData = ContextStruct.DamageData;
 }
 
 void UAttackExecutorBase::EndAttackExecution()
 {
+	if (!OwnerWeapon)
+		return;
+
+	AActor* OwnerActor = OwnerWeapon->GetOwner();
+	if (!OwnerActor)
+		return;
+
+	FGameplayEventData EventData;
+	EventData.Instigator = OwnerActor;
+	EventData.Target = OwnerActor;
+
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+		OwnerActor,
+		FGameplayTag::RequestGameplayTag("Event.Weapon.Attack.End"),
+		EventData
+	);
 }

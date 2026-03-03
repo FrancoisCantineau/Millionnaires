@@ -40,9 +40,9 @@ void ULineTraceExecutor::Initialize(AWeaponBase* Weapon)
 	}
 }
 
-void ULineTraceExecutor::ExecuteAttack(float m_DamageMultiplier, FGameplayEffectSpecHandle GEHandle)
+void ULineTraceExecutor::ExecuteAttack(FWeaponContextStruct ContextStruct)
 {
-	Super::ExecuteAttack(m_DamageMultiplier,GEHandle);
+	Super::ExecuteAttack(ContextStruct);
 	
 	if (!OwnerWeapon || !OwnerWeapon->WeaponData)
 		return;
@@ -51,45 +51,43 @@ void ULineTraceExecutor::ExecuteAttack(float m_DamageMultiplier, FGameplayEffect
 	
 	const FVector Start = Mesh->GetSocketLocation("Muzzle");
 	const FVector Forward = Mesh->GetSocketRotation("Muzzle").Vector();
-	const FVector End = Start + Forward * TraceDistance;
+		const FVector End = Start + Forward * ContextStruct.Range;
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(OwnerWeapon);
 	Params.AddIgnoredActor(OwnerWeapon->GetOwner());
+	
+	FCollisionObjectQueryParams ObjectParams;
+	ObjectParams.AddObjectTypesToQuery(ECC_Pawn);       
+	ObjectParams.AddObjectTypesToQuery(ECC_WorldStatic); 
 
-	const bool bDidHit = GetWorld()->LineTraceSingleByChannel(
+	bool bDidHit = OwnerWeapon->GetWorld()->LineTraceSingleByObjectType(
 		Hit,
 		Start,
 		End,
-		ECC_Visibility,
+		ObjectParams,
 		Params
 	);
 
+	FVector TraceEndPoint = bDidHit ? Hit.ImpactPoint : End;
+
+	if (TraceParticle)
+	{
+		TraceParticle->Activate();
+		TraceParticle->SetNiagaraVariableVec3(ParticleVariable, TraceEndPoint);
+	}
+
 	if (bDidHit)
 	{
-		OnHit(Hit);
-	}
-	else
-	{
-		if (TraceParticle)
-		{
-			TraceParticle->Activate();
-			
-			TraceParticle->SetNiagaraVariableVec3(ParticleVariable, Hit.TraceEnd);
-		}
-		
+		OnHit(Hit, Hit.ImpactPoint, Hit.GetActor());
 	}
 	
-	
-	float FinalDamage = GetFinalDamage(DamageMultiplier);
-	
-	GEngine->AddOnScreenDebugMessage(-1, 5, FColor::Red, FString::Printf(TEXT("Fired projectile with %.2f damage (multiplier: %.2f)"), 
-			   FinalDamage, DamageMultiplier));
+	EndAttackExecution();
 }
 
 
-void ULineTraceExecutor::OnHit(const FHitResult& Hit)
+void ULineTraceExecutor::OnHit(const FHitResult& Hit, FVector ImpactPoint, AActor* TargetActor)
 {
 	if (ParticleVariable != "None")
 	{
@@ -102,7 +100,7 @@ void ULineTraceExecutor::OnHit(const FHitResult& Hit)
 		
 	}
 
-	Super::OnHit(Hit);
+	Super::OnHit(Hit, Hit.ImpactPoint, Hit.GetActor());
 }
 
 void ULineTraceExecutor::EndAttackExecution()

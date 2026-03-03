@@ -59,10 +59,10 @@ void UAttackModeComponentBase::StartAttacking()
 		UE_LOG(LogTemp, Error, TEXT("WeaponData is null on %s"), *GetName());
 		return;
 	}
-	
+	Attack();
 	// raise the attacking flag
 	bIsAttacking = true;
-
+/*
 	if (CanAttack())
 	{
 		Attack();
@@ -75,7 +75,7 @@ void UAttackModeComponentBase::StartAttacking()
 			GetWorld()->GetTimerManager().SetTimer(ReattackTimer, this, &UAttackModeComponentBase::Attack, CooldownBetweenAttacks, false);
 		}
 	}
-	
+	*/
 }
 
 void UAttackModeComponentBase::StopAttacking()
@@ -91,15 +91,6 @@ void UAttackModeComponentBase::StopAttacking()
 
 void UAttackModeComponentBase::Attack()
 {
-	
-	if (!OwnerWeapon->CanAttack())
-	{
-		return;
-	}
-	OwnerWeapon->SetPendingDamageMultiplier(DamagesMultiplier);
-	//OwnerWeapon->StartAttacking();
-	//OwnerWeapon->PerformAttack();
-
 	AActor* WeaponOwner = OwnerWeapon->GetOwner(); // Le joueur
 	UAbilitySystemComponent* OwnerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(WeaponOwner);
     
