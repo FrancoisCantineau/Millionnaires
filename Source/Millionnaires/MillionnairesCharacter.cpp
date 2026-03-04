@@ -8,68 +8,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/Characters/CharacterStatsComponent.h"
 
-#pragma region Command
 
-static FAutoConsoleCommand CCmdDamage(
-	TEXT("test.damage"),
-	TEXT("Deal 20 damage to player"),
-	FConsoleCommandDelegate::CreateLambda([]()
-	{
-		if (!GEngine || !GEngine->GameViewport)
-		{
-			UE_LOG(LogTemp, Error, TEXT("No GEngine or GameViewport!"));
-			return;
-		}
-
-		UWorld* World = GEngine->GetWorldFromContextObject(GEngine->GameViewport, EGetWorldErrorMode::LogAndReturnNull);
-		if (!World)
-		{
-			UE_LOG(LogTemp, Error, TEXT("No World found!"));
-			return;
-		}
-
-		APlayerController* PC = World->GetFirstPlayerController();
-		if (!PC)
-		{
-			UE_LOG(LogTemp, Error, TEXT("No PlayerController found!"));
-			return;
-		}
-
-		APawn* Pawn = PC->GetPawn();
-		if (!Pawn)
-		{
-			UE_LOG(LogTemp, Error, TEXT("No Pawn found!"));
-			return;
-		}
-
-		UE_LOG(LogTemp, Warning, TEXT("Found Pawn: %s"), *Pawn->GetName());
-
-		UCharacterStatsComponent* Stats = Pawn->FindComponentByClass<UCharacterStatsComponent>();
-		if (!Stats)
-		{
-			UE_LOG(LogTemp, Error, TEXT("No CharacterStatsComponent found on pawn!"));
-            
-			// List all components
-			TArray<UActorComponent*> Components;
-			Pawn->GetComponents(Components);
-			UE_LOG(LogTemp, Warning, TEXT("Pawn has %d components:"), Components.Num());
-			for (UActorComponent* Comp : Components)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("  - %s"), *Comp->GetName());
-			}
-			return;
-		}
-
-		float HealthBefore = Stats->GetCurrentHealth();
-		Stats->ModifyHealth(-20.0f);
-		float HealthAfter = Stats->GetCurrentHealth();
-        
-		UE_LOG(LogTemp, Warning, TEXT("✓ DAMAGE APPLIED: %.1f -> %.1f (%.1f damage)"), 
-			HealthBefore, HealthAfter, HealthBefore - HealthAfter);
-	})
-);
-
-#pragma endregion 
 
 AMillionnairesCharacter::AMillionnairesCharacter()
 {
