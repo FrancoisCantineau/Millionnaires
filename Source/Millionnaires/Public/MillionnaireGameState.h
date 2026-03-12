@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/DataAsset.h"
-#include "DA_ProceduralMap.generated.h"
+#include "GameFramework/GameStateBase.h"
+#include "MillionnaireGameState.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class MILLIONNAIRES_API UDA_ProceduralMap : public UPrimaryDataAsset
+class MILLIONNAIRES_API AMillionnaireGameState : public AGameStateBase
 {
 	GENERATED_BODY()
 	
