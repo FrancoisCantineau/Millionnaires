@@ -95,6 +95,10 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Phase|Camera", meta = (ClampMin = "0.0", ToolTip = "Blend time when switching between dispatch and mission camera views."))
     float PhaseTransitionBlendTime = 1.0f;
 
+    /** If true, BeginPlay skips the Dispatch phase entirely and starts directly in Mission mode. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Phase", meta = (ToolTip = "Skip Dispatch and start directly in Mission mode."))
+    bool bStartInMissionMode = false;
+
     /** Cached dispatch camera actor found by tag at BeginPlay. */
     UPROPERTY()
     TWeakObjectPtr<AActor> DispatchCamera;

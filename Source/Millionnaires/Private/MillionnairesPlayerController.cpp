@@ -35,8 +35,15 @@ void AMillionnairesPlayerController::BeginPlay()
 {
     Super::BeginPlay();
 
-    // Start in dispatch phase (top-down camera, mouse available).
-    EnterDispatchPhase();
+    // skip the Dispatch phase and go directly to Mission.
+    if (bStartInMissionMode)
+    {
+        EnterMissionPhase(nullptr);
+    }
+    else
+    {
+        EnterDispatchPhase();
+    }
 }
 
 void AMillionnairesPlayerController::SetupInputComponent()
