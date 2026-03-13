@@ -5,6 +5,8 @@
 #include "ShipData.generated.h"
 
 
+class ADoorBaseArrow;
+class ABaseRoom;
 
 UENUM(BlueprintType)
 enum class ERoomType : uint8
@@ -57,3 +59,37 @@ struct FFloorSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Floor")
 	TMap<FGameplayTag, int32> ZoneType;
 };
+
+USTRUCT(BlueprintType)
+struct FZoneData
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(BlueprintReadWrite)
+	TArray<ABaseRoom*> Rooms;
+
+	UPROPERTY(BlueprintReadWrite)
+	int32 MaxRooms = 0;
+};
+
+USTRUCT(BlueprintType)
+struct FFloorData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite)
+	ABaseRoom* FirstRoom = nullptr;
+	
+	UPROPERTY(BlueprintReadWrite)
+	TMap<FGameplayTag, FZoneData> ZoneData;
+
+	UPROPERTY(BlueprintReadWrite)
+	TArray<FGameplayTag> AvailableZonesLeft;
+
+	UPROPERTY(BlueprintReadWrite)
+	TArray<AActor*> SpawnedRooms;
+
+	UPROPERTY(BlueprintReadWrite)
+	TMap<ADoorBaseArrow*, ADoorBaseArrow*> ConnectionPairs;
+};
+
