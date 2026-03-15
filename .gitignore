@@ -114,7 +114,11 @@ DerivedDataCache/*
 
 
 # Assets 
-Content/06-Assets/Galaxy/Maps*
+Content/Galaxy*
 Content/Deko_MatrixDemo/Apartment/Maps*
 Content/SpaceshipInterior/Maps*
 Content/Deko_MatrixDemo*
+Content/ModSci_Engineer*
+Content/ModSci_EngiProps*
+Content/ModSciInteriors*
+Content/StarterBundle*

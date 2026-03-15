@@ -74,6 +74,12 @@ public:
  
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Generator|Connections")
 	bool IsDoorConnected(int32 FloorIndex, ADoorBaseArrow* Door) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Generator|Floors")
+	void ClearFloor(int32 FloorIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "Generator|Floors")
+	void ClearZone(int32 FloorIndex, FGameplayTag Zone);
 	
 private:
 	FFloorData* GetFloorData(int32 FloorIndex);

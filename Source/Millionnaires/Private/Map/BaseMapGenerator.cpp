@@ -190,3 +190,48 @@ bool ABaseMapGenerator::IsDoorConnected(int32 FloorIndex, ADoorBaseArrow* Door) 
  
     return Floor->ConnectionPairs.Contains(Door);
 }
+
+void ABaseMapGenerator::ClearFloor(int32 FloorIndex)
+{
+    FFloorData* Floor = GetFloorData(FloorIndex);
+    if (!Floor) return;
+
+    for (AActor* Room : Floor->SpawnedRooms)
+    {
+        if (!IsValid(Room) || Room == Floor->FirstRoom) continue;
+        Room->Destroy();
+    }
+    
+    ABaseRoom* SavedFirstRoom = Floor->FirstRoom;
+    *Floor = FFloorData();
+    Floor->FirstRoom = SavedFirstRoom;
+    
+    if (IsValid(SavedFirstRoom))
+    {
+        Floor->SpawnedRooms.Add(SavedFirstRoom);
+    }
+}
+
+void ABaseMapGenerator::ClearZone(int32 FloorIndex, FGameplayTag Zone)
+{
+    FFloorData* Floor = GetFloorData(FloorIndex);
+    if (!Floor) return;
+
+    FZoneData* ZoneData = Floor->ZoneData.Find(Zone);
+    if (!ZoneData) return;
+    
+    for (ABaseRoom* Room : ZoneData->Rooms)
+    {
+        if (IsValid(Room))
+        {
+            Floor->SpawnedRooms.Remove(Room);
+            Room->Destroy();
+        }
+    }
+    
+    int32 Max = ZoneData->MaxRooms;
+    *ZoneData = FZoneData();
+    ZoneData->MaxRooms = Max;
+    
+    Floor->AvailableZonesLeft.AddUnique(Zone);
+}
