@@ -4,9 +4,10 @@
 #include "GameplayTagContainer.h"
 #include "ShipData.generated.h"
 
-
-class ADoorBaseArrow;
-class ABaseRoom;
+class URoomDataAsset;
+class ULevelStreamingDynamic;
+class ABaseDoorSlot;
+class ABaseRoomData;
 
 UENUM(BlueprintType)
 enum class ERoomType : uint8
@@ -18,27 +19,26 @@ USTRUCT(BlueprintType)
 struct FRoomStruct
 {
 	GENERATED_BODY()
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
-	TSubclassOf<AActor> RoomClass;
- 
+	FSoftObjectPath LevelPath;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
 	ERoomType RoomType = ERoomType::Room;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
+	FGameplayTag ZoneType;	
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
 	TSubclassOf<AActor> MiniVersion;
 
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
+	/*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
 	int32 Floor = 0;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
-	AActor* RoomRef = nullptr;
+	UPROPERTY(BlueprintReadWrite, Category = "Room")
+	ULevelStreamingDynamic* LevelInstance = nullptr;*/
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
-	FGameplayTag ZoneType;
 };
 
 
@@ -66,11 +66,11 @@ struct FZoneData
 	GENERATED_BODY()
 	
 	UPROPERTY(BlueprintReadWrite)
-	TArray<ABaseRoom*> Rooms;
+	TArray<ABaseRoomData*> Rooms;
 
 	UPROPERTY(BlueprintReadWrite)
-	int32 MaxRooms = 0;
-};
+		int32 MaxRooms = 0;
+	};
 
 USTRUCT(BlueprintType)
 struct FFloorData
@@ -78,7 +78,7 @@ struct FFloorData
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadWrite)
-	ABaseRoom* FirstRoom = nullptr;
+	ABaseRoomData* FirstRoom = nullptr;
 	
 	UPROPERTY(BlueprintReadWrite)
 	TMap<FGameplayTag, FZoneData> ZoneData;
@@ -87,9 +87,15 @@ struct FFloorData
 	TArray<FGameplayTag> AvailableZonesLeft;
 
 	UPROPERTY(BlueprintReadWrite)
-	TArray<AActor*> SpawnedRooms;
+	TMap<URoomDataAsset*, int32> RoomSpawnCounts;
+	
+	UPROPERTY(BlueprintReadWrite)
+	TArray<ABaseRoomData*> SpawnedRooms;
 
 	UPROPERTY(BlueprintReadWrite)
-	TMap<ADoorBaseArrow*, ADoorBaseArrow*> ConnectionPairs;
+	TMap<ABaseDoorSlot*, ABaseDoorSlot*> ConnectionPairs;
+	
+	UPROPERTY(BlueprintReadWrite)
+	TArray<ABaseDoorSlot*> FreeDoors;
 };
 

@@ -35,6 +35,11 @@ public class Millionnaires : ModuleRules
 			"DayNightCycleSystem",
 			"QuestSystem",
 		});
+		
+		if (Target.bBuildEditor)
+		{
+			PrivateDependencyModuleNames.Add("UnrealEd");
+		}
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 
