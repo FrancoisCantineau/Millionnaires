@@ -218,12 +218,6 @@ bool UDispatchMissionManagerComponent::AcceptOffer(const FGuid& OfferId, const T
     SetMissionState(Mission, EDispatchMissionState::Accepted);
     activeMissions.Add(Mission);
 
-    // Stop offer highlight on this site (we're transitioning to mission highlight).
-    if (ADispatchMissionSiteActor* SiteActor = Offer.locationActor.Get())
-    {
-        SiteActor->SetOfferActive(false);
-    }
-
     // Remove offer.
     offers.RemoveAt(Index);
     OnOfferAccepted.Broadcast(OfferId);
@@ -236,21 +230,10 @@ bool UDispatchMissionManagerComponent::AcceptOffer(const FGuid& OfferId, const T
     SetMissionState(activeMissions.Last(), EDispatchMissionState::Traveling);
 
     return true;
-}bool UDispatchMissionManagerComponent::DeclineOffer(const FGuid& OfferId)
-{
-    // Stop highlight on the related site (player declined, no expiry pulse).
-    for (const FDispatchMissionOffer& O : offers)
-    {
-        if (O.offerId == OfferId)
-        {
-            if (ADispatchMissionSiteActor* Site = O.locationActor.Get())
-            {
-                Site->SetOfferActive(false);
-            }
-            break;
-        }
-    }
+}
 
+bool UDispatchMissionManagerComponent::DeclineOffer(const FGuid& OfferId)
+{
     const int32 Before = offers.Num();
     offers.RemoveAll([&](const FDispatchMissionOffer& O) { return O.offerId == OfferId; });
 
@@ -263,7 +246,6 @@ bool UDispatchMissionManagerComponent::AcceptOffer(const FGuid& OfferId, const T
     UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] Offer declined | OfferId=%s"), *OfferId.ToString());
     return true;
 }
-
 
 #pragma endregion API_OFFERS
 
@@ -307,6 +289,12 @@ bool UDispatchMissionManagerComponent::IsAgentBusy(APawn* Agent) const
 
     for (const FDispatchActiveMission& M : activeMissions)
     {
+        // Terminal missions should not keep agents busy.
+        if (M.state == EDispatchMissionState::Completed || M.state == EDispatchMissionState::Failed || M.state == EDispatchMissionState::Aborted)
+        {
+            continue;
+        }
+
         for (const TObjectPtr<APawn>& P : M.assignedAgents)
         {
             if (P == Agent)
@@ -523,11 +511,6 @@ void UDispatchMissionManagerComponent::GenerateOffer()
         offers.Add(Offer);
         OnOfferAdded.Broadcast(Offer.offerId);
 
-        if (ADispatchMissionSiteActor* SiteActor = Offer.locationActor.Get())
-        {
-            SiteActor->SetOfferActive(true);
-        }
-
         UE_LOG(LogTemp, Log, TEXT("[DispatchMissions] Offer added | OfferId=%s | Def=%s | Loc=%d | Time=%.1fs"),
                *Offer.offerId.ToString(), *GetNameSafe(Def), (int32)Offer.missionLocation, Offer.timeLimitSec);
 
@@ -561,25 +544,6 @@ void UDispatchMissionManagerComponent::UpdateOfferTimers(float DeltaTime)
 
     for (const FGuid& Id : Expired)
     {
-        // Capture the offer before removal so we can drive highlights (pulse) correctly.
-        ADispatchMissionSiteActor* Site = nullptr;
-
-        for (const FDispatchMissionOffer& O : offers)
-        {
-            if (O.offerId == Id)
-            {
-                Site = O.locationActor.Get();
-                break;
-            }
-        }
-
-        // Stop the offer highlight and play a short pulse (offer expired without accept).
-        if (Site)
-        {
-            Site->SetOfferActive(false);
-            Site->PlayOfferExpiredPulse();
-        }
-
         offers.RemoveAll([&](const FDispatchMissionOffer& O) { return O.offerId == Id; });
 
         OnOfferExpired.Broadcast(Id);
@@ -600,8 +564,11 @@ void UDispatchMissionManagerComponent::UpdateMissionSimulation(float DeltaTime)
     {
         FDispatchActiveMission& M = activeMissions[i];
 
+        // If a mission is terminal, remove it (agents become available again).
         if (M.state == EDispatchMissionState::Completed || M.state == EDispatchMissionState::Failed || M.state == EDispatchMissionState::Aborted)
         {
+            travelDurationByMissionSec.Remove(M.missionId);
+            activeMissions.RemoveAt(i);
             continue;
         }
 
@@ -635,6 +602,10 @@ void UDispatchMissionManagerComponent::UpdateMissionSimulation(float DeltaTime)
             const bool bSuccess = (Rng.FRand() <= FMath::Clamp(M.successChance01, 0.f, 1.f));
 
             SetMissionState(M, bSuccess ? EDispatchMissionState::Completed : EDispatchMissionState::Failed);
+
+            // Mission is finished after Returning completes: remove it now so agents are freed.
+            travelDurationByMissionSec.Remove(M.missionId);
+            activeMissions.RemoveAt(i);
             break;
         }
 
@@ -738,32 +709,49 @@ void UDispatchMissionManagerComponent::SetMissionState(FDispatchActiveMission& M
 
     FVector2D Range(1.f, 1.f);
 
-    if (Def)
+    // Returning should reuse the exact same travel duration as the outbound trip.
+    if (NewState == EDispatchMissionState::Returning)
     {
-        switch (NewState)
+        if (const float* Cached = travelDurationByMissionSec.Find(Mission.missionId))
         {
-        case EDispatchMissionState::Traveling:
-            Range = Def->travelDurationRangeSec;
-            break;
-        case EDispatchMissionState::Working:
-            Range = Def->workDurationRangeSec;
-            break;
-        case EDispatchMissionState::Returning:
-            Range = Def->returnDurationRangeSec;
-            break;
-        default:
-            Range = FVector2D(1.f, 1.f);
-            break;
+            Mission.stageDuration = *Cached;
+        }
+        else
+        {
+            // Fallback: if nothing was cached, use travel duration range.
+            Range = Def ? Def->travelDurationRangeSec : FVector2D(1.f, 1.f);
+            const float Min = FMath::Min(Range.X, Range.Y);
+            const float Max = FMath::Max(Range.X, Range.Y);
+            Mission.stageDuration = (FMath::IsNearlyEqual(Min, Max)) ? Min : Rng.FRandRange(Min, Max);
         }
     }
-
-    const float Min = FMath::Min(Range.X, Range.Y);
-    const float Max = FMath::Max(Range.X, Range.Y);
-    Mission.stageDuration = (FMath::IsNearlyEqual(Min, Max)) ? Min : Rng.FRandRange(Min, Max);
-
-    if (ADispatchMissionSiteActor* SiteActor = Mission.locationActor.Get())
+    else
     {
-        SiteActor->SetMissionState(NewState);
+        if (Def)
+        {
+            switch (NewState)
+            {
+            case EDispatchMissionState::Traveling:
+                Range = Def->travelDurationRangeSec;
+                break;
+            case EDispatchMissionState::Working:
+                Range = Def->workDurationRangeSec;
+                break;
+            default:
+                Range = FVector2D(1.f, 1.f);
+                break;
+            }
+        }
+
+        const float Min = FMath::Min(Range.X, Range.Y);
+        const float Max = FMath::Max(Range.X, Range.Y);
+        Mission.stageDuration = (FMath::IsNearlyEqual(Min, Max)) ? Min : Rng.FRandRange(Min, Max);
+
+        // Cache the actual travel duration for later reuse when returning.
+        if (NewState == EDispatchMissionState::Traveling)
+        {
+            travelDurationByMissionSec.Add(Mission.missionId, Mission.stageDuration);
+        }
     }
 
     OnMissionStateChanged.Broadcast(Mission.missionId, NewState);

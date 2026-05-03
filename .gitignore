@@ -111,3 +111,4 @@ DerivedDataCache/*
 *.exe
 *.out
 *.app
+/Plugins/Developer/RiderLink

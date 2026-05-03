@@ -247,5 +247,11 @@ private:
     /// <summary>Internal monotonic counter used to vary seeds across offers.</summary>
     int32 offerCounter = 0;
 
+    /// <summary>
+    /// Stores the actual rolled travel duration per mission so Returning can reuse the same duration.
+    /// Cleared when the mission ends.
+    /// </summary>
+    TMap<FGuid, float> travelDurationByMissionSec;
+
 #pragma endregion STATE
 };
