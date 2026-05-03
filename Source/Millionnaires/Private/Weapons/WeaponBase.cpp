@@ -30,19 +30,11 @@ AWeaponBase::AWeaponBase()
 	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
 	RootComponent = WeaponMesh;
 
-	BuffComponent = CreateDefaultSubobject<UWeaponBuffComponent>(TEXT("BuffComponent"));
-
 	//Add the ability system component
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(AscReplicationMode);
 	
-}
-
-
-void AWeaponBase::SetPendingDamageMultiplier(float DamagesMultiplier)
-{
-	PendingDamageMultiplier = DamagesMultiplier;
 }
 
 /**
@@ -51,8 +43,6 @@ void AWeaponBase::SetPendingDamageMultiplier(float DamagesMultiplier)
 void AWeaponBase::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-
-	ApplyWeaponData();
 }
 
 // Called when the game starts or when spawned
@@ -73,12 +63,6 @@ void AWeaponBase::BeginPlay()
 		bAttributesInitialized = true;
 	}
 	
-	GetComponents<UWeaponEffectBaseComponent>(Effects);
-
-	RessourceComponent = FindComponentByClass<UWeaponResourceComponentBase>();
-	
-	ApplyWeaponData();
-
 	if (IsValid(AbilitySystemComponent))
 	{
 		WeaponAttributesSet = AbilitySystemComponent->GetSet<UWeaponAttributeSet>();
@@ -88,55 +72,27 @@ void AWeaponBase::BeginPlay()
 
 void AWeaponBase::InitializeWeaponAttributes()
 {
-	if (!AbilitySystemComponent || !WeaponData) return;
+	if (!AbilitySystemComponent || !WeaponData || !InitialStatsGameplayEffect) return;
 
-	FGameplayEffectContextHandle Context =
-		AbilitySystemComponent->MakeEffectContext();
+	FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
 
-	FGameplayEffectSpecHandle Spec =
-		AbilitySystemComponent->MakeOutgoingSpec(
-			InitialStatsGameplayEffect,
-			1.f,
-			Context
-		);
-
-	if (!Spec.IsValid()) return;
-
-	Spec.Data->SetSetByCallerMagnitude(
-		FGameplayTag::RequestGameplayTag("Data.Weapon.Damage"),
-		WeaponData->BaseDamage
+	FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
+		InitialStatsGameplayEffect,
+		1.f,
+		Context
 	);
 
-	Spec.Data->SetSetByCallerMagnitude(
-		FGameplayTag::RequestGameplayTag("Data.Weapon.AttackRate"),
-		WeaponData->AttackRate
-	);
+	if (!SpecHandle.IsValid()) return;
+	
+	SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Weapon.MaxAmmo"), WeaponData->MaxAmmo);
+	SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Weapon.CurrentAmmo"), WeaponData->BaseAmmo);
+	SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Weapon.Damage"), WeaponData->BaseDamage);
+	SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Weapon.AttackRate"), WeaponData->AttackRate);
+	SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Weapon.AttackRange"), WeaponData->AttackRange);
+	SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Weapon.ProjectilesCount"), WeaponData->ProjectilesPerShot);
 
-	AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data);
-}
-
-void AWeaponBase::ApplyWeaponData()
-{
-	if (WeaponData && WeaponMesh)
-	{
-		WeaponMesh->SetSkeletalMesh(WeaponData->WeaponMesh);
-	}
-
-	if (WeaponData)
-	{
-		RuntimeStats.BaseAttackSpeed = WeaponData->AttackRate;
-		RuntimeStats.BaseDamage = WeaponData->BaseDamage;
-		RuntimeStats.FinalAttackSpeed = RuntimeStats.BaseAttackSpeed;
-		RuntimeStats.FinalDamage = RuntimeStats.BaseDamage;
-	}
-	if (BuffComponent)
-	{
-		BuffComponent->InitializeFromData(
-			WeaponData->BaseDamage,
-			WeaponData->AttackRate,
-			WeaponData->AttackRange
-		);
-	}
+	// Appliquer à l'ASC
+	AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 }
 
 
@@ -154,21 +110,11 @@ UAbilitySystemComponent* AWeaponBase::GetAbilitySystemComponent() const
 	return AbilitySystemComponent;
 }
 
-bool AWeaponBase::CanAttack()
-{
-	if (RessourceComponent)
-	{
-		return RessourceComponent->CanConsume();
-	}
-	return true;
-}
-
-void AWeaponBase::PerformAttack(FGameplayEffectSpecHandle GEHandle)
+void AWeaponBase::PerformAttack(FWeaponContextStruct ContextStruct)
 {
 	if (AttackExecutor)
 	{
-		RessourceComponent->Consume();
-		AttackExecutor->ExecuteAttack(PendingDamageMultiplier, GEHandle);
+		AttackExecutor->ExecuteAttack(ContextStruct);
 	}
 }
 
@@ -177,29 +123,5 @@ void AWeaponBase::InterruptAttack()
 	if (AttackExecutor)
 	{
 		AttackExecutor->EndAttackExecution();
-	}
-}
-
-void AWeaponBase::ApplyEffects(const FHitResult& Hit, AActor* Instigatorr)
-{
-
-	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Hit.GetActor());
-	UAbilitySystemComponent* InstigatorASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Owner);
-	
-	for (TSubclassOf<UGameplayEffect> EffectClass : WeaponData->Effects)
-	{
-		if (EffectClass)
-		{
-			FGameplayEffectContextHandle Context = InstigatorASC->MakeEffectContext();
-			Context.AddHitResult(Hit);
-                
-			FGameplayEffectSpecHandle SpecHandle = InstigatorASC->MakeOutgoingSpec(
-				EffectClass, 1.0f, Context);
-                    
-			if (SpecHandle.IsValid())
-			{
-				InstigatorASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
-			}
-		}
 	}
 }

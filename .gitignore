@@ -112,3 +112,7 @@ DerivedDataCache/*
 *.out
 *.app
 /Plugins/Developer/RiderLink
+
+
+# Assets 
+Content/06-Assets/Galaxy/Maps*

@@ -51,26 +51,25 @@ void UWeaponsManagerComponent::EquipWeapon(TSubclassOf<AWeaponBase> WeaponClass)
 {
 	if (IsValid(OwningCharacter))
 	{
-		FVector Location = OwningCharacter->GetActorLocation();
-		FRotator Rotation = FRotator::ZeroRotator;
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Owner = OwningCharacter;
 		SpawnParams.Instigator = OwningCharacter->GetInstigator();
 
-		EquippedWeapon = GetWorld()->SpawnActor<AWeaponBase>(WeaponClass, Location, Rotation, SpawnParams);
+		EquippedWeapon = GetWorld()->SpawnActor<AWeaponBase>(
+	   WeaponClass,
+	   FTransform::Identity,
+	   SpawnParams
+   );
 
-		if (EquippedWeapon)
+		if (!EquippedWeapon)
+			return;
 		{
 			
 			FName WeaponSocket = EquippedWeapon->WeaponData->AttachSocketName;
 			TSubclassOf<UAnimInstance> WeaponAnimInstance = EquippedWeapon->WeaponData->AnimInstance;
 			
-			FAttachmentTransformRules AttachRules(
-	EAttachmentRule::KeepRelative,
-	EAttachmentRule::KeepRelative,
-	EAttachmentRule::KeepWorld,
-	true
-);
+			FAttachmentTransformRules AttachRules =
+				FAttachmentTransformRules::SnapToTargetIncludingScale;
 
 			EquippedWeapon->AttachToComponent(
 				OwningCharacter->GetMesh(),
@@ -106,5 +105,84 @@ void UWeaponsManagerComponent::UnequipWeapon()
 		OwnerCharacterMovement->bOrientRotationToMovement = true;
 		OwnerCharacterMovement->bUseControllerDesiredRotation= false;
 	}
+}
+
+void UWeaponsManagerComponent::EquipWeaponAlive(TSubclassOf<AWeaponBase> WeaponClass)
+{
+	if (!IsValid(OwningCharacter) || !WeaponClass) 
+		return;
+	
+	AWeaponBase* WeaponToEquip = nullptr;
+	for (AWeaponBase* Weapon : Inventory)
+	{
+		if (Weapon && Weapon->IsA(WeaponClass))
+		{
+			WeaponToEquip = Weapon;
+			break;
+		}
+	}
+	
+	if (!WeaponToEquip)
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = OwningCharacter;
+		SpawnParams.Instigator = OwningCharacter->GetInstigator();
+
+		WeaponToEquip = GetWorld()->SpawnActor<AWeaponBase>(
+			WeaponClass,
+			FTransform::Identity,
+			SpawnParams
+		);
+
+		if (!WeaponToEquip)
+			return;
+
+		Inventory.Add(WeaponToEquip);
+	}
+	
+	if (EquippedWeapon && EquippedWeapon != WeaponToEquip)
+	{
+		EquippedWeapon->SetActorHiddenInGame(true);
+		EquippedWeapon->SetActorEnableCollision(false);
+	}
+
+
+	EquippedWeapon = WeaponToEquip;
+	EquippedWeapon->SetActorHiddenInGame(false);
+	EquippedWeapon->SetActorEnableCollision(true);
+
+
+	FName WeaponSocket = EquippedWeapon->WeaponData->AttachSocketName;
+	FAttachmentTransformRules AttachRules = FAttachmentTransformRules::SnapToTargetIncludingScale;
+	EquippedWeapon->AttachToComponent(OwningCharacter->GetMesh(), AttachRules, WeaponSocket);
+
+	TSubclassOf<UAnimInstance> WeaponAnimInstance = EquippedWeapon->WeaponData->AnimInstance;
+	if (WeaponAnimInstance)
+	{
+		OwningCharacter->GetMesh()->SetAnimInstanceClass(WeaponAnimInstance);
+	}
+	
+	UCharacterMovementComponent* OwnerCharacterMovement = OwningCharacter->GetCharacterMovement();
+	OwnerCharacterMovement->MaxWalkSpeed = EquippedWeapon->WeaponData->MovementProperties.MaxWalkSpeed;
+	OwnerCharacterMovement->bOrientRotationToMovement = EquippedWeapon->WeaponData->MovementProperties.OrientRotationToMovement;
+	OwnerCharacterMovement->bUseControllerDesiredRotation = EquippedWeapon->WeaponData->MovementProperties.UseControllerDesiredRotation;
+}
+
+void UWeaponsManagerComponent::UnequipWeaponAlive()
+{
+	if (!EquippedWeapon)
+		return;
+	
+	EquippedWeapon->SetActorHiddenInGame(true);
+	EquippedWeapon->SetActorEnableCollision(false);
+	
+	OwningCharacter->GetMesh()->SetAnimInstanceClass(DefaultAnimInstance);
+	
+	UCharacterMovementComponent* OwnerCharacterMovement = OwningCharacter->GetCharacterMovement();
+	OwnerCharacterMovement->MaxWalkSpeed = 500.f;
+	OwnerCharacterMovement->bOrientRotationToMovement = true;
+	OwnerCharacterMovement->bUseControllerDesiredRotation = false;
+
+	EquippedWeapon = nullptr;
 }
 

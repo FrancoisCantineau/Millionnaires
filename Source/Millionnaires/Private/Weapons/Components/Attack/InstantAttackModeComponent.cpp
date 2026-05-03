@@ -13,6 +13,7 @@
 
 void UInstantAttackModeComponent::Attack()
 {
+	/*
 	if (!bIsAttacking || !CanAttack())
 	{
 		return;
@@ -21,12 +22,12 @@ void UInstantAttackModeComponent::Attack()
 	TimeOfLastAttack = GetWorld()->GetTimeSeconds();
 	const float AttacksPerSecond = OwnerWeapon->WeaponAttributesSet->GetAttackRate();
 	CooldownBetweenAttacks = 1.f / AttacksPerSecond;
-	
+	*/
 	Super::Attack();
-	
+	/*
 	if (OwnerWeapon->WeaponData->bFullAuto)
 	{
 		// schedule the next attack
 		GetWorld()->GetTimerManager().SetTimer(ReattackTimer, this, &UAttackModeComponentBase::Attack, CooldownBetweenAttacks, false);
-	}
+	}*/
 }

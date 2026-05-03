@@ -20,10 +20,6 @@ AShooterCharacter::AShooterCharacter()
 
 	// configure movement
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 600.0f, 0.0f);
-
-	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
-	AbilitySystemComponent->SetIsReplicated(true);
-	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 }
 
 void AShooterCharacter::BeginPlay()
@@ -33,7 +29,6 @@ void AShooterCharacter::BeginPlay()
 	if (IsValid(AbilitySystemComponent))
 	{
 		BaseAttributesSet = AbilitySystemComponent->GetSet<UBaseAttributeSet>();
-		WeaponAttributesSet = AbilitySystemComponent->GetSet<UWeaponAttributeSet>();
 	}
 
 	// reset HP to max
@@ -56,6 +51,7 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	// base class handles move, aim and jump inputs
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	// Set up action bindings
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
@@ -92,41 +88,6 @@ float AShooterCharacter::TakeDamage(float Damage, struct FDamageEvent const& Dam
 	return Damage;
 }
 
-void AShooterCharacter::DoAim(float Yaw, float Pitch)
-{
-	// only route inputs if the character is not dead
-	if (!IsDead())
-	{
-		Super::DoAim(Yaw, Pitch);
-	}
-}
-
-void AShooterCharacter::DoMove(float Right, float Forward)
-{
-	// only route inputs if the character is not dead
-	if (!IsDead())
-	{
-		Super::DoMove(Right, Forward);
-	}
-}
-
-void AShooterCharacter::DoJumpStart()
-{
-	// only route inputs if the character is not dead
-	if (!IsDead())
-	{
-		Super::DoJumpStart();
-	}
-}
-
-void AShooterCharacter::DoJumpEnd()
-{
-	// only route inputs if the character is not dead
-	if (!IsDead())
-	{
-		Super::DoJumpEnd();
-	}
-}
 
 void AShooterCharacter::DoStartFiring()
 {

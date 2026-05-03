@@ -30,6 +30,12 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void UnequipWeapon();
+
+	UFUNCTION(BlueprintCallable)
+	void EquipWeaponAlive(TSubclassOf<AWeaponBase> WeaponClass);
+
+	UFUNCTION(BlueprintCallable)
+	void UnequipWeaponAlive();
 	
 protected:
 
@@ -41,4 +47,7 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equip")
 	TSubclassOf<UAnimInstance> DefaultAnimInstance;
+
+	UPROPERTY()
+	TArray<AWeaponBase*> Inventory;
 };

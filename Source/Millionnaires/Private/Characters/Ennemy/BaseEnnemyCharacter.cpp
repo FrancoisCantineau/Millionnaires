@@ -6,7 +6,7 @@
 ABaseEnnemyCharacter::ABaseEnnemyCharacter(const FObjectInitializer& ObjectInitializer)
 : Super(ObjectInitializer)
 {
-	AbilityHandler = CreateDefaultSubobject<UAbilityHandlerComponentBase>(TEXT("BPC_AbilityHandlerComponent"));
+
 }
 
 void ABaseEnnemyCharacter::BeginPlay()

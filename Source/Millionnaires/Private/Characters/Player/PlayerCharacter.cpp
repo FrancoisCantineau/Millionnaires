@@ -57,6 +57,10 @@ APlayerCharacter::APlayerCharacter(const FObjectInitializer& ObjectInitializer)
         MoveComp->AirControl = 0.5f;
         MoveComp->NavAgentProps.bCanCrouch = true;
 
+        MoveComp->MaxAcceleration = 800.0f;
+        MoveComp->BrakingDecelerationWalking = 600.0f;
+        MoveComp->GroundFriction = 4.0f;
+
         // Initialise runtime movement speeds
         CurrentMaxWalkSpeed = WalkSpeed;
         DesiredMaxWalkSpeed = WalkSpeed;
@@ -71,19 +75,61 @@ void APlayerCharacter::BeginPlay()
 {
     Super::BeginPlay();
 
+    if (FirstPersonCameraComponent)
+    {
+        CameraBaseRelativeLocation = FirstPersonCameraComponent->GetRelativeLocation();
+        CameraBaseRelativeRotation = FirstPersonCameraComponent->GetRelativeRotation();
+        FirstPersonCameraComponent->FirstPersonFieldOfView = BaseFOV;
+    }
+
+    HeadBobFrequency                  = 8.0f;
+    HeadBobAmplitudeV                 = 4.5f;
+    HeadBobAmplitudeH                 = 1.5f;
+    HeadBobSprintFrequencyMultiplier  = 1.2f;
+    HeadBobSprintVerticalMultiplier   = 2.2f;
+    HeadBobSprintLateralMultiplier    = 1.0f;
+    HeadBobRollAmplitude              = 2.5f;
+    HeadBobPitchAmplitude             = 1.5f;
+    HeadBobRotationInterpSpeed        = 10.0f;
+    HeadBobInterpSpeed                = 6.0f;
+
+    BreathingFrequency                = 0.65f;
+    BreathingAmplitudeV               = 18.0f;
+    BreathingAmplitudeH               = 0.0f;
+    BreathingRollAmplitude            = 1.5f;
+    BreathingSprintFrequencyMultiplier= 2.5f;
+    BreathingSprintAmplitudeMultiplier= 0.9f;
+    BreathingSprintRollMultiplier     = 2.0f;
+    BreathingInterpSpeed              = 1.5f;
+
+    SprintFOV     = 85.0f;
+    FOVInterpSpeed= 3.0f;
+
+
+    CurrentHeadBobAmplitudeV   = HeadBobAmplitudeV;
+    CurrentHeadBobAmplitudeH   = HeadBobAmplitudeH;
+    CurrentBreathingFrequency  = BreathingFrequency;
+    CurrentBreathingAmplitudeV = BreathingAmplitudeV;
+    CurrentBreathingAmplitudeH = BreathingAmplitudeH;
+    CurrentBreathingRoll       = 0.0f;
+
     UCharacterDefinition* SelectedDefinition = nullptr;
+    if (!SelectedDefinition)
+    {
+        if (StatsComponent)
+        {
+            if (StatsComponent->GetCharacterDefinition())
+            {
+                SelectedDefinition = StatsComponent->GetCharacterDefinition();
+            }
+        }
+    }
 
     if (SelectedDefinition)
     {
         ApplyCharacterDefinition(SelectedDefinition);
     }
-    else if (UCharacterStatsComponent* Stats = GetStatsComponent())
-    {
-        if (Stats->GetCharacterDefinition())
-        {
-            ApplyCharacterDefinition(Stats->GetCharacterDefinition());
-        }
-    }
+
 
     // Ensure the desired movement speed matches the initial state.
     UpdateMovementSpeed();
@@ -94,6 +140,7 @@ void APlayerCharacter::Tick(float DeltaSeconds)
     Super::Tick(DeltaSeconds);
 
     SmoothUpdateMovementSpeed(DeltaSeconds);
+    UpdateCameraFeel(DeltaSeconds);
 }
 
 #pragma endregion
@@ -192,40 +239,26 @@ void APlayerCharacter::HandleRunEnd()
 
     if (bDebugMovement)
     {
-        const UCharacterMovementComponent* MoveComp = GetCharacterMovement();
-        const float Speed = MoveComp ? MoveComp->MaxWalkSpeed : -1.0f;
-        UE_LOG(LogMillionnaires, Log, TEXT("[Player] Sprint ended. DesiredMaxWalkSpeed=%.1f CurrentMaxWalkSpeed=%.1f"),
-            DesiredMaxWalkSpeed, Speed);
+        UE_LOG(LogMillionnaires, Log, TEXT("[Player] Sprint ended."));
     }
 }
 
 void APlayerCharacter::HandleCrouchToggle()
 {
-    if (IsCrouched())
+    if (bIsCrouched)
     {
         UnCrouch();
     }
     else
     {
         Crouch();
-
-        // Optionally cancel sprint when crouching to avoid conflicting states.
-        if (bIsSprinting)
-        {
-            bIsSprinting = false;
-        }
     }
 
     UpdateMovementSpeed();
 
     if (bDebugMovement)
     {
-        const UCharacterMovementComponent* MoveComp = GetCharacterMovement();
-        const float Speed = MoveComp ? MoveComp->MaxWalkSpeed : -1.0f;
-        UE_LOG(LogMillionnaires, Log, TEXT("[Player] Crouch toggled. IsCrouched=%s DesiredMaxWalkSpeed=%.1f CurrentMaxWalkSpeed=%.1f"),
-            IsCrouched() ? TEXT("true") : TEXT("false"),
-            DesiredMaxWalkSpeed,
-            Speed);
+        UE_LOG(LogMillionnaires, Log, TEXT("[Player] Crouch toggled — IsCrouched=%s"), bIsCrouched ? TEXT("true") : TEXT("false"));
     }
 }
 
@@ -235,43 +268,32 @@ void APlayerCharacter::HandleCrouchToggle()
 
 void APlayerCharacter::UpdateMovementSpeed()
 {
-    UCharacterMovementComponent* MoveComp = GetCharacterMovement();
-    if (!MoveComp)
+    if (bIsCrouched)
     {
-        return;
+        DesiredMaxWalkSpeed = CrouchSpeed;
     }
-
-    // Base = walk speed
-    float TargetSpeed = WalkSpeed;
-
-    // Sprint only when not crouched
-    if (bIsSprinting && !MoveComp->IsCrouching())
+    else if (bIsSprinting)
     {
-        TargetSpeed = RunSpeed;
+        DesiredMaxWalkSpeed = RunSpeed;
     }
-
-    // Crouch always forces crouch speed (slower than walk/run)
-    if (MoveComp->IsCrouching())
+    else
     {
-        TargetSpeed = CrouchSpeed;
-    }
-
-    DesiredMaxWalkSpeed = TargetSpeed;
-
-    // If there is no ramp time, apply instant change
-    if (TimeToReachMaxSpeed <= 0.0f)
-    {
-        CurrentMaxWalkSpeed = DesiredMaxWalkSpeed;
-        MoveComp->MaxWalkSpeed = DesiredMaxWalkSpeed;
+        DesiredMaxWalkSpeed = WalkSpeed;
     }
 }
 
 void APlayerCharacter::SmoothUpdateMovementSpeed(float DeltaSeconds)
 {
     UCharacterMovementComponent* MoveComp = GetCharacterMovement();
-    if (!MoveComp || TimeToReachMaxSpeed <= 0.0f)
+    if (!MoveComp)
     {
-        // Already handled in UpdateMovementSpeed when TimeToReachMaxSpeed <= 0
+        return;
+    }
+
+    if (TimeToReachMaxSpeed <= 0.0f)
+    {
+        CurrentMaxWalkSpeed = DesiredMaxWalkSpeed;
+        MoveComp->MaxWalkSpeed = DesiredMaxWalkSpeed;
         return;
     }
 
@@ -282,8 +304,7 @@ void APlayerCharacter::SmoothUpdateMovementSpeed(float DeltaSeconds)
     }
 
     const float DeltaSpeedPerSecond = DeltaToTarget / TimeToReachMaxSpeed;
-    const float Step = DeltaSpeedPerSecond * DeltaSeconds;
-    float NewSpeed = CurrentMaxWalkSpeed + Step;
+    float NewSpeed = CurrentMaxWalkSpeed + DeltaSpeedPerSecond * DeltaSeconds;
 
     // Clamp to avoid overshooting the target
     if ((DeltaToTarget > 0.0f && NewSpeed > DesiredMaxWalkSpeed) ||
@@ -329,9 +350,9 @@ void APlayerCharacter::ApplyCharacterDefinition(UCharacterDefinition* Definition
         return;
     }
 
-    if (UCharacterStatsComponent* Stats = GetStatsComponent())
+    if (StatsComponent)
     {
-        Stats->InitializeFromDefinition(Definition);
+        StatsComponent->InitializeFromDefinition(Definition);
     }
 
     ApplyVisualsFromDefinition(Definition);
@@ -367,5 +388,131 @@ void APlayerCharacter::ApplyVisualsFromDefinition(UCharacterDefinition* Definiti
         }
     }
 }
+
+#pragma endregion
+
+#pragma region CAMERA_FEEL
+
+void APlayerCharacter::UpdateCameraFeel(float DeltaSeconds)
+{
+    if (!FirstPersonCameraComponent)
+    {
+        return;
+    }
+
+    UpdateBreathingSway(DeltaSeconds);
+    UpdateHeadBob(DeltaSeconds);
+    UpdateDynamicFOV(DeltaSeconds);
+}
+
+void APlayerCharacter::UpdateHeadBob(float DeltaSeconds)
+{
+    const UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+    if (!MoveComp || !FirstPersonCameraComponent) return;
+
+    const bool bMoving = MoveComp->IsMovingOnGround()
+        && MoveComp->Velocity.SizeSquared2D() > 25.0f;
+
+    const float TargetAlpha = bMoving ? 1.0f : 0.0f;
+    HeadBobAlpha = FMath::FInterpTo(HeadBobAlpha, TargetAlpha, DeltaSeconds, HeadBobInterpSpeed);
+
+
+    if (HeadBobAlpha < 0.001f)
+    {
+        HeadBobTime           = 0.0f;
+        PreviousBobSin        = 0.0f;
+        CurrentBobTranslation = FVector::ZeroVector;
+        CurrentCameraRollPitch = FMath::RInterpTo(CurrentCameraRollPitch, FRotator::ZeroRotator, DeltaSeconds, HeadBobRotationInterpSpeed);
+        CurrentBobRotation = CurrentCameraRollPitch;
+        FirstPersonCameraComponent->SetRelativeLocation(CameraBaseRelativeLocation + CurrentBreathTranslation);
+        FirstPersonCameraComponent->SetRelativeRotation(CameraBaseRelativeRotation + CurrentCameraRollPitch);
+        return;
+    }
+
+    const float Freq = HeadBobFrequency * (bIsSprinting ? HeadBobSprintFrequencyMultiplier : 1.0f);
+    HeadBobTime += DeltaSeconds * Freq;
+
+    const float TargetAmpV = HeadBobAmplitudeV * (bIsSprinting ? HeadBobSprintVerticalMultiplier : 1.0f);
+    const float TargetAmpH = HeadBobAmplitudeH * (bIsSprinting ? HeadBobSprintLateralMultiplier  : 1.0f);
+    CurrentHeadBobAmplitudeV = FMath::FInterpTo(CurrentHeadBobAmplitudeV, TargetAmpV, DeltaSeconds, HeadBobInterpSpeed);
+    CurrentHeadBobAmplitudeH = FMath::FInterpTo(CurrentHeadBobAmplitudeH, TargetAmpH, DeltaSeconds, HeadBobInterpSpeed);
+
+    const float BobV = FMath::Sin(HeadBobTime) * CurrentHeadBobAmplitudeV * HeadBobAlpha;
+    
+    const float BobH = bIsSprinting
+        ? FMath::Cos(HeadBobTime * 0.5f) * CurrentHeadBobAmplitudeH * HeadBobAlpha
+        : FMath::Sin(HeadBobTime * 0.5f) * CurrentHeadBobAmplitudeH * HeadBobAlpha;
+
+    const float BobFwd = FMath::Sin(HeadBobTime * 2.0f) * (bIsSprinting ? 4.0f : 2.0f) * HeadBobAlpha;
+
+    CurrentBobTranslation = FVector(BobFwd, BobH, BobV);
+
+    const float RollAmp = HeadBobRollAmplitude * (bIsSprinting ? HeadBobSprintLateralMultiplier : 1.0f);
+    const float TargetRoll = bIsSprinting
+        ? FMath::Cos(HeadBobTime * 0.5f) * RollAmp * HeadBobAlpha
+        : FMath::Sin(HeadBobTime * 0.5f) * RollAmp * HeadBobAlpha;
+
+    const float TargetPitch = -FMath::Abs(FMath::Sin(HeadBobTime)) * HeadBobPitchAmplitude * HeadBobAlpha;
+
+    const FRotator TargetRot = FRotator(TargetPitch, 0.f, TargetRoll);
+    CurrentCameraRollPitch = FMath::RInterpTo(
+        CurrentCameraRollPitch, TargetRot, DeltaSeconds, HeadBobRotationInterpSpeed);
+    CurrentBobRotation = CurrentCameraRollPitch;
+
+    FirstPersonCameraComponent->SetRelativeLocation(
+        CameraBaseRelativeLocation + CurrentBobTranslation + CurrentBreathTranslation);
+
+    FirstPersonCameraComponent->SetRelativeRotation(CameraBaseRelativeRotation + CurrentBobRotation);
+
+    PreviousBobSin = FMath::Sin(HeadBobTime);
+}
+
+void APlayerCharacter::UpdateBreathingSway(float DeltaSeconds)
+{
+    const float TargetIdle = 1.0f - HeadBobAlpha;
+    BreathingAlpha = FMath::FInterpTo(BreathingAlpha, TargetIdle, DeltaSeconds, BreathingInterpSpeed);
+
+    const float TargetSprint = bIsSprinting ? 1.0f : 0.0f;
+    SprintBreathAlpha = FMath::FInterpTo(SprintBreathAlpha, TargetSprint, DeltaSeconds, BreathingInterpSpeed);
+
+    const float ActiveAlpha = FMath::Max(BreathingAlpha, SprintBreathAlpha);
+
+    if (ActiveAlpha < 0.001f)
+    {
+        CurrentBreathTranslation = FVector::ZeroVector;
+        CurrentBreathRollValue   = 0.0f;
+        return;
+    }
+
+    const float TargetFreq = BreathingFrequency  * (bIsSprinting ? BreathingSprintFrequencyMultiplier : 1.0f);
+    const float TargetAmpV = BreathingAmplitudeV * (bIsSprinting ? BreathingSprintAmplitudeMultiplier : 1.0f);
+    const float TargetAmpH = 0.0f;
+    const float TargetRoll = BreathingRollAmplitude * (bIsSprinting ? BreathingSprintRollMultiplier : 1.0f);
+
+    CurrentBreathingFrequency  = FMath::FInterpTo(CurrentBreathingFrequency,  TargetFreq, DeltaSeconds, BreathingInterpSpeed);
+    CurrentBreathingAmplitudeV = FMath::FInterpTo(CurrentBreathingAmplitudeV, TargetAmpV, DeltaSeconds, BreathingInterpSpeed);
+    CurrentBreathingAmplitudeH = FMath::FInterpTo(CurrentBreathingAmplitudeH, TargetAmpH, DeltaSeconds, BreathingInterpSpeed);
+    CurrentBreathingRoll       = FMath::FInterpTo(CurrentBreathingRoll,       TargetRoll, DeltaSeconds, BreathingInterpSpeed);
+
+    BreathingTime += DeltaSeconds * CurrentBreathingFrequency;
+
+    const float SwayV = FMath::Sin(BreathingTime) * CurrentBreathingAmplitudeV * ActiveAlpha;
+    const float FwdAmp = bIsSprinting ? 3.5f : 3.0f;
+    const float SwayFwd = FMath::Sin(BreathingTime * 2.0f) * FwdAmp * ActiveAlpha;
+
+    CurrentBreathTranslation = FVector(SwayFwd, 0.f, SwayV);
+    CurrentBreathRollValue   = FMath::Cos(BreathingTime) * CurrentBreathingRoll * ActiveAlpha;
+}
+
+void APlayerCharacter::UpdateDynamicFOV(float DeltaSeconds)
+{
+    const float TargetFOV = bIsSprinting ? SprintFOV : BaseFOV;
+
+    const float CurrentFOV = FirstPersonCameraComponent->FirstPersonFieldOfView;
+    const float NewFOV     = FMath::FInterpTo(CurrentFOV, TargetFOV, DeltaSeconds, FOVInterpSpeed);
+
+    FirstPersonCameraComponent->FirstPersonFieldOfView = NewFOV;
+}
+
 
 #pragma endregion
