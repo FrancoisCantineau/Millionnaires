@@ -7,9 +7,11 @@
 #include "GameFramework/Actor.h"
 #include "BaseDoorSlot.h"
 #include "Components/BoxComponent.h"
+#include "Engine/LevelStreamingDynamic.h"
 #include "BaseRoomData.generated.h"
 
 
+class URoomDataAsset;
 enum class ERoomType : uint8;
 
 
@@ -41,6 +43,9 @@ protected:
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent)
+	void Initialize(FGameplayTag mZoneType);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DoorBaseArrow")
 	TArray<USceneComponent*> ConnexionArray;
@@ -74,6 +79,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Room")
 	void CacheDoorTransforms(AActor* Excluded);
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Room")
+	URoomDataAsset* SourceDataAsset = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Room")
+	ULevelStreamingDynamic* OwningLevel = nullptr;
 
 protected:
 

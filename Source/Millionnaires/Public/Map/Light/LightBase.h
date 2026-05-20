@@ -4,7 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "LightConfigAsset.h"
+#include "Components/LightComponent.h"
 #include "GameFramework/Actor.h"
+#include "GameplayTagContainer.h"
+#include "Map/Events/IncidentManager.h"
 #include "LightBase.generated.h"
 
 UCLASS()
@@ -20,8 +23,20 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	UFUNCTION(BlueprintCallable, Category = "Light")
+	void SetEmissiveIntensity(float Value);
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Light")
+	ULightComponent* LightComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Light")
+	UStaticMeshComponent* LightMesh;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lamp")
 	ULightConfigAsset* LampConfigAsset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Light|Flicker")
+	UMaterialInterface* FlickerLightFunctionMaterial;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lamp")
 	bool bOverrideConfig = false;
@@ -32,6 +47,8 @@ protected:
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Lamp|State")
 	bool bIsPowered = true;
+
+	void InitializeLight();
 
 public:	
 	// Called every frame
@@ -53,4 +70,72 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Lamp|Power")
 	void OnPowerRestore();
 	virtual void OnPowerRestore_Implementation();
+
+	UFUNCTION(BlueprintCallable, Category = "Light")
+	void TurnOn();
+ 
+	UFUNCTION(BlueprintCallable, Category = "Light")
+	void TurnOff();
+	
+	UFUNCTION(BlueprintCallable, Category = "Light")
+    void SetEmergencyMode();
+ 
+    UFUNCTION(BlueprintCallable, Category = "Light")
+    void SetNormalMode();
+
+	UFUNCTION(BlueprintCallable, Category = "Light")
+	void SetIntensity(float NewIntensity);
+ 
+	UFUNCTION(BlueprintCallable, Category = "Light")
+	void SetColor(FLinearColor NewColor);
+ 
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Light|Emissive")
+	int32 EmissiveMaterialSlot = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Light|Emissive")
+	FName EmissiveIntensityParamName = "EmissionMultiplicator";
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Light|Zone")
+	FGameplayTag ZoneType;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Light|Zone")
+	bool bShouldStartOn = true;
+
+private:
+
+	bool bIsOn = true;
+	bool bIsInEmergency = false;
+	float PulseTime = 0.f;
+
+	float Intensity = 0.f;
+
+	bool bCancelFlickering = false;
+
+	FLinearColor LightColor;
+	
+	UPROPERTY()
+	UMaterialInstanceDynamic* EmissiveDMI;
+	
+	FTimerHandle PulseTimerHandle;
+	FTimerHandle FlickerTimerHandle;
+
+	void InitEmissiveMaterial();
+	
+
+	void StartFlicker();
+	void StopFlicker();
+	void TriggerFlicker();
+	void UpdatePulse();
+
+	void SubscribeToIncidentManager();
+	void UnsubscribeFromIncidentManager();
+
+	UFUNCTION()
+	void OnIncidentTriggeredDelegate(FShipIncident Incident);
+ 
+	UFUNCTION()
+	void OnIncidentResolvedDelegate(FShipIncident Incident);
+
+	
 };

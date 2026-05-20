@@ -162,7 +162,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Generator|Cache")
 	void DecrementRoomFromCache(URoomDataAsset* Room);
 
-	
 private:
 	FFloorData* GetFloorData(int32 FloorIndex);
 	const FFloorData* GetFloorData(int32 FloorIndex) const;
