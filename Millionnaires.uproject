@@ -74,6 +74,14 @@
 		{
 			"Name": "HDRIBackdrop",
 			"Enabled": true
+		},
+		{
+			"Name": "ContextualAnimation",
+			"Enabled": true
+		},
+		{
+			"Name": "InputChallenge",
+			"Enabled": true
 		}
 	],
 	"TargetPlatforms": [

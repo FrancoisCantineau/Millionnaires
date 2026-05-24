@@ -21,6 +21,7 @@ public class MillionnairesEditorTarget : TargetRules
 			"InventorySystem",
 			"InteractionSystem",
 			"GameInterfaces",
+			"UMG",
 			"ItemSystem",
 			"DayNightCycleSystem",
 			"QuestSystem",

@@ -34,6 +34,13 @@ public class Millionnaires : ModuleRules
 			"GameInterfaces",
 			"DayNightCycleSystem",
 			"QuestSystem",
+			
+			//Animtation
+			"MotionWarping",    
+			"ContextualAnimation", 
+			
+			"InputChallenge",
+
 		});
 		
 		if (Target.bBuildEditor)
@@ -50,7 +57,7 @@ public class Millionnaires : ModuleRules
 			"Millionnaires/Variant_Shooter",
 			"Millionnaires/Variant_Shooter/AI",
 			"Millionnaires/Variant_Shooter/UI",
-			"Millionnaires/Variant_Shooter/Weapons"
+			"Millionnaires/Variant_Shooter/Weapons",
 		});
 
 		// Uncomment if you are using Slate UI

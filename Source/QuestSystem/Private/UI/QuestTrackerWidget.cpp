@@ -10,6 +10,13 @@ void UQuestTrackerWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
+	APawn* Pawn = GetOwningPlayerPawn();
+	if (!Pawn) return;
+
+	UQuestManagerComponent* QM = Pawn->FindComponentByClass<UQuestManagerComponent>();
+	if (!QM) return;
+
+	InitializeTracker(QM);
 	if (ObjectiveTitleText)
 	{
 		ObjectiveTitleText->SetText(FText::FromString("OBJECTIVES"));

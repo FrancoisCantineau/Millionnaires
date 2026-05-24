@@ -16,7 +16,8 @@ public class InteractionSystem : ModuleRules
 				"Slate",
 				"SlateCore",
 				"GameInterfaces",
-				"ItemSystem",
+				"ItemSystem", 
+			
 			}
 		);
 

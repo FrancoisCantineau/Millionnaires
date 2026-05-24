@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -12,10 +10,7 @@
 
 #include "MillionnairePlayerBase.generated.h"
 
-
-class UInputAction;
 class UConsumableComponent;
-struct FInputActionValue;
 class UFlashlightEquipmentComponent;
 class UInventoryComponent;
 class URestrictedInventoryComponent;
@@ -25,323 +20,202 @@ class UMultiInventoryWidget;
 class UInteractionWidget;
 class UInputComponent;
 
-/**
- * 
- */
 UCLASS()
 class MILLIONNAIRES_API AMillionnairePlayerBase : public AMillionnairesCharacter, public IInventoryInterface
 {
-	GENERATED_BODY()
-
+    GENERATED_BODY()
 
 protected:
 
-	void InitializeInventoryWidget();
+    void InitializeInventoryWidget();
 
 #pragma region Inventory Operation Helper
-	
-	template<typename Func>
-	bool TryInventoryOperation(const FItemData* ItemData, Func Operation) const
-	{
-		if (!ItemData) return false;
 
-		if (ItemData->Category == EItemCategory::Equipment && EquipmentInventoryComponent)
-		{
-			if (Operation(EquipmentInventoryComponent))
-				return true;
-		}
-		else if (ItemData->Category == EItemCategory::Consumable && ConsumableInventoryComponent)
-		{
-			if (Operation(ConsumableInventoryComponent))
-				return true;
-		}
+    template<typename Func>
+    bool TryInventoryOperation(const FItemData* ItemData, Func Operation) const
+    {
+        if (!ItemData) return false;
 
-		if (GeneralInventoryComponent)
-		{
-			if (Operation(GeneralInventoryComponent))
-				return true;
-		}
+        if (ItemData->Category == EItemCategory::Equipment && EquipmentInventoryComponent)
+            if (Operation(EquipmentInventoryComponent)) return true;
+        else if (ItemData->Category == EItemCategory::Consumable && ConsumableInventoryComponent)
+            if (Operation(ConsumableInventoryComponent)) return true;
 
-		return false;
-	}
+        if (GeneralInventoryComponent)
+            if (Operation(GeneralInventoryComponent)) return true;
 
-#pragma endregion
-	
-#pragma region Input Actions
-
-	/** Jump Input Action */
-	UPROPERTY(EditAnywhere, Category ="Input")
-	UInputAction* JumpAction;
-
-	/** Move Input Action */
-	UPROPERTY(EditAnywhere, Category ="Input")
-	UInputAction* MoveAction;
-
-	/** Look Input Action */
-	UPROPERTY(EditAnywhere, Category ="Input")
-	UInputAction* LookAction;
-
-	/** Mouse Look Input Action */
-	UPROPERTY(EditAnywhere, Category ="Input")
-	UInputAction* MouseLookAction;
-
-	/** Input action for opening inventory */
-	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* InventoryAction;
-
-	/** Input action for dropping item */
-	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* DropItemAction;
-	
-	/** Input action for interact */
-	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* InteractAction;
-
-	/** Input action for using health consumable (hotkey 1) */
-	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* UseHealthAction;
-
-	/** Input action for using food consumable (hotkey 2) */
-	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* UseFoodAction;
-
-	/** Input action for using battery consumable (hotkey 3) */
-	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* UseBatteryAction;
+        return false;
+    }
 
 #pragma endregion
 
 #pragma region Inventory
 
-	/** General inventory - accepts all items EXCEPT specialized ones */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-	URestrictedInventoryComponent* GeneralInventoryComponent;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+    URestrictedInventoryComponent* GeneralInventoryComponent;
 
-	/** Equipment inventory - only accepts equipment items */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-	URestrictedInventoryComponent* EquipmentInventoryComponent;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+    URestrictedInventoryComponent* EquipmentInventoryComponent;
 
-	/** Consumable inventory - only accepts consumable items */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-	URestrictedInventoryComponent* ConsumableInventoryComponent;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+    URestrictedInventoryComponent* ConsumableInventoryComponent;
 
-	/** Drop component for dropping items */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-	UDropComponent* DropComponent;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+    UDropComponent* DropComponent;
 
 #pragma endregion
 
 #pragma region Interaction
 
-	/** Interaction component */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
-	UInteractionComponent* InteractionComponent;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
+    UInteractionComponent* InteractionComponent;
 
-	/** Interaction widget class */
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<UInteractionWidget> InteractionWidgetClass;
+    UPROPERTY(EditDefaultsOnly, Category = "UI")
+    TSubclassOf<UInteractionWidget> InteractionWidgetClass;
 
-	/** Interaction widget instance */
-	UPROPERTY()
-	UInteractionWidget* InteractionWidget;
+    UPROPERTY()
+    UInteractionWidget* InteractionWidget;
 
 #pragma endregion
 
 #pragma region Consumable
-	
-	/** Consumable component for using items from inventory */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-	UConsumableComponent* ConsumableComponent;
-	
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+    UConsumableComponent* ConsumableComponent;
+
 #pragma endregion
-	
+
 #pragma region Flashlight
 
-	/** Flashlight equipment component */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
-	UFlashlightEquipmentComponent* FlashlightComponent;
-
-	/** Input action for toggling flashlight on/off */
-	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* ToggleFlashlightAction;
-
-	/** Input action for equipping/unequipping flashlight */
-	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* EquipFlashlightAction;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
+    UFlashlightEquipmentComponent* FlashlightComponent;
 
 #pragma endregion
-	
+
 #pragma region Quests
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Quest")
-	UQuestManagerComponent* QuestManagerComponent;
 
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<UQuestTrackerWidget> QuestTrackerWidgetClass;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Quest")
+    UQuestManagerComponent* QuestManagerComponent;
 
-	UPROPERTY()
-	UQuestTrackerWidget* QuestTrackerWidget;
-	
-#pragma endregion 
-	
+    UPROPERTY(EditDefaultsOnly, Category = "UI")
+    TSubclassOf<UQuestTrackerWidget> QuestTrackerWidgetClass;
+
+    UPROPERTY()
+    UQuestTrackerWidget* QuestTrackerWidget;
+
+#pragma endregion
+
 #pragma region Day/Night
 
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<class UDayNightWidget> DayNightWidgetClass;
+    UPROPERTY(EditDefaultsOnly, Category = "UI")
+    TSubclassOf<class UDayNightWidget> DayNightWidgetClass;
 
-	UPROPERTY()
-	class UDayNightWidget* DayNightWidget;
-	
-#pragma endregion 
+    UPROPERTY()
+    class UDayNightWidget* DayNightWidget;
+
+#pragma endregion
 
 #pragma region UI
 
-	/** Multi-inventory widget class */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "UI")
-	TSubclassOf<UMultiInventoryWidget> MultiInventoryWidgetClass;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "UI")
+    TSubclassOf<UMultiInventoryWidget> MultiInventoryWidgetClass;
 
-	/** Cached multi-inventory widget instance */
-	UPROPERTY()
-	UMultiInventoryWidget* MultiInventoryWidget;
+    UPROPERTY()
+    UMultiInventoryWidget* MultiInventoryWidget;
 
-	/** Is inventory currently open? */
-	UPROPERTY(BlueprintReadOnly, Category = "UI")
-	bool bIsInventoryOpen = false;
+    UPROPERTY(BlueprintReadOnly, Category = "UI")
+    bool bIsInventoryOpen = false;
 
 #pragma endregion
 
 #pragma region Selection State
 
-	/** Currently selected slot index across all inventories */
-	UPROPERTY(BlueprintReadWrite, Category = "Inventory")
-	int32 SelectedSlotIndex = INDEX_NONE;
+    UPROPERTY(BlueprintReadWrite, Category = "Inventory")
+    int32 SelectedSlotIndex = INDEX_NONE;
 
-	/** Currently selected inventory component */
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory")
-	UInventoryComponent* SelectedInventoryComponent = nullptr;
+    UPROPERTY(BlueprintReadOnly, Category = "Inventory")
+    UInventoryComponent* SelectedInventoryComponent = nullptr;
 
 #pragma endregion
 
-#pragma region Input Handlers
+    UFUNCTION()
+    void SelectInventorySlot(int32 SlotIndex, UInventoryComponent* InventoryComp);
 
-	/** Called from Input Actions for movement input */
-	void MoveInput(const FInputActionValue& Value);
-
-	/** Called from Input Actions for looking input */
-	void LookInput(const FInputActionValue& Value);
-
-	/** Handles aim inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoAim(float Yaw, float Pitch);
-
-	/** Handles move inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoMove(float Right, float Forward);
-
-	/** Handles jump start inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoJumpStart();
-
-	/** Handles jump end inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoJumpEnd();
-
-	/** Called when inventory key is pressed */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	void OnInventoryPressed();
-
-	/** Called when drop key is pressed */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	void OnDropItemPressed();
-
-	/** Called when interact key is pressed */
-	UFUNCTION()
-	void OnInteractPressed();
-
-	/** Called when a slot is selected in any inventory */
-	UFUNCTION()
-	void SelectInventorySlot(int32 SlotIndex, UInventoryComponent* InventoryComp);
-
-	/** Set up input action bindings */
-	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
-
-	/** Called when health hotkey is pressed */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	void OnUseHealthPressed();
-
-	/** Called when food hotkey is pressed */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	void OnUseFoodPressed();
-
-	/** Called when battery hotkey is pressed */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	void OnUseBatteryPressed();
-
-	/** Called when consumable item is used from UI (right-click) */
-	UFUNCTION(BlueprintCallable, Category="Inventory")
-	void UseConsumableFromSlot(int32 SlotIndex, UInventoryComponent* InventoryComp);
-	
-	/** Called when toggle flashlight key is pressed */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	void OnToggleFlashlightPressed();
-
-	/** Called when equip flashlight key is pressed (T) */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	void OnEquipFlashlightPressed();
-	
-#pragma endregion
+    virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 
 #pragma region Interface Implementations
 
-	// IInventoryInterface implementations
-	virtual int32 AddItem_Implementation(const FDataTableRowHandle& ItemHandle, int32 Amount) override;
-	virtual bool HasSpaceForItem_Implementation(const FDataTableRowHandle& ItemHandle, int32 Amount) const override;
-	virtual bool HasSpaceForItemInAnyInventory_Implementation(const FDataTableRowHandle& ItemHandle, int32 Amount) const override;
+    virtual int32 AddItem_Implementation(const FDataTableRowHandle& ItemHandle, int32 Amount) override;
+    virtual bool HasSpaceForItem_Implementation(const FDataTableRowHandle& ItemHandle, int32 Amount) const override;
+    virtual bool HasSpaceForItemInAnyInventory_Implementation(const FDataTableRowHandle& ItemHandle, int32 Amount) const override;
 
 #pragma endregion
 
 public:
 
-	AMillionnairePlayerBase();
-	
-	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaTime) override;
+    AMillionnairePlayerBase();
 
-#pragma region Public Getters
+    virtual void BeginPlay() override;
+    virtual void Tick(float DeltaTime) override;
 
-	/** Get general inventory component */
-	FORCEINLINE URestrictedInventoryComponent* GetGeneralInventory() const { return GeneralInventoryComponent; }
+    // -------------------------------------------------
+    //  VERBES — appelés par le Controller
+    // -------------------------------------------------
 
-	/** Get equipment inventory component */
-	FORCEINLINE URestrictedInventoryComponent* GetEquipmentInventory() const { return EquipmentInventoryComponent; }
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    virtual void DoMove(float Right, float Forward);
 
-	/** Get consumable inventory component */
-	FORCEINLINE URestrictedInventoryComponent* GetConsumableInventory() const { return ConsumableInventoryComponent; }
-	
-	/** Get drop component */
-	FORCEINLINE UDropComponent* GetDropComponent() const { return DropComponent; }
-	
-	/** Get the currently selected inventory slot index */
-	FORCEINLINE int32 GetSelectedSlotIndex() const { return SelectedSlotIndex; }
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    virtual void DoAim(float Yaw, float Pitch);
 
-	/** Get the currently selected inventory component */
-	FORCEINLINE UInventoryComponent* GetSelectedInventoryComponent() const { return SelectedInventoryComponent; }
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    virtual void DoJumpStart();
 
-	/** Returns the first person mesh */
-	//FORCEINLINE USkeletalMeshComponent* GetFirstPersonMesh() const { return FirstPersonMesh; }
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    virtual void DoJumpEnd();
 
-	/** Returns first person camera component */
-	//FORCEINLINE UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    void DoInteract();
 
-	/** Get consumable component */
-	FORCEINLINE UConsumableComponent* GetConsumableComponent() const { return ConsumableComponent; }
-	
-	/** Get flashlight component */
-	FORCEINLINE UFlashlightEquipmentComponent* GetFlashlightComponent() const { return FlashlightComponent; }
-	
-	/** Get quest manager component */
-	FORCEINLINE UQuestManagerComponent* GetQuestManager() const { return QuestManagerComponent; }
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    void OnInventoryPressed();
+
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    void OnDropItemPressed();
+
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    void OnUseHealthPressed();
+
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    void OnUseFoodPressed();
+
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    void OnUseBatteryPressed();
+
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    void OnToggleFlashlightPressed();
+
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    void OnEquipFlashlightPressed();
+
+    UFUNCTION(BlueprintCallable, Category = "Inventory")
+    void UseConsumableFromSlot(int32 SlotIndex, UInventoryComponent* InventoryComp);
+
+    // -------------------------------------------------
+    //  GETTERS
+    // -------------------------------------------------
+
+#pragma region Getters
+    
+    FORCEINLINE URestrictedInventoryComponent* GetGeneralInventory() const { return GeneralInventoryComponent; }
+    FORCEINLINE URestrictedInventoryComponent* GetEquipmentInventory() const { return EquipmentInventoryComponent; }
+    FORCEINLINE URestrictedInventoryComponent* GetConsumableInventory() const { return ConsumableInventoryComponent; }
+    FORCEINLINE UDropComponent* GetDropComponent() const { return DropComponent; }
+    FORCEINLINE int32 GetSelectedSlotIndex() const { return SelectedSlotIndex; }
+    FORCEINLINE UInventoryComponent* GetSelectedInventoryComponent() const { return SelectedInventoryComponent; }
+    FORCEINLINE UConsumableComponent* GetConsumableComponent() const { return ConsumableComponent; }
+    FORCEINLINE UFlashlightEquipmentComponent* GetFlashlightComponent() const { return FlashlightComponent; }
+    FORCEINLINE UQuestManagerComponent* GetQuestManager() const { return QuestManagerComponent; }
 
 #pragma endregion
 };
-

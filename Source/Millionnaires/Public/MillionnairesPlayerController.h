@@ -9,12 +9,25 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InputAction.h"
+#include "Characters/Data/Enum/PlayerMode.h"
+#include "Characters/Player/PlayerControllerInterface.h"
 #include "GameFramework/PlayerController.h"
+
+//Input challenge
+
+#include "InputChallengeComponent.h"
+#include "InputChallengeDefinition.h"
+
 #include "MillionnairesPlayerController.generated.h"
 
+class UInputChallengeWidget;
+enum class EPlayerAction : uint8;
+class UCameraComponent;
 class UInputMappingContext;
 class UUserWidget;
 class UCharacterDefinition;
+class AMillionnairePlayerBase;
 
 /**
  * High-level game phases for Millionaire.
@@ -33,7 +46,7 @@ enum class EMillionairesGamePhase : uint8
  *  Also handles transitions between Dispatch (top-down) and Mission (first person) phases.
  */
 UCLASS(abstract, config = "Game")
-class MILLIONNAIRES_API AMillionnairesPlayerController : public APlayerController
+class MILLIONNAIRES_API AMillionnairesPlayerController : public APlayerController, public IPlayerControllerInterface
 {
     GENERATED_BODY()
 
@@ -42,20 +55,128 @@ public:
     /** Constructor */
     AMillionnairesPlayerController();
 
+    UFUNCTION()
+    void HandleLookInput(FVector2D Value);
+
+    virtual void SetPlayerMode(EPlayerMode NewMode, AActor* ContextActor = nullptr) override;
+    virtual bool CanPerform(EPlayerAction Action) const override;
+
+    UFUNCTION(BlueprintCallable)
+    void StartInputChallenge(UInputChallengeDefinition* Definition);
+
+    FORCEINLINE UInputChallengeComponent* GetChallengeComponent() const { return ChallengeComponent; }
+
 protected:
 
     // -------------------------------------------------
-    //  INPUT MAPPING
+    //  INPUT ACTIONS
     // -------------------------------------------------
-#pragma region INPUT_MAPPING
+#pragma region INPUT_ACTIONS
 
-    /** Input Mapping Contexts always added for this controller. */
     UPROPERTY(EditAnywhere, Category = "Input|Input Mappings")
     TArray<UInputMappingContext*> DefaultMappingContexts;
 
-    /** Input Mapping Contexts that are excluded when using mobile touch input. */
     UPROPERTY(EditAnywhere, Category = "Input|Input Mappings")
     TArray<UInputMappingContext*> MobileExcludedMappingContexts;
+    
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
+    TObjectPtr<UInputAction> ExitAction;
+    
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
+    TObjectPtr<UInputAction> MoveAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
+    TObjectPtr<UInputAction> LookAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
+    TObjectPtr<UInputAction> MouseLookAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
+    TObjectPtr<UInputAction> JumpAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
+    TObjectPtr<UInputAction> InteractAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
+    TObjectPtr<UInputAction> InventoryAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
+    TObjectPtr<UInputAction> DropItemAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
+    TObjectPtr<UInputAction> UseHealthAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
+    TObjectPtr<UInputAction> UseFoodAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
+    TObjectPtr<UInputAction> UseBatteryAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
+    TObjectPtr<UInputAction> ToggleFlashlightAction;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
+    TObjectPtr<UInputAction> EquipFlashlightAction;
+
+#pragma endregion
+
+    // -------------------------------------------------
+    //  INPUT HANDLERS
+    // -------------------------------------------------
+#pragma region INPUT_HANDLERS
+
+    void OnMoveInput(const FInputActionValue& Value);
+    void OnLookInput(const FInputActionValue& Value);
+    void OnJumpStarted();
+    void OnJumpCompleted();
+    void OnInteractPressed();
+    void OnInventoryPressed();
+    void OnDropItemPressed();
+    void OnUseHealthPressed();
+    void OnUseFoodPressed();
+    void OnUseBatteryPressed();
+    void OnToggleFlashlightPressed();
+    void OnEquipFlashlightPressed();
+    void HandleExitPressed();
+    bool RouteAction(UInputAction* Action);
+
+#pragma endregion
+
+    // -------------------------------------------------
+    //  INSPECT / MODE
+    // -------------------------------------------------
+#pragma region INSPECT
+
+    FRotator InspectRotation;
+    FRotator InspectBaseRotation;
+    FRotator OriginalCameraRotation;
+
+    UPROPERTY()
+    UCameraComponent* Cam;
+
+    TArray<EPlayerAction> BlockedActions;
+
+#pragma endregion
+
+    // -------------------------------------------------
+    //  CHALLENGE
+    // -------------------------------------------------
+#pragma region CHALLENGE
+
+    UPROPERTY(VisibleAnywhere, Category = "Challenge")
+    TObjectPtr<UInputChallengeComponent> ChallengeComponent;
+
+    UFUNCTION()
+    void OnChallengeBegan(UInputChallengeDefinition* Definition);
+
+    UFUNCTION()
+    void OnChallengeOver();
+
+    UPROPERTY(EditDefaultsOnly)
+    TSubclassOf<UInputChallengeWidget> ChallengeWidgetClass;
+
+    UPROPERTY()
+    UInputChallengeWidget* ChallengeWidget;
 
 #pragma endregion
 
@@ -64,56 +185,45 @@ protected:
     // -------------------------------------------------
 #pragma region TOUCH_CONTROLS
 
-    /** Mobile controls widget to spawn */
     UPROPERTY(EditAnywhere, Category = "Input|Touch Controls")
     TSubclassOf<UUserWidget> MobileControlsWidgetClass;
 
-    /** Pointer to the mobile controls widget */
     UPROPERTY()
     TObjectPtr<UUserWidget> MobileControlsWidget;
 
-    /** If true, the player will use UMG touch controls even if not playing on mobile platforms */
     UPROPERTY(EditAnywhere, Config, Category = "Input|Touch Controls")
     bool bForceTouchControls = false;
 
 #pragma endregion
 
     // -------------------------------------------------
-    //  GAME PHASE / CAMERA
+    //  PHASE
     // -------------------------------------------------
 #pragma region PHASE_LOGIC
 
-    /** Current high-level game phase (Dispatch or Mission). */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Phase|Runtime", meta = (ToolTip = "Current high-level game phase for this player."))
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Phase|Runtime")
     EMillionairesGamePhase CurrentPhase = EMillionairesGamePhase::Dispatch;
 
-    /** Tag used to find the dispatch (top-down) camera actor in the world. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Phase|Camera", meta = (ToolTip = "Tag used to locate the dispatch phase camera in the level."))
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Phase|Camera")
     FName DispatchCameraTag = FName("DispatchCamera");
 
-    /** Blend time used when switching from dispatch camera to mission (first person) camera. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Phase|Camera", meta = (ClampMin = "0.0", ToolTip = "Blend time when switching between dispatch and mission camera views."))
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Phase|Camera", meta = (ClampMin = "0.0"))
     float PhaseTransitionBlendTime = 1.0f;
 
-    /** Cached dispatch camera actor found by tag at BeginPlay. */
     UPROPERTY()
     TWeakObjectPtr<AActor> DispatchCamera;
 
-    /** Last character definition selected while in dispatch phase. */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Phase|Runtime", meta = (ToolTip = "Last character definition selected during dispatch."))
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Phase|Runtime")
     TObjectPtr<UCharacterDefinition> LastSelectedCharacter = nullptr;
 
 #pragma endregion
 
     // -------------------------------------------------
-    //  APlayerController overrides
+    //  CONTROLLER OVERRIDES
     // -------------------------------------------------
 #pragma region CONTROLLER_OVERRIDES
 
-    /** Gameplay initialization */
     virtual void BeginPlay() override;
-
-    /** Input mapping context setup */
     virtual void SetupInputComponent() override;
 
 #pragma endregion
@@ -123,7 +233,6 @@ protected:
     // -------------------------------------------------
 #pragma region TOUCH_INTERNAL
 
-    /** Returns true if the player should use UMG touch controls */
     bool ShouldUseTouchControls() const;
 
 #pragma endregion
@@ -135,26 +244,35 @@ protected:
 
 public:
 
-    /** Enter dispatch phase (top-down camera, mouse visible, click to select characters). */
     UFUNCTION(BlueprintCallable, Category = "Phase")
     void EnterDispatchPhase();
 
-    /** Enter mission phase (first person control of the selected character). */
     UFUNCTION(BlueprintCallable, Category = "Phase")
     void EnterMissionPhase(UCharacterDefinition* SelectedCharacter);
 
-    /** Returns the current game phase. */
     UFUNCTION(BlueprintPure, Category = "Phase")
     EMillionairesGamePhase GetCurrentPhase() const { return CurrentPhase; }
 
 protected:
 
-    /** Finds and caches the dispatch camera using DispatchCameraTag. */
     void InitializeDispatchCamera();
 
-    /** Called when the selected character changes in the CharacterSelectionSubsystem. */
     UFUNCTION()
     void HandleSelectedCharacterChanged(UCharacterDefinition* NewSelection);
 
 #pragma endregion
+
+#pragma region PLAYERMODE
+
+    EPlayerMode CurrentMode;
+
+    UPROPERTY()
+    AActor* CurrentInteractable;
+
+#pragma endregion
+
+private:
+    
+    AMillionnairePlayerBase* GetPlayerPawn() const;
+    
 };

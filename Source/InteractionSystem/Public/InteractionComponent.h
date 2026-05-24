@@ -10,6 +10,11 @@
  * Component that handles player interaction with objects
  * Performs line traces to detect interactable objects
  */
+
+DECLARE_DELEGATE_RetVal(bool, FCanInteractDelegate);
+
+
+
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class INTERACTIONSYSTEM_API UInteractionComponent : public UActorComponent
 {
@@ -34,6 +39,8 @@ public:
 	/** Show debug lines for interaction trace */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Debug")
 	bool bShowDebugTrace = false;
+	
+	FCanInteractDelegate CanInteractDelegate;
 
 	/** Perform interaction with focused object */
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
@@ -50,6 +57,7 @@ public:
 	/** Check if there's an interactable object in focus */
 	UFUNCTION(BlueprintPure, Category = "Interaction")
 	bool HasFocusedActor() const { return FocusedActor != nullptr; }
+
 
 protected:
 	

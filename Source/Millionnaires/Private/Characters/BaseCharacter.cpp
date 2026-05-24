@@ -7,7 +7,6 @@
  */
 
 #include "Characters/BaseCharacter.h"
-#include "Characters/BaseCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/Characters/CharacterStatsComponent.h"
@@ -20,6 +19,10 @@ ABaseCharacter::ABaseCharacter(const FObjectInitializer& ObjectInitializer)
     AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
     AbilitySystemComponent->SetIsReplicated(true);
     AbilitySystemComponent->SetReplicationMode(AscReplicationMode);
+
+    // Animation
+    MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComponent"));
+    ContextualAnimSceneActorComponent = CreateDefaultSubobject<UContextualAnimSceneActorComponent>(TEXT("ContextualAnimSceneActorComponent"));
     
 }
 

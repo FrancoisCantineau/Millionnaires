@@ -19,6 +19,10 @@
 #include "GameplayAbilitySystem/Attributes/BaseAttributeSet.h"
 #include "GameplayAbilitySystem/Attributes/StatusAttributeSet.h"
 
+//* ANIMATION */
+#include "MotionWarpingComponent.h"
+#include "ContextualAnimSceneActorComponent.h"
+
 
 #include "Ennemy/Ability/AbilityHandlerComponentBase.h"
 
@@ -94,6 +98,14 @@ protected:
     //* END GAS */
 
     virtual void BeginPlay() override;
+
+    //* ANIMATION */
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    UMotionWarpingComponent* MotionWarpingComponent;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    UContextualAnimSceneActorComponent* ContextualAnimSceneActorComponent;
 
     
 };

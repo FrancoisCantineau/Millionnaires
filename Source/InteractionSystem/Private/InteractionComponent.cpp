@@ -38,6 +38,12 @@ void UInteractionComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
  */
 void UInteractionComponent::CheckForInteractables()
 {
+   if (CanInteractDelegate.IsBound() && !CanInteractDelegate.Execute())
+   {
+      FocusedActor = nullptr;
+      return;
+   }
+   
     FVector CameraLocation;
     FVector CameraDirection;
 
@@ -163,7 +169,7 @@ void UInteractionComponent::Interact()
        return;
     }
    
-    IInteractionInterface::Execute_Interact(FocusedActor, GetOwner());
+IInteractionInterface::Execute_Interact(FocusedActor, GetOwner());
 }
 
 /**
