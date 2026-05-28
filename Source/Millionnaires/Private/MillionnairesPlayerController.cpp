@@ -44,7 +44,33 @@ AMillionnairePlayerBase* AMillionnairesPlayerController::GetPlayerPawn() const
 //  PLAYER MODE
 // -------------------------------------------------
 
-void AMillionnairesPlayerController::SetPlayerMode(EPlayerMode NewMode, AActor* ContextActor)
+
+void AMillionnairesPlayerController::LockCamera(float YawRange, float PitchMin, float PitchMax)
+{
+    if (APlayerCameraManager* CM = PlayerCameraManager)
+    {
+        float CurrentYaw = GetControlRotation().Yaw;
+        
+        CM->ViewYawMin  = CurrentYaw - YawRange;
+        CM->ViewYawMax  = CurrentYaw + YawRange;
+        CM->ViewPitchMin = PitchMin;
+        CM->ViewPitchMax = PitchMax;
+    }
+}
+
+void AMillionnairesPlayerController::UnlockCamera()
+{
+    if (APlayerCameraManager* CM = PlayerCameraManager)
+    {
+        CM->ViewYawMin  = -359.f;
+        CM->ViewYawMax  =  359.f;
+        CM->ViewPitchMin = -89.f;
+        CM->ViewPitchMax =  89.f;
+    }
+}
+
+
+void AMillionnairesPlayerController::SetPlayerMode_Implementation(EPlayerMode NewMode, AActor* ContextActor)
 {
     CurrentMode = NewMode;
     BlockedActions.Empty();
@@ -60,6 +86,7 @@ void AMillionnairesPlayerController::SetPlayerMode(EPlayerMode NewMode, AActor* 
     {
     case EPlayerMode::Gameplay:
         {
+            UnlockCamera();
             SetIgnoreMoveInput(false);
             SetIgnoreLookInput(false);
             if (GetPawn())
@@ -102,7 +129,17 @@ void AMillionnairesPlayerController::SetPlayerMode(EPlayerMode NewMode, AActor* 
             BlockedActions.Add(EPlayerAction::ToggleFlashlight);
         }
         break;
-    }
+    
+    case EPlayerMode::Traversal:
+        {
+            LockCamera(75.f);
+            
+            BlockedActions.Add(EPlayerAction::Jump);
+            BlockedActions.Add(EPlayerAction::Interact);
+            BlockedActions.Add(EPlayerAction::ToggleFlashlight);
+        }
+    break;
+}
 }
 
 void AMillionnairesPlayerController::HandleLookInput(FVector2D Value)
@@ -134,13 +171,11 @@ void AMillionnairesPlayerController::HandleLookInput(FVector2D Value)
         }
         break;
 
-    case EPlayerMode::Ladder:
+    case EPlayerMode::Traversal:
         {
-            BlockedActions.Add(EPlayerAction::Jump);
-
-            SetIgnoreLookInput(false);
-            SetIgnoreMoveInput(false);
             
+            AddYawInput(Value.X);
+            AddPitchInput(Value.Y);
         }
         break;
 
@@ -149,7 +184,7 @@ void AMillionnairesPlayerController::HandleLookInput(FVector2D Value)
     }
 }
 
-bool AMillionnairesPlayerController::CanPerform(EPlayerAction Action) const
+bool AMillionnairesPlayerController::CanPerform_Implementation(EPlayerAction Action) const
 {
     return !BlockedActions.Contains(Action);
 }
@@ -168,7 +203,7 @@ void AMillionnairesPlayerController::StartInputChallenge(UInputChallengeDefiniti
 
 void AMillionnairesPlayerController::OnChallengeBegan(UInputChallengeDefinition* Definition)
 {
-    SetPlayerMode(EPlayerMode::InputChallenge, nullptr);
+    Execute_SetPlayerMode(this,EPlayerMode::InputChallenge, nullptr);
 
     if (!ChallengeWidgetClass) return;
 
@@ -186,8 +221,7 @@ void AMillionnairesPlayerController::OnChallengeBegan(UInputChallengeDefinition*
 
 void AMillionnairesPlayerController::OnChallengeOver()
 {
-    SetPlayerMode(EPlayerMode::Gameplay, nullptr);
-
+    Execute_SetPlayerMode(this,EPlayerMode::Gameplay, nullptr);
     if (ChallengeWidget)
     {
         ChallengeWidget->RemoveFromParent();
@@ -323,7 +357,7 @@ void AMillionnairesPlayerController::OnMoveInput(const FInputActionValue& Value)
     if (RouteAction(MoveAction))
         return;
 
-    if (!CanPerform(EPlayerAction::Move))
+    if (!Execute_CanPerform(this,EPlayerAction::Move))
         return;
 
     FVector2D V = Value.Get<FVector2D>();
@@ -337,7 +371,7 @@ void AMillionnairesPlayerController::OnMoveCompleted(const FInputActionValue& Va
     if (RouteAction(MoveAction))
         return;
 
-    if (!CanPerform(EPlayerAction::Move))
+    if (!Execute_CanPerform(this,EPlayerAction::Move))
         return;
 
     FVector2D V = Value.Get<FVector2D>();
@@ -357,7 +391,7 @@ void AMillionnairesPlayerController::OnJumpStarted()
     if (RouteAction(JumpAction))
         return;
 
-    if (!CanPerform(EPlayerAction::Jump))
+    if (!Execute_CanPerform(this,EPlayerAction::Jump))
         return;
 
     if (AMillionnairePlayerBase* P = GetPlayerPawn())
@@ -396,7 +430,7 @@ void AMillionnairesPlayerController::OnInteractPressed()
     if (RouteAction(InteractAction))
         return;
 
-    if (!CanPerform(EPlayerAction::Interact))
+    if (!Execute_CanPerform(this,EPlayerAction::Interact))
         return;
 
     if (AMillionnairePlayerBase* P = GetPlayerPawn())
@@ -441,7 +475,7 @@ void AMillionnairesPlayerController::OnUseBatteryPressed()
 
 void AMillionnairesPlayerController::OnToggleFlashlightPressed()
 {
-    if (!CanPerform(EPlayerAction::ToggleFlashlight))
+    if (Execute_CanPerform(this,EPlayerAction::ToggleFlashlight))
         return;
 
     if (AMillionnairePlayerBase* P = GetPlayerPawn())
@@ -458,8 +492,8 @@ void AMillionnairesPlayerController::HandleExitPressed()
 {
     if (CurrentMode == EPlayerMode::Gameplay)
         return;
-
-    SetPlayerMode(EPlayerMode::Gameplay, nullptr);
+    
+    Execute_SetPlayerMode(this,EPlayerMode::Gameplay, nullptr);
 }
 
 void AMillionnairesPlayerController::OnActionStarted(UInputAction* Action)

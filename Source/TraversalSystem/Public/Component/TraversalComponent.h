@@ -63,6 +63,8 @@ private:
     UPROPERTY(EditAnywhere, Category = "Traversal")
     float ApproachDuration = 0.25f;
 
+    USceneComponent* EntryPoint = nullptr;
+
     // Traversal
     float Alpha = 0.f;
     float TraversalInput = 0.f;

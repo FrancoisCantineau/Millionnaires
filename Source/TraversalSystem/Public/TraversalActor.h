@@ -43,6 +43,8 @@ public:
 	UArrowComponent* GetStartPoint()    const { return StartPoint; }
 	UArrowComponent* GetEndPoint()      const { return EndPoint; }
 	UArrowComponent* GetExitPoint()     const { return ExitPoint; }
+
+	USceneComponent* GetEntryPointForCharacter(ACharacter* Character);
 	
 	virtual UAnimMontage* GetMontageForContext(
 		float Input,

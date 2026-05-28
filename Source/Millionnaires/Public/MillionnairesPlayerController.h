@@ -57,8 +57,8 @@ public:
     UFUNCTION()
     void HandleLookInput(FVector2D Value);
 
-    virtual void SetPlayerMode(EPlayerMode NewMode, AActor* ContextActor = nullptr) override;
-    virtual bool CanPerform(EPlayerAction Action) const override;
+    virtual void SetPlayerMode_Implementation(EPlayerMode NewMode, AActor* ContextActor = nullptr) override;
+    virtual bool CanPerform_Implementation(EPlayerAction Action) const override;
 
     UFUNCTION(BlueprintCallable)
     void StartInputChallenge(UInputChallengeDefinition* Definition);
@@ -158,6 +158,9 @@ protected:
 
     TArray<EPlayerAction> BlockedActions;
 
+
+    void LockCamera(float YawRange = 75.f, float PitchMin = -89.f, float PitchMax = 89.f);
+    void UnlockCamera();
 #pragma endregion
 
     // -------------------------------------------------
@@ -278,3 +281,4 @@ private:
     AMillionnairePlayerBase* GetPlayerPawn() const;
     
 };
+

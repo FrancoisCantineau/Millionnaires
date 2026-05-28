@@ -1,5 +1,6 @@
 #include "TraversalActor.h"
 #include "Components/ArrowComponent.h"
+#include "GameFramework/Character.h"
 #include "TraversalInterface.h"
 
 
@@ -18,6 +19,16 @@ ATraversalActor::ATraversalActor()
 
 	ExitPoint = CreateDefaultSubobject<UArrowComponent>(TEXT("ExitPoint"));
 	ExitPoint->SetupAttachment(RootComponent);
+}
+
+USceneComponent* ATraversalActor::GetEntryPointForCharacter(ACharacter* Character)
+{
+	FVector CharLoc = Character->GetActorLocation();
+
+	float DistToStart = FVector::Dist(CharLoc, StartPoint->GetComponentLocation());
+	float DistToEnd   = FVector::Dist(CharLoc, EndPoint->GetComponentLocation());
+
+	return (DistToStart <= DistToEnd) ? StartPoint : EndPoint;
 }
 
 UAnimMontage* ATraversalActor::GetMontageForContext(

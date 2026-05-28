@@ -8,6 +8,7 @@
 #include "Components/ArrowComponent.h"
 #include "Animation/AnimInstance.h"
 #include "Character/CharacterInterface.h"
+#include "Controller/ControllerInterface.h"
 
 UTraversalComponent::UTraversalComponent()
 {
@@ -47,7 +48,14 @@ void UTraversalComponent::StartTraversal(ATraversalActor* Target)
     ApproachElapsed     = 0.f;
     Alpha               = 0.f;
     TraversalInput      = 0.f;
-    State               = ETraversalState::Approaching;
+
+    OwnerCharacter->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    EntryPoint = Target->GetEntryPointForCharacter(OwnerCharacter);
+    State = ETraversalState::Approaching;
+    
+    
+    OwnerCharacter->bUseControllerRotationYaw = false;
+    OwnerCharacter->GetCharacterMovement()->bOrientRotationToMovement = false;
 }
 
 void UTraversalComponent::StopTraversal()
@@ -90,15 +98,28 @@ void UTraversalComponent::UpdateApproach(float DeltaTime)
 
     FVector NewLoc = FMath::Lerp(
         ApproachStartTransform.GetLocation(),
-        CurrentTarget->GetStartPoint()->GetComponentLocation(),
+        EntryPoint->GetComponentLocation(),
         T
     );
 
     FRotator NewRot = FMath::Lerp(
         ApproachStartTransform.GetRotation().Rotator(),
-        CurrentTarget->GetStartPoint()->GetComponentRotation(),
+        EntryPoint->GetComponentRotation(),
         T
     );
+
+    AController* Controller = Cast<ACharacter>(Owner)->GetController();
+    if (Controller)
+    {
+        Controller->SetControlRotation(FRotator(
+            Controller->GetControlRotation().Pitch,
+            NewRot.Yaw,
+            0.f
+        ));
+    }
+
+    if (T >= 1.f)
+        EnterTraversal();
 
     Owner->SetActorLocationAndRotation(NewLoc, NewRot, true);
 
@@ -122,11 +143,25 @@ void UTraversalComponent::EnterTraversal()
         
     }
     
+    APlayerController* PC = Cast<APlayerController>(
+   OwnerCharacter->GetController());
+
+    if (PC && PC->Implements<UControllerInterface>())
+    {
+        IControllerInterface::Execute_SetPlayerMode(
+            PC,
+            EPlayerMode::Traversal,
+            GetOwner()
+        );
+    }
+    
     State = ETraversalState::Traversing;
 
     if (!OwnerCharacter) return;
+
+    bool bEnterFromStart = (EntryPoint == CurrentTarget->GetStartPoint());
     
-    RequestMontage(0.f, false, true, true, false);
+    RequestMontage(0.f, false, true, bEnterFromStart, !bEnterFromStart);
 }
 
 void UTraversalComponent::UpdateTraversal()
@@ -416,6 +451,10 @@ void UTraversalComponent::OnMontageCompleted(
     if (State == ETraversalState::Exiting)
     {
         SetMovementMode(false);
+        
+        OwnerCharacter->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+        OwnerCharacter->bUseControllerRotationYaw = true;
+        OwnerCharacter->GetCharacterMovement()->bOrientRotationToMovement = true;
         State         = ETraversalState::None;
         CurrentTarget = nullptr;
         return;

@@ -16,7 +16,7 @@ enum class EPlayerMode : uint8
 	Terminal,
 	Cinematic,
 	InputChallenge  UMETA(DisplayName = "Input Challenge"),
-	Ladder
+	Traversal,
 };
 /**
  * Context passed to consumable effects
@@ -40,15 +40,15 @@ class UControllerInterface : public UInterface
 	GENERATED_BODY()
 };
 
-/**
- */
 class GAMEINTERFACES_API IControllerInterface
 {
 	GENERATED_BODY()
 
 public:
 
-	virtual void SetPlayerMode(EPlayerMode NewMode, AActor* ContextActor = nullptr) = 0;
-	virtual bool CanPerform(EPlayerAction Action) const = 0;
-    
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void SetPlayerMode(EPlayerMode NewMode, AActor* ContextActor);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	bool CanPerform(EPlayerAction Action) const;
 };

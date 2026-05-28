@@ -151,10 +151,19 @@ void AMillionnairePlayerBase::BeginPlay()
     }
 
     InteractionComponent->CanInteractDelegate.BindLambda([this]() -> bool
+{
+    APlayerController* PC = Cast<APlayerController>(GetController());
+
+    if (!PC || !PC->Implements<UControllerInterface>())
     {
-        IPlayerControllerInterface* PC = Cast<IPlayerControllerInterface>(GetController());
-        return PC ? PC->CanPerform(EPlayerAction::Interact) : true;
-    });
+        return true;
+    }
+
+    return IControllerInterface::Execute_CanPerform(
+        PC,
+        EPlayerAction::Interact
+    );
+});
 }
 
 // -------------------------------------------------
