@@ -32,7 +32,8 @@ public class InputChallenge : ModuleRules
 				"Slate",
 				"SlateCore",
 				"EnhancedInput",
-				"InputCore"
+				"InputCore",
+				"InputGlyphCore"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);

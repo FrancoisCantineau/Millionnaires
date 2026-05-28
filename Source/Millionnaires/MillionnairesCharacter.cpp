@@ -166,3 +166,18 @@ void AMillionnairesCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	
 }
+
+void AMillionnairesCharacter::AddStateTag_Implementation(FGameplayTag StateTag)
+{
+	StateTags.AddTag(StateTag);
+}
+
+void AMillionnairesCharacter::RemoveStateTag_Implementation(FGameplayTag StateTag)
+{
+	StateTags.RemoveTag(StateTag);
+}
+
+bool AMillionnairesCharacter::HasStateTag_Implementation(FGameplayTag StateTag)
+{
+	return StateTags.HasTag(StateTag);
+}

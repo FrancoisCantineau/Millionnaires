@@ -45,6 +45,14 @@
 			"Name": "QuestSystem",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "TraversalSystem",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine"
+			]
 		}
 	],
 	"Plugins": [
@@ -81,6 +89,10 @@
 		},
 		{
 			"Name": "InputChallenge",
+			"Enabled": true
+		},
+		{
+			"Name": "InputGlyphCore",
 			"Enabled": true
 		}
 	],

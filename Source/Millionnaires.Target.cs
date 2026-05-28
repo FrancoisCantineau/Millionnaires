@@ -24,7 +24,7 @@ public class MillionnairesTarget : TargetRules
 			"UMG",
 			"ItemSystem",
 			"DayNightCycleSystem",
-			"QuestSystem",
+			"TraversalSystem",
 		});
 	}
 }

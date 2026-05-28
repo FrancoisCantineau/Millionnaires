@@ -1,10 +1,10 @@
 ﻿#include "UI/InputChallengeWidget.h"
+#include "EnhancedPlayerInput.h"
 
-#include "Components/ProgressBar.h"
-#include "Components/TextBlock.h"
+#include "InputGlyphWidget.h"
+#include "Components/Image.h"
 
 #include "InputChallengeComponent.h"
-#include "InputAction.h"
 
 void UInputChallengeWidget::Init(UInputChallengeComponent* InComponent)
 {
@@ -26,39 +26,21 @@ void UInputChallengeWidget::Init(UInputChallengeComponent* InComponent)
 
 void UInputChallengeWidget::HandleProgress(float Value)
 {
-	if (ProgressBar)
-	{
-		ProgressBar->SetPercent(Value);
-	}
+	GlyphWidget->SetProgress(Value);
 }
 
 void UInputChallengeWidget::HandleExpectedActionChanged(UInputAction* Action)
 {
-	if (!ActionText) return;
-
-	if (!Action)
-	{
-		ActionText->SetText(FText::GetEmpty());
-		return;
-	}
-
-	ActionText->SetText(
-		FText::FromString(Action->GetName())
-	);
+	GlyphWidget->SetInputAction(Action);
 }
 
 void UInputChallengeWidget::HandleSuccess()
 {
-	if (StateText)
-	{
-		StateText->SetText(FText::FromString(TEXT("SUCCESS")));
-	}
+	//
 }
 
 void UInputChallengeWidget::HandleFailure()
 {
-	if (StateText)
-	{
-		StateText->SetText(FText::FromString(TEXT("FAILED")));
-	}
+	//
 }
+

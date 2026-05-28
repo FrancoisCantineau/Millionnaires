@@ -21,7 +21,6 @@
 #include "EnhancedInputComponent.h"
 #include "Characters/Player/PlayerCharacter.h"
 #include "Camera/CameraComponent.h"
-#include "Characters/Player/Data/Enum/PlayerEnum.h"
 #include "UI/InputChallengeWidget.h"
 #include "InputActionValue.h"
 #include "Characters/Player/MillionnairePlayerBase.h"
@@ -135,6 +134,16 @@ void AMillionnairesPlayerController::HandleLookInput(FVector2D Value)
         }
         break;
 
+    case EPlayerMode::Ladder:
+        {
+            BlockedActions.Add(EPlayerAction::Jump);
+
+            SetIgnoreLookInput(false);
+            SetIgnoreMoveInput(false);
+            
+        }
+        break;
+
     default:
         break;
     }
@@ -151,7 +160,9 @@ bool AMillionnairesPlayerController::CanPerform(EPlayerAction Action) const
 
 void AMillionnairesPlayerController::StartInputChallenge(UInputChallengeDefinition* Definition)
 {
-    if (!Definition) return;
+    if (!ChallengeComponent || !Definition)
+        return;
+
     ChallengeComponent->StartChallenge(Definition);
 }
 
@@ -177,8 +188,6 @@ void AMillionnairesPlayerController::OnChallengeOver()
 {
     SetPlayerMode(EPlayerMode::Gameplay, nullptr);
 
-    SetPlayerMode(EPlayerMode::Gameplay, nullptr);
-
     if (ChallengeWidget)
     {
         ChallengeWidget->RemoveFromParent();
@@ -195,8 +204,18 @@ void AMillionnairesPlayerController::BeginPlay()
 {
     Super::BeginPlay();
 
-    ChallengeComponent->OnChallengeStarted.AddDynamic(this, &AMillionnairesPlayerController::OnChallengeBegan);
-    ChallengeComponent->OnChallengeEnded.AddDynamic(this,   &AMillionnairesPlayerController::OnChallengeOver);
+    if (ChallengeComponent)
+    {
+        ChallengeComponent->OnChallengeStarted.AddDynamic(
+            this,
+            &AMillionnairesPlayerController::OnChallengeBegan
+        );
+
+        ChallengeComponent->OnChallengeEnded.AddDynamic(
+            this,
+            &AMillionnairesPlayerController::OnChallengeOver
+        );
+    }
 
     if (DispatchCamera.IsValid())
         EnterDispatchPhase();
@@ -221,7 +240,7 @@ void AMillionnairesPlayerController::SetupInputComponent()
             for (UInputMappingContext* Ctx : MobileExcludedMappingContexts)
                 if (Ctx) Subsystem->AddMappingContext(Ctx, 0);
     }
-
+    
     // --- Bindings ---
     if (UEnhancedInputComponent* EI = Cast<UEnhancedInputComponent>(InputComponent))
     {
@@ -234,7 +253,9 @@ void AMillionnairesPlayerController::SetupInputComponent()
         if (MoveAction)
             EI->BindAction(MoveAction, ETriggerEvent::Triggered, this,
                 &AMillionnairesPlayerController::OnMoveInput);
-
+            EI->BindAction(MoveAction, ETriggerEvent::Completed, this,
+                &AMillionnairesPlayerController::OnMoveCompleted);
+        
         if (LookAction)
             EI->BindAction(LookAction, ETriggerEvent::Triggered, this,
                 &AMillionnairesPlayerController::OnLookInput);
@@ -287,7 +308,7 @@ void AMillionnairesPlayerController::SetupInputComponent()
             EI->BindAction(EquipFlashlightAction, ETriggerEvent::Started, this,
                 &AMillionnairesPlayerController::OnEquipFlashlightPressed);
 
-    }
+    } 
 }
 
 #pragma endregion
@@ -301,12 +322,28 @@ void AMillionnairesPlayerController::OnMoveInput(const FInputActionValue& Value)
 {
     if (RouteAction(MoveAction))
         return;
-    
-    if (!CanPerform(EPlayerAction::Move)) return;
+
+    if (!CanPerform(EPlayerAction::Move))
+        return;
 
     FVector2D V = Value.Get<FVector2D>();
+
     if (AMillionnairePlayerBase* P = GetPlayerPawn())
         P->DoMove(V.X, V.Y);
+}
+
+void AMillionnairesPlayerController::OnMoveCompleted(const FInputActionValue& Value)
+{
+    if (RouteAction(MoveAction))
+        return;
+
+    if (!CanPerform(EPlayerAction::Move))
+        return;
+
+    FVector2D V = Value.Get<FVector2D>();
+
+    if (AMillionnairePlayerBase* P = GetPlayerPawn())
+        P->DoMoveEnd(V.X, V.Y);
 }
 
 void AMillionnairesPlayerController::OnLookInput(const FInputActionValue& Value)
@@ -320,7 +357,9 @@ void AMillionnairesPlayerController::OnJumpStarted()
     if (RouteAction(JumpAction))
         return;
 
-    if (!CanPerform(EPlayerAction::Jump)) return;
+    if (!CanPerform(EPlayerAction::Jump))
+        return;
+
     if (AMillionnairePlayerBase* P = GetPlayerPawn())
         P->DoJumpStart();
 }
@@ -331,12 +370,34 @@ void AMillionnairesPlayerController::OnJumpCompleted()
         P->DoJumpEnd();
 }
 
+// -------------------------------------------------
+// ROUTING SYSTEM (CHALLENGE)
+// -------------------------------------------------
+
+bool AMillionnairesPlayerController::RouteAction(UInputAction* Action)
+{
+    if (CurrentMode == EPlayerMode::InputChallenge &&
+        ChallengeComponent &&
+        ChallengeComponent->IsActived())
+    {
+        ChallengeComponent->HandleInputPressed(Action);
+        return true;
+    }
+
+    return false;
+}
+
+// -------------------------------------------------
+// OTHER ACTIONS
+// -------------------------------------------------
+
 void AMillionnairesPlayerController::OnInteractPressed()
 {
     if (RouteAction(InteractAction))
         return;
-    
-    if (!CanPerform(EPlayerAction::Interact)) return;
+
+    if (!CanPerform(EPlayerAction::Interact))
+        return;
 
     if (AMillionnairePlayerBase* P = GetPlayerPawn())
         P->DoInteract();
@@ -346,7 +407,7 @@ void AMillionnairesPlayerController::OnInventoryPressed()
 {
     if (RouteAction(InventoryAction))
         return;
-    
+
     if (AMillionnairePlayerBase* P = GetPlayerPawn())
         P->OnInventoryPressed();
 }
@@ -355,7 +416,7 @@ void AMillionnairesPlayerController::OnDropItemPressed()
 {
     if (RouteAction(DropItemAction))
         return;
-    
+
     if (AMillionnairePlayerBase* P = GetPlayerPawn())
         P->OnDropItemPressed();
 }
@@ -380,7 +441,9 @@ void AMillionnairesPlayerController::OnUseBatteryPressed()
 
 void AMillionnairesPlayerController::OnToggleFlashlightPressed()
 {
-    if (!CanPerform(EPlayerAction::ToggleFlashlight)) return;
+    if (!CanPerform(EPlayerAction::ToggleFlashlight))
+        return;
+
     if (AMillionnairePlayerBase* P = GetPlayerPawn())
         P->OnToggleFlashlightPressed();
 }
@@ -393,19 +456,32 @@ void AMillionnairesPlayerController::OnEquipFlashlightPressed()
 
 void AMillionnairesPlayerController::HandleExitPressed()
 {
-    if (CurrentMode == EPlayerMode::Gameplay) return;
+    if (CurrentMode == EPlayerMode::Gameplay)
+        return;
+
     SetPlayerMode(EPlayerMode::Gameplay, nullptr);
 }
 
-bool AMillionnairesPlayerController::RouteAction(UInputAction* Action)
+void AMillionnairesPlayerController::OnActionStarted(UInputAction* Action)
 {
-    if (CurrentMode == EPlayerMode::InputChallenge && ChallengeComponent->IsActived())
-    {
-        ChallengeComponent->HandleInputAction(Action);
-            return true; 
-    }
+    if (RouteAction(Action))
+        return;
+}
 
-    return false;
+void AMillionnairesPlayerController::OnActionCompleted(UInputAction* Action)
+{
+    if (RouteAction(Action))
+        return;
+
+    AMillionnairePlayerBase* P =
+        Cast<AMillionnairePlayerBase>(GetPawn());
+
+    if (!P) return;
+
+    if (Action == JumpAction)
+    {
+        P->DoJumpEnd();
+    }
 }
 
 #pragma endregion

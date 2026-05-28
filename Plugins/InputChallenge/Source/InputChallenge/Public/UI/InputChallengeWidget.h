@@ -4,8 +4,7 @@
 #include "Blueprint/UserWidget.h"
 #include "InputChallengeWidget.generated.h"
 
-class UProgressBar;
-class UTextBlock;
+class UInputGlyphWidget;
 class UInputChallengeComponent;
 class UInputAction;
 
@@ -19,15 +18,9 @@ public:
 	void Init(UInputChallengeComponent* InComponent);
 
 protected:
-
-	UPROPERTY(meta = (BindWidget))
-	UProgressBar* ProgressBar;
-
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* ActionText;
-
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* StateText;
+	
+	UPROPERTY(meta=(BindWidget))
+	TObjectPtr<UInputGlyphWidget> GlyphWidget;
 
 	UFUNCTION()
 	void HandleProgress(float Value);

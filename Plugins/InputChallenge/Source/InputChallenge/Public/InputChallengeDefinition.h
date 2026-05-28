@@ -31,6 +31,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Challenge")
 	float TimeLimit = 3.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Challenge")
+	float HoldDuration = 0.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Challenge")
 	bool bResetOnMistake = true;

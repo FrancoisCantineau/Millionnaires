@@ -5,21 +5,22 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Millionnaires.h"
 #include "InteractionComponent.h"
 #include "InventoryComponent.h"
 #include "RestrictedInventoryComponent.h"
 #include "DropComponent.h"
+#include "NavigationSystem.h"
 #include "QuestManagerComponent.h"
 #include "UI/MultiInventoryWidget.h"
 #include "UI/InteractionWidget.h"
 #include "UI/InventoryWidget.h"
 #include "Blueprint/UserWidget.h"
-#include "Characters/Player/Data/Enum/PlayerEnum.h"
 #include "Components/FlashlightEquipmentComponent.h"
 #include "Components/Characters/CharacterStatsComponent.h"
 #include "Consumable/ConsumableComponent.h"
 #include "Characters/Player/PlayerControllerInterface.h"
+#include "Controller/ControllerInterface.h"
+#include "Component/TraversalComponent.h"
 
 // -------------------------------------------------
 //  DEBUG COMMAND
@@ -111,6 +112,7 @@ AMillionnairePlayerBase::AMillionnairePlayerBase()
     ConsumableComponent  = CreateDefaultSubobject<UConsumableComponent>(TEXT("ConsumableComponent"));
     FlashlightComponent  = CreateDefaultSubobject<UFlashlightEquipmentComponent>(TEXT("FlashlightComponent"));
     QuestManagerComponent = CreateDefaultSubobject<UQuestManagerComponent>(TEXT("QuestManagerComponent"));
+    ATraversalComponent = CreateDefaultSubobject<UTraversalComponent>(TEXT("TraversalComponent"));
 }
 
 // -------------------------------------------------
@@ -193,8 +195,22 @@ void AMillionnairePlayerBase::SetupPlayerInputComponent(UInputComponent* PlayerI
 
 void AMillionnairePlayerBase::DoMove(float Right, float Forward)
 {
+    if (ATraversalComponent && ATraversalComponent->IsTraversing())
+    {
+        ATraversalComponent->SetTraversalInput(FVector2D(Right, Forward));
+        return;
+    }
+    
     AddMovementInput(GetActorRightVector(), Right);
     AddMovementInput(GetActorForwardVector(), Forward);
+}
+
+void AMillionnairePlayerBase::DoMoveEnd(float Right, float Forward)
+{
+    if (ATraversalComponent&& ATraversalComponent->IsTraversing())
+    {
+        ATraversalComponent->SetTraversalInput(FVector2D(Right, Forward));
+    }
 }
 
 void AMillionnairePlayerBase::DoAim(float Yaw, float Pitch)
@@ -416,6 +432,24 @@ bool AMillionnairePlayerBase::HasSpaceForItemInAnyInventory_Implementation(
 
     return false;
 }
+
+void AMillionnairePlayerBase::TryStartTraversal(ATraversalActor* Target)
+{
+    UE_LOG(LogTemp, Warning, TEXT("TraversalComponent: %p"), ATraversalComponent);
+    UE_LOG(LogTemp, Warning, TEXT("TraversalComponent2: %p"), ATraversalComponent);
+    if (!ATraversalComponent) return;
+
+    ATraversalComponent->StartTraversal(Target);
+    
+ /*   if (IControllerInterface* Cam =
+      Cast<IControllerInterface>(GetController()))
+    {
+        Cam->SetPlayerMode(EPlayerMode::Ladder, Ladder);
+        
+    }
+*/
+}
+
 
 int32 AMillionnairePlayerBase::AddItem_Implementation(const FDataTableRowHandle& ItemHandle, int32 Amount)
 {

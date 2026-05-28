@@ -10,14 +10,13 @@
 
 #include "CoreMinimal.h"
 #include "InputAction.h"
-#include "Characters/Data/Enum/PlayerMode.h"
-#include "Characters/Player/PlayerControllerInterface.h"
 #include "GameFramework/PlayerController.h"
 
 //Input challenge
 
 #include "InputChallengeComponent.h"
 #include "InputChallengeDefinition.h"
+#include "Controller/ControllerInterface.h"
 
 #include "MillionnairesPlayerController.generated.h"
 
@@ -46,7 +45,7 @@ enum class EMillionairesGamePhase : uint8
  *  Also handles transitions between Dispatch (top-down) and Mission (first person) phases.
  */
 UCLASS(abstract, config = "Game")
-class MILLIONNAIRES_API AMillionnairesPlayerController : public APlayerController, public IPlayerControllerInterface
+class MILLIONNAIRES_API AMillionnairesPlayerController : public APlayerController, public IControllerInterface
 {
     GENERATED_BODY()
 
@@ -126,6 +125,7 @@ protected:
 #pragma region INPUT_HANDLERS
 
     void OnMoveInput(const FInputActionValue& Value);
+    void OnMoveCompleted(const FInputActionValue& Value);
     void OnLookInput(const FInputActionValue& Value);
     void OnJumpStarted();
     void OnJumpCompleted();
@@ -139,6 +139,8 @@ protected:
     void OnEquipFlashlightPressed();
     void HandleExitPressed();
     bool RouteAction(UInputAction* Action);
+    void OnActionStarted(UInputAction* Action);
+    void OnActionCompleted(UInputAction* Action);
 
 #pragma endregion
 

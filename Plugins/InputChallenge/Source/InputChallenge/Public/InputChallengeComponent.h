@@ -5,6 +5,20 @@
 #include "InputChallengeDefinition.h"
 #include "InputChallengeComponent.generated.h"
 
+
+
+UENUM(BlueprintType)
+enum class EInputChallengeState : uint8
+{
+    Idle,
+    Running,
+    Success,
+    Failed
+};
+
+
+
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnChallengeSuccess);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnChallengeFailure);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnChallengeProgress, float, Percent);
@@ -20,7 +34,7 @@ class INPUTCHALLENGE_API UInputChallengeComponent : public UActorComponent
 
 public:
     UInputChallengeComponent();
-
+    
     // --- Delegates ---
     UPROPERTY(BlueprintAssignable, Category = "Challenge|Events")
     FOnChallengeSuccess OnSuccess;
@@ -48,13 +62,14 @@ public:
     void AbortChallenge();
     
     UFUNCTION(BlueprintPure, Category = "Challenge")
-    bool IsActived() const { return bIsActive; }
+    bool IsActived() const { return State == EInputChallengeState::Running; }
 
     UFUNCTION(BlueprintPure, Category = "Challenge")
     float GetProgressPercent() const;
-
-    UFUNCTION(BlueprintCallable, Category = "Challenge")
-    void HandleInputAction(UInputAction* Action);
+    
+    void HandleInputPressed(UInputAction* Action);
+    
+    void HandleInputReleased(UInputAction* Action);
 
     UFUNCTION(BlueprintPure, Category = "Challenge")
     UInputAction* GetCurrentExpectedAction() const;
@@ -78,4 +93,11 @@ private:
     int32 CurrentCount   = 0;
     int32 SequenceIndex  = 0;
     float RemainingTime  = 0.f;
+
+    EInputChallengeState State =
+        EInputChallengeState::Idle;
+
+    float CurrentHoldTime = 0.f;
+
+    bool bHolding = false;
 };

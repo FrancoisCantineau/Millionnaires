@@ -34,12 +34,14 @@ public class Millionnaires : ModuleRules
 			"GameInterfaces",
 			"DayNightCycleSystem",
 			"QuestSystem",
+			"TraversalSystem",
 			
 			//Animtation
 			"MotionWarping",    
 			"ContextualAnimation", 
 			
 			"InputChallenge",
+			"InputGlyphCore",
 
 		});
 		

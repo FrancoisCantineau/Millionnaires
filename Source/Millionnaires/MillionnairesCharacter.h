@@ -10,6 +10,7 @@
 //*GAS */
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "Character/CharacterInterface.h"
 #include "Data/CharacterDefinition.h"
 #include "GameplayAbilitySystem/Attributes/BaseAttributeSet.h"
 #include "GameplayAbilitySystem/Attributes/StatusAttributeSet.h"
@@ -25,7 +26,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
  *  A basic first person character
  */
 UCLASS(abstract)
-class AMillionnairesCharacter : public ACharacter, public IAbilitySystemInterface
+class AMillionnairesCharacter : public ACharacter, public IAbilitySystemInterface, public ICharacterInterface
 {
 	GENERATED_BODY()
 
@@ -40,9 +41,11 @@ protected:
 	/** First person camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FirstPersonCameraComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	FGameplayTagContainer StateTags;
 	
-	
-	
+
 #pragma region Protected_GAS
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AbilitySystem")
 	UAbilitySystemComponent* AbilitySystemComponent;
@@ -91,6 +94,11 @@ public:
 
 	/** Returns first person camera component */
 	FORCEINLINE UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
+
+	//State tags//
+	virtual void AddStateTag_Implementation(FGameplayTag StateTag);
+	virtual void RemoveStateTag_Implementation(FGameplayTag StateTag);
+	virtual bool HasStateTag_Implementation(FGameplayTag StateTag);
 
 #pragma region Public_GAS
 	

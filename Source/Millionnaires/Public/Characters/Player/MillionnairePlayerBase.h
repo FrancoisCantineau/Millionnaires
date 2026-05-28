@@ -7,7 +7,8 @@
 #include "UI/QuestTrackerWidget.h"
 #include "ItemData.h"
 #include "InventoryInterface.h"
-
+#include "TraversalInterface.h"
+#include "Component/TraversalComponent.h"
 #include "MillionnairePlayerBase.generated.h"
 
 class UConsumableComponent;
@@ -21,7 +22,7 @@ class UInteractionWidget;
 class UInputComponent;
 
 UCLASS()
-class MILLIONNAIRES_API AMillionnairePlayerBase : public AMillionnairesCharacter, public IInventoryInterface
+class MILLIONNAIRES_API AMillionnairePlayerBase : public AMillionnairesCharacter, public IInventoryInterface, public ITraversalInterface
 {
     GENERATED_BODY()
 
@@ -151,6 +152,15 @@ protected:
 
 #pragma endregion
 
+#pragma region Traversal
+
+    virtual void TryStartTraversal(ATraversalActor* Target) override;
+
+    UPROPERTY(EditAnywhere,BlueprintReadWrite)
+    UTraversalComponent* ATraversalComponent;
+    
+#pragma endregion
+
 public:
 
     AMillionnairePlayerBase();
@@ -165,6 +175,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Input")
     virtual void DoMove(float Right, float Forward);
 
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    virtual void DoMoveEnd(float Right, float Forward);
+    
     UFUNCTION(BlueprintCallable, Category = "Input")
     virtual void DoAim(float Yaw, float Pitch);
 

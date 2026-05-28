@@ -2,7 +2,7 @@
 
 
 #include "CoreMinimal.h"
-#include "Characters/Data/Enum/PlayerMode.h"
+#include "Controller/ControllerInterface.h"
 #include "UObject/Interface.h"
 #include "PlayerControllerInterface.generated.h"
 

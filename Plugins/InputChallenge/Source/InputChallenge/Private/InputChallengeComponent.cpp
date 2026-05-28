@@ -14,6 +14,9 @@ void UInputChallengeComponent::StartChallenge(UInputChallengeDefinition* Definit
     CurrentCount     = 0;
     SequenceIndex    = 0;
     RemainingTime    = Definition->TimeLimit;
+    State = EInputChallengeState::Running;
+    CurrentHoldTime = 0.f;
+    bHolding = false;
 
     OnChallengeStarted.Broadcast(Definition);
     OnProgress.Broadcast(0.f);
@@ -32,13 +35,39 @@ void UInputChallengeComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
     FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-    if (!bIsActive || !ActiveDefinition) return;
+    if (!bIsActive || !ActiveDefinition)
+        return;
 
     if (ActiveDefinition->TimeLimit > 0.f)
     {
         RemainingTime -= DeltaTime;
+
         if (RemainingTime <= 0.f)
+        {
             Fail();
+            return;
+        }
+    }
+
+    if (ActiveDefinition->Type != EInputChallengeType::Hold)
+        return;
+
+    if (!bHolding)
+        return;
+
+    CurrentHoldTime += DeltaTime;
+
+    float Progress =
+        CurrentHoldTime /
+        ActiveDefinition->HoldDuration;
+
+    OnProgress.Broadcast(
+        FMath::Clamp(Progress, 0.f, 1.f)
+    );
+
+    if (Progress >= 1.f)
+    {
+        Succeed();
     }
 }
 
@@ -56,45 +85,89 @@ float UInputChallengeComponent::GetProgressPercent() const
     }
 }
 
-void UInputChallengeComponent::HandleInputAction(UInputAction* Action)
+
+void UInputChallengeComponent::HandleInputPressed(UInputAction* Action)
 {
-    if (!bIsActive || !ActiveDefinition || !Action) return;
+    if (!bIsActive || !ActiveDefinition || !Action)
+        return;
 
     switch (ActiveDefinition->Type)
     {
     case EInputChallengeType::Spam:
-        if (Action == ActiveDefinition->ExpectedActions[0])
         {
-            CurrentCount++;
-            OnProgress.Broadcast(GetProgressPercent());
-            if (CurrentCount >= ActiveDefinition->RequiredCount)
-                Succeed();
+            if (Action == GetCurrentExpectedAction())
+            {
+                CurrentCount++;
+
+                OnProgress.Broadcast(GetProgressPercent());
+
+                if (CurrentCount >= ActiveDefinition->RequiredCount)
+                {
+                    Succeed();
+                }
+            }
+            break;
         }
-        break;
 
     case EInputChallengeType::Sequence:
-        if (ActiveDefinition->ExpectedActions.IsValidIndex(SequenceIndex) &&
-            Action == ActiveDefinition->ExpectedActions[SequenceIndex])
         {
-            SequenceIndex++;
-            OnProgress.Broadcast(GetProgressPercent());
+            if (Action == GetCurrentExpectedAction())
+            {
+                SequenceIndex++;
 
-            OnExpectedActionChanged.Broadcast(GetCurrentExpectedAction());
-            
-            if (SequenceIndex >= ActiveDefinition->ExpectedActions.Num())
-                Succeed();
+                OnProgress.Broadcast(GetProgressPercent());
+
+                OnExpectedActionChanged.Broadcast(
+                    GetCurrentExpectedAction()
+                );
+
+                if (SequenceIndex >= ActiveDefinition->ExpectedActions.Num())
+                {
+                    Succeed();
+                }
+            }
+            else if (ActiveDefinition->bResetOnMistake)
+            {
+                SequenceIndex = 0;
+
+                OnProgress.Broadcast(0.f);
+
+                OnExpectedActionChanged.Broadcast(
+                    GetCurrentExpectedAction()
+                );
+            }
+
+            break;
         }
-        else if (ActiveDefinition->bResetOnMistake)
+
+    case EInputChallengeType::Hold:
         {
-            SequenceIndex = 0;
-            OnProgress.Broadcast(0.f);
-            OnExpectedActionChanged.Broadcast(GetCurrentExpectedAction());
-        }
-        break;
+            if (Action == GetCurrentExpectedAction())
+            {
+                bHolding = true;
+                CurrentHoldTime = 0.f;
+            }
 
-    default:
-        break;
+            break;
+        }
     }
+}
+
+void UInputChallengeComponent::HandleInputReleased(UInputAction* Action)
+{
+    if (!ActiveDefinition) return;
+
+    if (Action != GetCurrentExpectedAction())
+        return;
+
+    if (CurrentHoldTime <
+        ActiveDefinition->HoldDuration)
+    {
+        Fail();
+        return;
+    }
+
+    bHolding = false;
 }
 
 UInputAction* UInputChallengeComponent::GetCurrentExpectedAction() const
@@ -108,6 +181,11 @@ UInputAction* UInputChallengeComponent::GetCurrentExpectedAction() const
     case EInputChallengeType::Sequence:
         return ActiveDefinition->ExpectedActions.IsValidIndex(SequenceIndex)
             ? ActiveDefinition->ExpectedActions[SequenceIndex] : nullptr;
+
+    case EInputChallengeType::Hold:
+        return ActiveDefinition->ExpectedActions.IsValidIndex(0)
+            ? ActiveDefinition->ExpectedActions[0] : nullptr;
+        
     default:
         return nullptr;
     }
@@ -117,14 +195,22 @@ UInputAction* UInputChallengeComponent::GetCurrentExpectedAction() const
 
 void UInputChallengeComponent::Succeed()
 {
+    State = EInputChallengeState::Success;
+    
     bIsActive = false;
+    bHolding = false;
+    
     OnSuccess.Broadcast();
     OnChallengeEnded.Broadcast();
 }
 
 void UInputChallengeComponent::Fail()
 {
+    State = EInputChallengeState::Failed;
+
     bIsActive = false;
+    bHolding = false;
+    
     OnFailure.Broadcast();
     OnChallengeEnded.Broadcast();
 }
