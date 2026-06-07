@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InputReceiverInterface.h"
 #include "MillionnairesCharacter.h"
 #include "Logging/LogMacros.h"
 #include "QuestManagerComponent.h"
@@ -22,7 +23,7 @@ class UInteractionWidget;
 class UInputComponent;
 
 UCLASS()
-class MILLIONNAIRES_API AMillionnairePlayerBase : public AMillionnairesCharacter, public IInventoryInterface, public ITraversalInterface
+class MILLIONNAIRES_API AMillionnairePlayerBase : public AMillionnairesCharacter, public IInventoryInterface, public ITraversalInterface, public IInputReceiverInterface
 {
     GENERATED_BODY()
 
@@ -172,6 +173,8 @@ public:
     //  VERBES — appelés par le Controller
     // -------------------------------------------------
 
+    virtual void HandleInput(FGameplayTag Tag) override;
+    
     UFUNCTION(BlueprintCallable, Category = "Input")
     virtual void DoMove(float Right, float Forward);
 
@@ -231,4 +234,10 @@ public:
     FORCEINLINE UQuestManagerComponent* GetQuestManager() const { return QuestManagerComponent; }
 
 #pragma endregion
+
+
+
+
+
+    
 };

@@ -20,6 +20,8 @@
 
 #include "MillionnairesPlayerController.generated.h"
 
+class UContextInputMappingDataAsset;
+class UContextInputRouterComponent;
 class UInputChallengeWidget;
 enum class EPlayerAction : uint8;
 class UCameraComponent;
@@ -72,6 +74,14 @@ protected:
     // -------------------------------------------------
 #pragma region INPUT_ACTIONS
 
+    void OnInput(const FInputActionInstance& Instance);
+    
+    UPROPERTY(EditDefaultsOnly)
+    UContextInputMappingDataAsset* InputMappingDataAsset;
+    
+    UPROPERTY(EditAnywhere)
+    UContextInputRouterComponent* InputRouterComponent;
+    
     UPROPERTY(EditAnywhere, Category = "Input|Input Mappings")
     TArray<UInputMappingContext*> DefaultMappingContexts;
 

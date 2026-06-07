@@ -8,6 +8,7 @@
 
 #include "MillionnairesPlayerController.h"
 
+#include "ContextInputRouterComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
 #include "InputMappingContext.h"
@@ -29,6 +30,8 @@ AMillionnairesPlayerController::AMillionnairesPlayerController()
 {
     PlayerCameraManagerClass = AMillionnairesCameraManager::StaticClass();
     ChallengeComponent = CreateDefaultSubobject<UInputChallengeComponent>(TEXT("ChallengeComponent"));
+
+    InputRouterComponent = CreateDefaultSubobject<UContextInputRouterComponent>(TEXT("InputRouterComponent"));
 }
 
 // -------------------------------------------------
@@ -278,6 +281,14 @@ void AMillionnairesPlayerController::SetupInputComponent()
     // --- Bindings ---
     if (UEnhancedInputComponent* EI = Cast<UEnhancedInputComponent>(InputComponent))
     {
+        for (const FInputTagMapping& M : InputMappingDataAsset->Mappings)
+        {
+            for (ETriggerEvent Event : M.Events)
+            {
+                EI->BindAction(M.Action, Event, this,&AMillionnairesPlayerController::OnInput);
+            }
+        }
+        /*
         // Existant
         if (ExitAction)
             EI->BindAction(ExitAction, ETriggerEvent::Started, this,
@@ -341,8 +352,18 @@ void AMillionnairesPlayerController::SetupInputComponent()
         if (EquipFlashlightAction)
             EI->BindAction(EquipFlashlightAction, ETriggerEvent::Started, this,
                 &AMillionnairesPlayerController::OnEquipFlashlightPressed);
-
+*/
     } 
+}
+
+void AMillionnairesPlayerController::OnInput(const FInputActionInstance& Instance)
+{
+    InputRouterComponent->CurrentReceiver = GetPawn();
+    
+    if (InputRouterComponent)
+    {
+        InputRouterComponent->HandleInputReceived(Instance);
+    }
 }
 
 #pragma endregion

@@ -94,6 +94,10 @@
 		{
 			"Name": "InputGlyphCore",
 			"Enabled": true
+		},
+		{
+			"Name": "ContextFramework",
+			"Enabled" : true
 		}
 	],
 	"TargetPlatforms": [

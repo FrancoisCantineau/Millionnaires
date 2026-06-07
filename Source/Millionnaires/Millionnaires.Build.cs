@@ -40,8 +40,11 @@ public class Millionnaires : ModuleRules
 			"MotionWarping",    
 			"ContextualAnimation", 
 			
+			//Inputs
 			"InputChallenge",
 			"InputGlyphCore",
+			
+			"ContextFramework",
 
 		});
 		

@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "ShipScreenActor.generated.h"
 
+class UContextDataAsset;
 class UWidgetComponent;
 class UStaticMeshComponent;
 class UTextureRenderTarget2D;
@@ -46,4 +47,7 @@ protected:
 	FRotator TargetRotation;
 
 	ACameraActor* ScreenCamera = nullptr;
+
+	UPROPERTY(EditAnywhere, Category = "Screen")
+	UContextDataAsset* ContextDataAsset = nullptr;
 };

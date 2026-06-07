@@ -34,7 +34,7 @@ protected:
     virtual void OnConstruction(const FTransform& Transform) override;
 
 public:
-    // Override — ladder a sa propre logique de notify
+    
     virtual void HandleTraversalNotify(
         ETraversalNotifyType EventType,
         UTraversalComponent* Component

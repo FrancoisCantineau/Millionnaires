@@ -3,6 +3,9 @@
 
 #include "Actors/ShipScreenActor.h"
 
+#include "ContextComponent.h"
+#include "Data/ContextStructData.h"
+
 #include "MillionnairesPlayerController.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/WidgetComponent.h"
@@ -55,12 +58,22 @@ void AShipScreenActor::Interact_Implementation(AActor* Interactor)
 {
 	IInteractionInterface::Interact_Implementation(Interactor);
 
+	UContextComponent* Contexts =
+		Interactor->FindComponentByClass<UContextComponent>();
+
+	FActiveContext Context;
+
+	Context.Definition = ContextDataAsset;
+	Context.ViewTarget = ScreenCamera;
+
+	Contexts->AddContext(Context);
+	/*
 	APlayerController* PC = Cast<APlayerController>(
 	   Cast<APawn>(Interactor)->GetController()
    );
 	if (!PC) return;
 
-	StartViewing(PC);
+	StartViewing(PC);*/
 }
 
 FText AShipScreenActor::GetInteractionDisplayName_Implementation() const

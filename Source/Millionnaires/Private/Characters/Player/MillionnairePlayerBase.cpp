@@ -1,5 +1,6 @@
 #include "Characters/Player/MillionnairePlayerBase.h"
 
+#include "ActionComponent.h"
 #include "DayNightWidget.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -21,6 +22,7 @@
 #include "Characters/Player/PlayerControllerInterface.h"
 #include "Controller/ControllerInterface.h"
 #include "Component/TraversalComponent.h"
+#include "System/Tags/MillionnaireGameplayTags.h"
 
 // -------------------------------------------------
 //  DEBUG COMMAND
@@ -188,6 +190,11 @@ void AMillionnairePlayerBase::Tick(float DeltaTime)
     }
 }
 
+void AMillionnairePlayerBase::HandleInput(FGameplayTag Tag)
+{
+    Jump();
+}
+
 // -------------------------------------------------
 //  INPUT SETUP — vide, tout est sur le Controller
 // -------------------------------------------------
@@ -230,7 +237,10 @@ void AMillionnairePlayerBase::DoAim(float Yaw, float Pitch)
 
 void AMillionnairePlayerBase::DoJumpStart()
 {
-    Jump();
+    if (ActionComponent->CanPerform(TAG_Action_Jump))
+    {
+        Jump();
+    }
 }
 
 void AMillionnairePlayerBase::DoJumpEnd()

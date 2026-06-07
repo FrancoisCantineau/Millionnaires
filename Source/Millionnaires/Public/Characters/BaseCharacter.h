@@ -29,6 +29,8 @@
 
 #include "BaseCharacter.generated.h"
 
+class UContextComponent;
+class UActionComponent;
 class UCharacterStatsComponent;
 
 UCLASS(Abstract)
@@ -55,6 +57,7 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     AActor* Target;
+
 
     
 protected:

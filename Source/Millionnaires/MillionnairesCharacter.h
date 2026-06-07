@@ -17,6 +17,12 @@
 
 #include "MillionnairesCharacter.generated.h"
 
+class UContextCameraComponent;
+//*CONTEXT*//
+class UContextDataAsset;
+class UActionComponent;
+class UContextComponent;
+
 class USkeletalMeshComponent;
 class UCameraComponent;
 
@@ -34,6 +40,9 @@ class AMillionnairesCharacter : public ACharacter, public IAbilitySystemInterfac
 
 protected:
 
+	UPROPERTY(EditAnywhere)
+	UContextDataAsset* TestContext;
+	
 	/** Pawn mesh: first person view (arms; seen only by self) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* FirstPersonMesh;
@@ -99,6 +108,17 @@ public:
 	virtual void AddStateTag_Implementation(FGameplayTag StateTag);
 	virtual void RemoveStateTag_Implementation(FGameplayTag StateTag);
 	virtual bool HasStateTag_Implementation(FGameplayTag StateTag);
+
+
+	//Context//
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Context")
+	TObjectPtr<UContextComponent> ContextComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Context")
+	TObjectPtr<UActionComponent> ActionComponent;
+	
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UContextCameraComponent> CameraComponent;
 
 #pragma region Public_GAS
 	

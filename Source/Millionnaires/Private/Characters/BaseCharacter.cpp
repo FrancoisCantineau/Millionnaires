@@ -8,8 +8,9 @@
 
 #include "Characters/BaseCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Components/CapsuleComponent.h"
 #include "Components/Characters/CharacterStatsComponent.h"
+#include "ContextComponent.h"
+#include "ActionComponent.h"
 
 ABaseCharacter::ABaseCharacter(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
@@ -23,6 +24,8 @@ ABaseCharacter::ABaseCharacter(const FObjectInitializer& ObjectInitializer)
     // Animation
     MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComponent"));
     ContextualAnimSceneActorComponent = CreateDefaultSubobject<UContextualAnimSceneActorComponent>(TEXT("ContextualAnimSceneActorComponent"));
+
+ 
     
 }
 

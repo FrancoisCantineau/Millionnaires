@@ -8,6 +8,11 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/Characters/CharacterStatsComponent.h"
 
+//Context Framework"
+#include"ActionComponent.h"
+#include"ContextComponent.h"
+#include"ContextCameraComponent.h"
+
 #pragma region Command
 
 
@@ -33,7 +38,11 @@ AMillionnairesCharacter::AMillionnairesCharacter()
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(AscReplicationMode);
-	
+
+	//Context framework
+	ContextComponent = CreateDefaultSubobject<UContextComponent>(TEXT("ContextComponent"));
+	ActionComponent = CreateDefaultSubobject<UActionComponent>(TEXT("ActionComponent"));
+	CameraComponent =CreateDefaultSubobject<UContextCameraComponent>(TEXT("ContextCameraComponent"));
 
 }
 
@@ -57,7 +66,7 @@ void AMillionnairesCharacter::BeginPlay()
     
 	// Tag event registrations
 	AbilitySystemComponent->RegisterGameplayTagEvent(FGameplayTag::RequestGameplayTag("State.Dead")).AddUObject(this, &AMillionnairesCharacter::OnDeadTagChanged);
-	
+
 }
 
 UAbilitySystemComponent* AMillionnairesCharacter::GetAbilitySystemComponent() const
