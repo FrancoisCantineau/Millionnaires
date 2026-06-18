@@ -9,8 +9,10 @@
 #include "ContextInputRouterComponent.generated.h"
 
 
-	class UInputAction;
-	struct FInputActionInstance;
+struct FActiveContext;
+class UInputAction;
+class UContextComponent;
+struct FInputActionInstance;
 
 	UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 	class CONTEXTFRAMEWORK_API UContextInputRouterComponent : public UActorComponent
@@ -22,15 +24,31 @@
 		UContextInputRouterComponent();
 
 
-		AActor* CurrentReceiver = nullptr;
+		UPROPERTY()
+		TObjectPtr<UObject> CurrentReceiver;
 
 	protected:
 		// Called when the game starts
 		virtual void BeginPlay() override;
 
-		
+		UPROPERTY()
+		const UContextInputMappingDataAsset* ActiveMapping; 
 
-		TMap<TObjectPtr<UInputAction>, FGameplayTag> ActionToTagMap;
+		UPROPERTY()
+		UContextComponent* CachedContextComponent = nullptr;
+		
+		UPROPERTY()
+		TObjectPtr<UContextComponent> ContextSource;
+
+		TMap<TObjectPtr<const UInputAction>, FGameplayTag> ActionToTagMap;
+
+		void OnContextAdded(const FActiveContext& Context);
+		void OnContextRemoved(const FActiveContext& Context);
+
+		void BuildActionMap();
+		
+		UPROPERTY()
+		TObjectPtr<UContextComponent> ContextComponent;
 		
 	public:	
 		// Called every frame
@@ -40,5 +58,7 @@
 
 		UPROPERTY(EditDefaultsOnly)
 		UContextInputMappingDataAsset* InputMappingDataAsset;
+		
+		void Initialize(UContextComponent* InContext);
 		
 	};

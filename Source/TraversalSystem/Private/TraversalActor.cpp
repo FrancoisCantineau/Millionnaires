@@ -1,8 +1,9 @@
 #include "TraversalActor.h"
+
 #include "Components/ArrowComponent.h"
 #include "GameFramework/Character.h"
-#include "TraversalInterface.h"
 
+// ============================================================
 
 ATraversalActor::ATraversalActor()
 {
@@ -21,22 +22,50 @@ ATraversalActor::ATraversalActor()
 	ExitPoint->SetupAttachment(RootComponent);
 }
 
-USceneComponent* ATraversalActor::GetEntryPointForCharacter(ACharacter* Character)
+// ============================================================
+// INPUT ROUTING (NEW ARCHI)
+// ============================================================
+
+void ATraversalActor::HandleTraversalInput(
+	UTraversalComponent* Component,
+	const FVector2D& Input)
 {
-	FVector CharLoc = Character->GetActorLocation();
-
-	float DistToStart = FVector::Dist(CharLoc, StartPoint->GetComponentLocation());
-	float DistToEnd   = FVector::Dist(CharLoc, EndPoint->GetComponentLocation());
-
-	return (DistToStart <= DistToEnd) ? StartPoint : EndPoint;
+	if (FMath::Abs(Input.X) > FMath::Abs(Input.Y))
+	{
+		if (Input.X > 0)
+			MoveRight(Component);
+		else
+			MoveLeft(Component);
+	}
+	else
+	{
+		if (Input.Y > 0)
+			MoveForward(Component);
+		else
+			MoveBackward(Component);
+	}
 }
 
-UAnimMontage* ATraversalActor::GetMontageForContext(
-	float Input,
-	ETraversalHand Hand,
-	bool bExiting,
-	bool bEnter, bool bIsEntry, bool bIsExit
-) const
+// DEFAULTS
+void ATraversalActor::MoveForward(UTraversalComponent*) {}
+void ATraversalActor::MoveBackward(UTraversalComponent*) {}
+void ATraversalActor::MoveLeft(UTraversalComponent*) {}
+void ATraversalActor::MoveRight(UTraversalComponent*) {}
+
+// ============================================================
+
+USceneComponent* ATraversalActor::GetEntryPointForCharacter(ACharacter* Character)
+{
+	FVector Loc = Character->GetActorLocation();
+
+	float DistA = FVector::Dist(Loc, StartPoint->GetComponentLocation());
+	float DistB = FVector::Dist(Loc, EndPoint->GetComponentLocation());
+
+	return (DistA <= DistB) ? StartPoint : EndPoint;
+}
+
+UAnimMontage* ATraversalActor::GetMontageForContext(float Input, ETraversalHand Hand, bool bExiting, bool bEnter,
+	bool bIsEntry, bool bIsExit) const
 {
 	if (bExiting)
 	{
@@ -59,12 +88,8 @@ UAnimMontage* ATraversalActor::GetMontageForContext(
 		return Hand == ETraversalHand::Right ? AnimSet.MoveBackwardRight : AnimSet.MoveBackwardLeft;
 }
 
-void ATraversalActor::HandleTraversalNotify(
-	ETraversalNotifyType EventType,
-	UTraversalComponent* Component
-)
+void ATraversalActor::HandleTraversalNotify(ETraversalNotifyType EventType, class UTraversalComponent* Component)
 {
-	// Base — rien, les subclasses overrident
 }
 
 void ATraversalActor::Interact_Implementation(AActor* Interactor)
@@ -73,9 +98,10 @@ void ATraversalActor::Interact_Implementation(AActor* Interactor)
 	{
 		TI->TryStartTraversal(this);
 	}
+	
 }
 
 FText ATraversalActor::GetInteractionDisplayName_Implementation() const
 {
-	return FText::FromString("Traverse");
+	return IInteractionInterface::GetInteractionDisplayName_Implementation();
 }

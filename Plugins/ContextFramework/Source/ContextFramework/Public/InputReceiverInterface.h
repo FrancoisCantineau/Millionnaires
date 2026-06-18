@@ -2,9 +2,10 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
+#include "InputActionValue.h"
+#include "GameplayTagContainer.h" 
 #include "InputReceiverInterface.generated.h"
 
-struct FGameplayTag;
 
 UINTERFACE(MinimalAPI, Blueprintable)
 class UInputReceiverInterface : public UInterface
@@ -21,6 +22,7 @@ class CONTEXTFRAMEWORK_API IInputReceiverInterface
 
 public:
 
-	virtual void HandleInput(FGameplayTag Tag) = 0;
+	UFUNCTION(BlueprintNativeEvent)
+    void HandleInput(FGameplayTag Tag, const FInputActionValue& Value);
 	
 };

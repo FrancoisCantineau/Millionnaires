@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InputActionValue.h"
 #include "InputReceiverInterface.h"
 #include "MillionnairesCharacter.h"
 #include "Logging/LogMacros.h"
@@ -173,7 +174,7 @@ public:
     //  VERBES — appelés par le Controller
     // -------------------------------------------------
 
-    virtual void HandleInput(FGameplayTag Tag) override;
+    virtual void HandleInput_Implementation(FGameplayTag Tag, const FInputActionValue& Value) override;
     
     UFUNCTION(BlueprintCallable, Category = "Input")
     virtual void DoMove(float Right, float Forward);

@@ -1,9 +1,0 @@
-﻿#pragma once
-
-#include "NativeGameplayTags.h"
-
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Action_Jump);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Action_Sprint);
-
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Context_Screen);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Context_Ladder);

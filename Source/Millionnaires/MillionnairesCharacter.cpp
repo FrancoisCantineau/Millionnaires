@@ -12,6 +12,8 @@
 #include"ActionComponent.h"
 #include"ContextComponent.h"
 #include"ContextCameraComponent.h"
+#include "ContextTransitionComponent.h"
+#include "Characters/Player/CharacterStateComponent.h"
 
 #pragma region Command
 
@@ -43,7 +45,9 @@ AMillionnairesCharacter::AMillionnairesCharacter()
 	ContextComponent = CreateDefaultSubobject<UContextComponent>(TEXT("ContextComponent"));
 	ActionComponent = CreateDefaultSubobject<UActionComponent>(TEXT("ActionComponent"));
 	CameraComponent =CreateDefaultSubobject<UContextCameraComponent>(TEXT("ContextCameraComponent"));
+	ContextTransitionComponent= CreateDefaultSubobject<UContextTransitionComponent>(TEXT("ContextTransitionComponent"));
 
+	CharacterStateComponent = CreateDefaultSubobject<UCharacterStateComponent>(TEXT("CharacterStateComponent"));
 }
 
 void AMillionnairesCharacter::BeginPlay()

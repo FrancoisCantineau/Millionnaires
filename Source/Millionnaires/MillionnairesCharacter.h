@@ -17,6 +17,8 @@
 
 #include "MillionnairesCharacter.generated.h"
 
+class UCharacterStateComponent;
+class UContextTransitionComponent;
 class UContextCameraComponent;
 //*CONTEXT*//
 class UContextDataAsset;
@@ -113,12 +115,18 @@ public:
 	//Context//
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Context")
 	TObjectPtr<UContextComponent> ContextComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Context")
+	TObjectPtr<UContextTransitionComponent> ContextTransitionComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Context")
 	TObjectPtr<UActionComponent> ActionComponent;
 	
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UContextCameraComponent> CameraComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Context")
+	TObjectPtr<UCharacterStateComponent> CharacterStateComponent;
 
 #pragma region Public_GAS
 	

@@ -18,6 +18,10 @@ public:
 	ATraversalActor();
 
 protected:
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Traversal")
+	TObjectPtr<UContextDataAsset> TraversalContextDefinition;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Traversal")
 	ETraversalType TraversalType = ETraversalType::None;
 
@@ -36,6 +40,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Traversal|Anim")
 	FTraversalAnimSet AnimSet;
 
+	virtual void MoveForward(UTraversalComponent*);
+	virtual void MoveBackward(UTraversalComponent*);
+	virtual void MoveLeft(UTraversalComponent*);
+	virtual void MoveRight(UTraversalComponent*);
+
 public:
 	
 	ETraversalType GetTraversalType()   const { return TraversalType; }
@@ -43,6 +52,7 @@ public:
 	UArrowComponent* GetStartPoint()    const { return StartPoint; }
 	UArrowComponent* GetEndPoint()      const { return EndPoint; }
 	UArrowComponent* GetExitPoint()     const { return ExitPoint; }
+	TObjectPtr<UContextDataAsset> GetContextData () const { return TraversalContextDefinition;}
 
 	USceneComponent* GetEntryPointForCharacter(ACharacter* Character);
 	
@@ -60,4 +70,9 @@ public:
 
 	virtual void Interact_Implementation(AActor* Interactor) override;
 	virtual FText GetInteractionDisplayName_Implementation() const override;
+
+	virtual void HandleTraversalInput(UTraversalComponent* Component,const FVector2D& Input);
+
 };
+
+

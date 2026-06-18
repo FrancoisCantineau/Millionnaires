@@ -10,6 +10,7 @@
 #include "InventoryComponent.h"
 #include "RestrictedInventoryComponent.h"
 #include "DropComponent.h"
+#include "InputActionValue.h"
 #include "NavigationSystem.h"
 #include "QuestManagerComponent.h"
 #include "UI/MultiInventoryWidget.h"
@@ -22,7 +23,7 @@
 #include "Characters/Player/PlayerControllerInterface.h"
 #include "Controller/ControllerInterface.h"
 #include "Component/TraversalComponent.h"
-#include "System/Tags/MillionnaireGameplayTags.h"
+#include "System/Tags/MillionnaireGameplayTags_Actions.h"
 
 // -------------------------------------------------
 //  DEBUG COMMAND
@@ -190,9 +191,24 @@ void AMillionnairePlayerBase::Tick(float DeltaTime)
     }
 }
 
-void AMillionnairePlayerBase::HandleInput(FGameplayTag Tag)
+void AMillionnairePlayerBase::HandleInput_Implementation(FGameplayTag Tag, const FInputActionValue& Value)
 {
-    Jump();
+    if (Tag ==  (TAG_Action_Jump))
+    {
+        Jump();
+        return;
+    }
+
+    if (Tag == (TAG_Action_Interact))
+    {
+        DoInteract();
+        return;
+    }
+    if (Tag == (TAG_Action_Move))
+    {
+        FVector2D MoveVector = Value.Get<FVector2D>();
+        DoMove(MoveVector.X, MoveVector.Y);
+    }
 }
 
 // -------------------------------------------------
@@ -211,12 +227,6 @@ void AMillionnairePlayerBase::SetupPlayerInputComponent(UInputComponent* PlayerI
 
 void AMillionnairePlayerBase::DoMove(float Right, float Forward)
 {
-    if (ATraversalComponent && ATraversalComponent->IsTraversing())
-    {
-        ATraversalComponent->SetTraversalInput(FVector2D(Right, Forward));
-        return;
-    }
-    
     AddMovementInput(GetActorRightVector(), Right);
     AddMovementInput(GetActorForwardVector(), Forward);
 }
@@ -459,14 +469,6 @@ void AMillionnairePlayerBase::TryStartTraversal(ATraversalActor* Target)
     if (!ATraversalComponent) return;
 
     ATraversalComponent->StartTraversal(Target);
-    
- /*   if (IControllerInterface* Cam =
-      Cast<IControllerInterface>(GetController()))
-    {
-        Cam->SetPlayerMode(EPlayerMode::Ladder, Ladder);
-        
-    }
-*/
 }
 
 

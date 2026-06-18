@@ -7,6 +7,7 @@
 #include "Engine/DataAsset.h"
 #include "ContextInputMappingDataAsset.generated.h"
 
+class UInputMappingContext;
 enum class ETriggerEvent : uint8;
 class UInputAction;
 
@@ -16,7 +17,7 @@ struct FInputTagMapping
 	GENERATED_BODY()
 
 	UPROPERTY(EditDefaultsOnly)
-	TObjectPtr<UInputAction> Action;
+	TObjectPtr<const UInputAction> Action;
 
 	UPROPERTY(EditDefaultsOnly)
 	FGameplayTag Tag;
@@ -35,6 +36,21 @@ class CONTEXTFRAMEWORK_API UContextInputMappingDataAsset : public UPrimaryDataAs
 
 public :
 
+	UPROPERTY(EditAnywhere)
+	TObjectPtr<UInputMappingContext> MappingContext;
+	
 	UPROPERTY(EditDefaultsOnly)
 	TArray<FInputTagMapping> Mappings;
+
+#if WITH_EDITOR
+
+	UFUNCTION(CallInEditor)
+	void RefreshMappings();
+	
+	UFUNCTION(CallInEditor)
+	void CleanUnusedMappings();
+	
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+
+#endif
 };

@@ -2,8 +2,12 @@
 
 
 #include "ContextInputRouterComponent.h"
+
+#include "ContextComponent.h"
 #include "Data/ContextInputMappingDataAsset.h"
 #include "InputAction.h"
+#include "Data/ContextStructData.h"
+#include "Data/ContextDataAsset.h"
 #include "InputReceiverInterface.h"
 
 
@@ -23,6 +27,11 @@ UContextInputRouterComponent::UContextInputRouterComponent()
 void UContextInputRouterComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	if (!InputMappingDataAsset)
+	{
+		return;
+	}
 
 	ActionToTagMap.Empty();
 
@@ -42,28 +51,103 @@ void UContextInputRouterComponent::TickComponent(float DeltaTime, ELevelTick Tic
 	// ...
 }
 
-void UContextInputRouterComponent::HandleInputReceived(const FInputActionInstance& Instance)
+void UContextInputRouterComponent::HandleInputReceived(
+	const FInputActionInstance& Instance)
 {
 	const UInputAction* Action = Instance.GetSourceAction();
 
 	const FGameplayTag* Tag = ActionToTagMap.Find(Action);
-	if (!Tag) return;
 
-	if (CurrentReceiver)
+	if ( CachedContextComponent->GetContextState() != EContextState::Active)
+		return;
+	
+	if (!Tag || !CurrentReceiver)
+		return;
+
+	if (CurrentReceiver->Implements<UInputReceiverInterface>())
 	{
-		IInputReceiverInterface* Receiver = Cast<IInputReceiverInterface>(CurrentReceiver);
-		if (Receiver)
-		{
-			Receiver->HandleInput(*Tag);
-		}
+		IInputReceiverInterface::Execute_HandleInput(
+			CurrentReceiver,
+			*Tag,
+			Instance.GetValue()
+		);
 	}
-/*
-	IContextInputReceiver* Receiver = GetCurrentReceiver();
-	if (!Receiver) return;
-
-	Receiver->HandleInput(
-		*Tag,
-		Instance.GetValue(),
-		Instance.GetTriggerEvent());*/
 }
 
+
+void UContextInputRouterComponent::Initialize(UContextComponent* InContext)
+{
+	CachedContextComponent = InContext;
+	
+	if (CachedContextComponent)
+	{
+		CachedContextComponent->OnContextAdded.AddUObject(
+			this,
+			&ThisClass::OnContextAdded);
+
+		CachedContextComponent->OnContextRemoved.AddUObject(
+			this,
+			&ThisClass::OnContextRemoved);
+	}
+}
+
+void UContextInputRouterComponent::OnContextAdded(const FActiveContext& Context)
+{
+	if (Context.Definition)
+	{
+		const UContextInputMappingDataAsset* NewMapping =
+		Context.Definition->InputMappingData.Get();
+
+		ActiveMapping = NewMapping;
+
+		BuildActionMap();
+	}
+
+	
+	CurrentReceiver = Context.InputReceiver;
+
+	
+}
+void UContextInputRouterComponent::OnContextRemoved(const FActiveContext& Context)
+{
+	if (Context.Source == CurrentReceiver)
+	{
+		ActiveMapping = nullptr;
+		CurrentReceiver = nullptr;
+	}
+
+	const FActiveContext* NewTopContext =
+		CachedContextComponent
+			? CachedContextComponent->GetTopContext()
+			: nullptr;
+
+	if (NewTopContext && NewTopContext->Definition)
+	{
+		const UContextInputMappingDataAsset* Mapping =
+			NewTopContext->Definition->InputMappingData.Get();
+
+		ActiveMapping = Mapping;
+		CurrentReceiver = NewTopContext->Source;
+	}
+
+	BuildActionMap();
+}
+void UContextInputRouterComponent::BuildActionMap()
+{
+	ActionToTagMap.Reset();
+
+	if (!ActiveMapping)
+	{
+		return;
+	}
+
+	for (const FInputTagMapping& Mapping : ActiveMapping->Mappings)
+	{
+		if (Mapping.Action)
+		{
+			ActionToTagMap.Add(
+				Mapping.Action.Get(),
+				Mapping.Tag);
+		}
+	}
+}

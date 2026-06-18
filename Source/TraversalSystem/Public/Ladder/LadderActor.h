@@ -33,6 +33,9 @@ protected:
 
     virtual void OnConstruction(const FTransform& Transform) override;
 
+    virtual void MoveForward(UTraversalComponent*) override;
+    virtual void MoveBackward(UTraversalComponent*) override;
+    
 public:
     
     virtual void HandleTraversalNotify(
@@ -41,4 +44,6 @@ public:
     ) override;
 
     virtual FText GetInteractionDisplayName_Implementation() const override;
+
+    virtual void HandleTraversalInput(UTraversalComponent* Component, const FVector2D& Input) override;
 };

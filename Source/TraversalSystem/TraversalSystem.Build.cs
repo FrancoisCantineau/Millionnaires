@@ -16,7 +16,9 @@ public class TraversalSystem : ModuleRules
 				"SlateCore",
 				"AnimGraphRuntime",
 				"GameInterfaces",
-				"GameplayTags"
+				"GameplayTags", 
+				"ContextFramework",
+				"EnhancedInput"
 			}
 		);
 	}

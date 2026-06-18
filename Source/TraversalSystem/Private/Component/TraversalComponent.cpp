@@ -1,315 +1,169 @@
 #include "Component/TraversalComponent.h"
+
 #include "TraversalActor.h"
-#include "DrawDebugHelpers.h"
-#include "GameplayTagContainer.h"
+#include "ContextComponent.h"
+#include "Data/ContextStructData.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
-#include "Components/ArrowComponent.h"
 #include "Animation/AnimInstance.h"
+#include "Components/ArrowComponent.h"
 #include "Character/CharacterInterface.h"
-#include "Controller/ControllerInterface.h"
+
+// ============================================================
+// INIT
+// ============================================================
 
 UTraversalComponent::UTraversalComponent()
 {
-    PrimaryComponentTick.bCanEverTick = true;
+    PrimaryComponentTick.bCanEverTick = false;
 }
 
 void UTraversalComponent::BeginPlay()
 {
     Super::BeginPlay();
-    OwnerCharacter = Cast<ACharacter>(GetOwner());
-}
 
-void UTraversalComponent::TickComponent(
-    float DeltaTime, ELevelTick TickType,
-    FActorComponentTickFunction* ThisTickFunction
-)
-{
-    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-    if (State == ETraversalState::Approaching)
-        UpdateApproach(DeltaTime);
+    OwnerCharacter    = Cast<ACharacter>(GetOwner());
+    ContextComponent  = GetOwner()->FindComponentByClass<UContextComponent>();
 }
 
 // ============================================================
-// API
+// START
 // ============================================================
 
 void UTraversalComponent::StartTraversal(ATraversalActor* Target)
 {
-    if (!Target) return;
+    if (!Target || !OwnerCharacter) return;
 
-    AActor* Owner = GetOwner();
-    if (!Owner) return;
+    CurrentTarget = Target;
+    EntryPoint    = Target->GetEntryPointForCharacter(OwnerCharacter);
 
-    CurrentTarget       = Target;
-    ApproachStartTransform = Owner->GetActorTransform();
-    ApproachElapsed     = 0.f;
-    Alpha               = 0.f;
-    TraversalInput      = 0.f;
-
-    OwnerCharacter->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    EntryPoint = Target->GetEntryPointForCharacter(OwnerCharacter);
-    State = ETraversalState::Approaching;
-    
-    
-    OwnerCharacter->bUseControllerRotationYaw = false;
+    // Freeze character
+    SetMovementEnabled(false);
+    OwnerCharacter->bUseControllerRotationYaw          = false;
     OwnerCharacter->GetCharacterMovement()->bOrientRotationToMovement = false;
+    OwnerCharacter->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+    State = ETraversalState::Approaching;
+
+    // Push context — la transition (position + rotation) est gérée par ContextTransitionComponent
+    if (ContextComponent)
+    {
+        FActiveContext Context;
+        Context.Definition    = Target->GetContextData();
+        Context.Source        = Target;
+        Context.SnapTarget    = Target->GetEntryPointForCharacter(OwnerCharacter);       
+        Context.InputReceiver = this;
+
+        // On passe la EntryRotation directement dans le contexte pour que
+        // ContextTransitionComponent utilise la bonne orientation
+       // Context.EntryRotation = Target->GetEntryRotation(OwnerCharacter);
+
+        ContextComponent->AddContext(Context);
+        OnTransitionFinished();
+       
+        // → ContextTransitionComponent::HandleContextAdded sera appelé
+        // → il gère le blend position/rotation puis appelle OnTransitionFinished()
+    }
+}
+
+// ============================================================
+// CALLBACK : ContextTransitionComponent a fini sa transition
+// ============================================================
+
+void UTraversalComponent::OnTransitionFinished()
+{
+
+    State = ETraversalState::Traversing;
+    
+    if (OwnerCharacter)
+    {
+        OwnerCharacter->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+    }
+}
+
+// ============================================================
+// EXIT
+// ============================================================
+
+void UTraversalComponent::ExitTraversal()
+{
+    if (!OwnerCharacter) return;
+    
+    
+    CurrentTarget = nullptr;
+    State         = ETraversalState::None;
+
+    OwnerCharacter->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    OwnerCharacter->bUseControllerRotationYaw = true;
+    OwnerCharacter->GetCharacterMovement()->bOrientRotationToMovement = true;
+    OwnerCharacter->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+
+   
 }
 
 void UTraversalComponent::StopTraversal()
 {
     ExitTraversal();
-    State          = ETraversalState::None;
-    TraversalInput = 0.f;
-    CurrentTarget  = nullptr;
 }
 
-void UTraversalComponent::SetTraversalInput(FVector2D RawInput)
+// ============================================================
+// MOVEMENT HELPER
+// ============================================================
+
+void UTraversalComponent::SetMovementEnabled(bool bEnabled)
+{
+    if (!OwnerCharacter) return;
+
+    if (bEnabled)
+        OwnerCharacter->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+    else
+        OwnerCharacter->GetCharacterMovement()->DisableMovement();
+}
+
+// ============================================================
+// INPUT
+// ============================================================
+
+void UTraversalComponent::HandleInput_Implementation(FGameplayTag Tag, const FInputActionValue& Value)
+{
+    FVector2D MoveVector = Value.Get<FVector2D>();
+    SetTraversalInput(MoveVector);
+}
+
+void UTraversalComponent::SetTraversalInput(FVector2D Input)
 {
     if (!CurrentTarget) return;
-    
-    TraversalInput = FMath::Clamp(RawInput.Y, -1.f, 1.f);
 
-    UpdateTraversal();
+    CurrentTarget->HandleTraversalInput(this, Input);
 }
 
 void UTraversalComponent::OnTraversalNotify(ETraversalNotifyType EventType)
 {
     if (!CurrentTarget) return;
 
-    // L'actor gere sa propre logique de notify
     CurrentTarget->HandleTraversalNotify(EventType, this);
-}
-
-// ============================================================
-// STATE MACHINE
-// ============================================================
-
-
-void UTraversalComponent::UpdateApproach(float DeltaTime)
-{
-    AActor* Owner = GetOwner();
-    if (!Owner || !CurrentTarget) return;
-
-    ApproachElapsed += DeltaTime;
-    float T = FMath::Clamp(ApproachElapsed / ApproachDuration, 0.f, 1.f);
-
-    FVector NewLoc = FMath::Lerp(
-        ApproachStartTransform.GetLocation(),
-        EntryPoint->GetComponentLocation(),
-        T
-    );
-
-    FRotator NewRot = FMath::Lerp(
-        ApproachStartTransform.GetRotation().Rotator(),
-        EntryPoint->GetComponentRotation(),
-        T
-    );
-
-    AController* Controller = Cast<ACharacter>(Owner)->GetController();
-    if (Controller)
-    {
-        Controller->SetControlRotation(FRotator(
-            Controller->GetControlRotation().Pitch,
-            NewRot.Yaw,
-            0.f
-        ));
-    }
-
-    if (T >= 1.f)
-        EnterTraversal();
-
-    Owner->SetActorLocationAndRotation(NewLoc, NewRot, true);
-
-    if (T >= 1.f)
-    {
-        EnterTraversal();
-    }
-}
-
-void UTraversalComponent::EnterTraversal()
-{
-    SetMovementMode(true);
-
-    Alpha = 0.f;
-
-    if (GetOwner()->Implements<UCharacterInterface>())
-    {
-        ICharacterInterface::Execute_AddStateTag(
-            GetOwner(),
-            FGameplayTag::RequestGameplayTag(FName("State.Traversal.Ladder")));
-        
-    }
-    
-    APlayerController* PC = Cast<APlayerController>(
-   OwnerCharacter->GetController());
-
-    if (PC && PC->Implements<UControllerInterface>())
-    {
-        IControllerInterface::Execute_SetPlayerMode(
-            PC,
-            EPlayerMode::Traversal,
-            GetOwner()
-        );
-    }
-    
-    State = ETraversalState::Traversing;
-
-    if (!OwnerCharacter) return;
-
-    bool bEnterFromStart = (EntryPoint == CurrentTarget->GetStartPoint());
-    
-    RequestMontage(0.f, false, true, bEnterFromStart, !bEnterFromStart);
-}
-
-void UTraversalComponent::UpdateTraversal()
-{
-    if (bIsPlayingMontage) return;
-    
-    if (FMath::Abs(TraversalInput) < 0.1f)
-        return;
-
-    bool bObstacle = TraceVertical(TraversalInput);
-
-    if (TraversalInput < 0.f)
-    {
-        if (bObstacle)
-        {
-            RequestMontage(-1.f, true, false, true, false);
-            ExitTraversal();
-        }
-        else
-        {
-            RequestMontage(TraversalInput, false);
-        }
-        return;
-    }
-    if (bObstacle)
-    {
-        return;
-    }
-    
-    UpdateExitPoint();
-
-    if (TraceExitForward())
-    {
-        RequestMontage(1.f, false, false, false, false);
-    }
-    else
-    {
-        RequestMontage(1.f, true, false, false, true);
-        ExitTraversal();
-    }
-    
-    
-    
-    /*if (!CurrentTarget || bIsPlayingMontage) return;
-
-    AActor* Owner = GetOwner();
-    if (!Owner) return;
-
-    UpdateBounds();
-    UpdateExitAvailability();
-
-    float Input = TraversalInput;
-    if (Input > 0.f && !bCanMoveForward)  Input = 0.f;
-    if (Input < 0.f && !bCanMoveBackward) Input = 0.f;
-
-    Alpha = FMath::Clamp(
-        Alpha + Input * DeltaTime * TraversalSpeed,
-        0.f, 1.f
-    );
-
-    // Deplacement le long de l'axe
-    FVector NewLoc = FMath::Lerp(
-        CurrentTarget->GetStartPoint()->GetComponentLocation(),
-        CurrentTarget->GetEndPoint()->GetComponentLocation(),
-        Alpha
-    );
-
-    UE_LOG(LogTemp, Display, TEXT("NewLoc: %s"), *NewLoc.ToString());
-    
-    UE_LOG(LogTemp, Display, TEXT("Alpha: %f"), Alpha);
-    Owner->SetActorLocation(NewLoc, true);
-
-    // Sorties
-    if (Alpha >= 1.f && bCanExitForward)
-    {
-        RequestMontage(1.f, true);
-    }
-    else if (Alpha <= 0.f && bCanExitBackward)
-    {
-        RequestMontage(-1.f, true);
-    }*/
 }
 
 // ============================================================
 // TRACE
 // ============================================================
 
-
-
-bool UTraversalComponent::TraceExitForward()
+bool UTraversalComponent::TraceInDirection(const FVector& Direction, float Distance)
 {
-    if (!CurrentTarget) return false;
+    if (!OwnerCharacter) return false;
 
-    USceneComponent* ExitPoint = CurrentTarget->GetExitPoint();
-    if (!ExitPoint) return false;
-
-    FVector Start   = ExitPoint->GetComponentLocation();
-    FVector Forward = ExitPoint->GetForwardVector();
-    FVector End     = Start + Forward * 100.f;
+    FVector Start = OwnerCharacter->GetCapsuleComponent()->GetComponentLocation();
+    FVector End   = Start + Direction.GetSafeNormal() * Distance;
 
     FHitResult Hit;
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(GetOwner());
 
     bool bHit = GetWorld()->LineTraceSingleByChannel(
-        Hit, Start, End, ECC_Visibility, Params
-    );
-
-    if (bDrawDebug)
-    {
-        DrawDebugLine(
-            GetWorld(), Start, End,
-            bHit ? FColor::Blue : FColor::Orange,
-            false, 2.f, 0, 2.f
-        );
-        if (bHit)
-            DrawDebugSphere(GetWorld(), Hit.ImpactPoint, 8.f, 8, FColor::Blue, false, 2.f);
-
-        // Label debug au-dessus de l'exit point
-        DrawDebugString(
-            GetWorld(), Start + FVector(0, 0, 20),
-            bHit ? TEXT("ExitFwd: HIT") : TEXT("ExitFwd: MISS"),
-            nullptr, bHit ? FColor::Blue : FColor::Orange,
-            10.f
-        );
-    }
-
-    return bHit;
-}
-
-bool UTraversalComponent::TraceVertical(float InputDir)
-{
-    AActor* Owner = GetOwner();
-    if (!Owner && !OwnerCharacter) return false;
-
-    // Point de départ = centre de la capsule
-    FVector Start = OwnerCharacter->GetCapsuleComponent()->GetComponentLocation();
-
-    // Direction : vers le haut si on monte, vers le bas si on descend
-    FVector Dir = (InputDir > 0.f) ? FVector::UpVector : FVector::DownVector;
-    FVector End = Start + Dir * VerticalTraceLength;
-
-    FHitResult Hit;
-    FCollisionQueryParams Params;
-    Params.AddIgnoredActor(Owner);
-
-    bool bHit = GetWorld()->LineTraceSingleByChannel(
-        Hit, Start, End, ECC_Visibility, Params
+        Hit, Start, End,
+        ECC_Visibility,
+        Params
     );
 
     if (bDrawDebug)
@@ -317,151 +171,108 @@ bool UTraversalComponent::TraceVertical(float InputDir)
         DrawDebugLine(
             GetWorld(), Start, End,
             bHit ? FColor::Red : FColor::Green,
-            false, 10.f, 0, 2.f
+            false, 1.f, 0, 1.f
         );
-        // Sphère au point d'impact si touché
-        if (bHit)
-            DrawDebugSphere(GetWorld(), Hit.ImpactPoint, 8.f, 8, FColor::Red, false, 2.f);
     }
 
     return bHit;
 }
 
-// ------------------------------------------------------------
-// Repositionne l'exit point :
-//   X, Y  = position de la capsule du joueur
-//   Z     = Z de l'UpArrow + ExitZOffset (77 dans le Blueprint)
-// ------------------------------------------------------------
-void UTraversalComponent::UpdateExitPoint()
+bool UTraversalComponent::TraceFromPoint(USceneComponent* StartPoint,const FVector& Direction,float Distance)
 {
-    if (!CurrentTarget &&!OwnerCharacter ) return;
+    if (!StartPoint)
+    {
+        return false;
+    }
 
-    USceneComponent* ExitPoint = CurrentTarget->GetExitPoint();
-    if (!ExitPoint) return;
+    FVector Start = StartPoint->GetComponentLocation();
+    FVector End   = Start + Direction.GetSafeNormal() * Distance;
 
-    // Capsule XY
-    FVector CapsuleLoc = OwnerCharacter->GetCapsuleComponent()->GetComponentLocation();
+    FHitResult Hit;
 
-    USceneComponent* UpArrow = CurrentTarget->GetExitPoint(); 
-    if (!UpArrow) return;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(GetOwner());
 
-    FVector NewExitLoc = FVector(
-        CapsuleLoc.X,
-        CapsuleLoc.Y,
-        CapsuleLoc.Z + ExitZOffset
+    bool bHit = GetWorld()->LineTraceSingleByChannel(
+        Hit,
+        Start,
+        End,
+        ECC_Visibility,
+        Params
     );
-
-    ExitPoint->SetWorldLocation(NewExitLoc);
 
     if (bDrawDebug)
     {
-        DrawDebugSphere(
-            GetWorld(), NewExitLoc, 10.f, 8,
-            FColor::Yellow, false, 2.f
-        );
+        DrawDebugLine(GetWorld(),Start,End,bHit ? FColor::Red : FColor::Green,false,2.f,0,2.f);
+
+        if (bHit)
+        {
+            DrawDebugSphere(GetWorld(),Hit.ImpactPoint,8.f,8,FColor::Red,false,2.f);
+        }
     }
+
+    return bHit;
 }
 
-void UTraversalComponent::ExitTraversal()
+void UTraversalComponent::UpdateExitPoint(const FVector& Direction,float Offset)
 {
-    State = ETraversalState::Exiting; 
-    CurrentTarget = nullptr;
+    if (!CurrentTarget || !OwnerCharacter)
+        return;
 
-    if (GetOwner()->Implements<UCharacterInterface>())
-    {
-        ICharacterInterface::Execute_RemoveStateTag(
-            GetOwner(),
-            FGameplayTag::RequestGameplayTag(FName("State.Traversal.Ladder")));
-        
-    }
+    UArrowComponent* ExitPoint = CurrentTarget->GetExitPoint();
+    if (!ExitPoint)
+        return;
+
+    FVector BaseLocation =
+        OwnerCharacter->GetCapsuleComponent()->GetComponentLocation();
+
+    ExitPoint->SetWorldLocation(
+        BaseLocation +
+        Direction.GetSafeNormal() * Offset
+    );
 }
-// ============================================================
-// MOVEMENT MODE
-// ============================================================
 
-void UTraversalComponent::SetMovementMode(bool bTraversing)
-{
-    if (!OwnerCharacter) return;
 
-    auto* Move = OwnerCharacter->GetCharacterMovement();
-
-    if (bTraversing)
-    {
-        Move->SetMovementMode(MOVE_Flying);
-        Move->GravityScale  = 0.f;
-        Move->Velocity      = FVector::ZeroVector;
-    }
-    else
-    {
-        Move->SetMovementMode(MOVE_Walking);
-        Move->GravityScale = 1.f;
-    }
-}
 
 // ============================================================
 // MONTAGE
 // ============================================================
 
-void UTraversalComponent::RequestMontage(float Input, bool bExiting, bool bEnter, bool bEntry, bool bExit)
+void UTraversalComponent::RequestMontage(
+    float Input,
+    bool bExiting,
+    bool bEnter,
+    bool bEntry,
+    bool bExit)
 {
     if (!CurrentTarget || bIsPlayingMontage) return;
 
     UAnimMontage* Montage = CurrentTarget->GetMontageForContext(
-        Input,
-        CurrentHand,
-        bExiting,
-        bEnter, bEntry, bExit
+        Input, CurrentHand,
+        bExiting, bEnter, bEntry, bExit
     );
+
+    if (!Montage) return;
 
     PlayMontage(Montage);
 }
 
 void UTraversalComponent::PlayMontage(UAnimMontage* Montage)
 {
-    if (!Montage) return;
-    
-    if (!OwnerCharacter) return;
+    if (!OwnerCharacter || !Montage) return;
 
     UAnimInstance* Anim = OwnerCharacter->GetMesh()->GetAnimInstance();
     if (!Anim) return;
 
     bIsPlayingMontage = true;
-
     Anim->Montage_Play(Montage);
 
-    FOnMontageEnded End;
-    End.BindUObject(this, &UTraversalComponent::OnMontageCompleted);
-    Anim->Montage_SetEndDelegate(End, Montage);
+    FOnMontageEnded EndDelegate;
+    EndDelegate.BindUObject(this, &UTraversalComponent::OnMontageCompleted);
+    Anim->Montage_SetEndDelegate(EndDelegate, Montage);
 }
 
-void UTraversalComponent::OnMontageCompleted(
-    UAnimMontage* Montage, bool bInterrupted
-)
+void UTraversalComponent::OnMontageCompleted(UAnimMontage*, bool bInterrupted)
 {
     bIsPlayingMontage = false;
-
-    if (bInterrupted)
-    {
-        SetMovementMode(false);
-        State         = ETraversalState::None;
-        CurrentTarget = nullptr;
-        return;
-    }
-    
-    if (State == ETraversalState::Exiting)
-    {
-        SetMovementMode(false);
-        
-        OwnerCharacter->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-        OwnerCharacter->bUseControllerRotationYaw = true;
-        OwnerCharacter->GetCharacterMovement()->bOrientRotationToMovement = true;
-        State         = ETraversalState::None;
-        CurrentTarget = nullptr;
-        return;
-    }
-    
-    if (State == ETraversalState::Traversing && FMath::Abs(TraversalInput) > 0.1f)
-    {
-        UpdateTraversal();
-    }
 }

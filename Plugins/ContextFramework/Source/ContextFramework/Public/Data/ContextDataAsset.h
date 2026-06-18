@@ -7,10 +7,26 @@
 #include "Engine/DataAsset.h"
 #include "ContextDataAsset.generated.h"
 
+class UContextInputMappingDataAsset;
 class UContextCameraSetupDataAsset;
 /**
  * 
  */
+
+
+USTRUCT(Blueprintable)
+struct CONTEXTFRAMEWORK_API FContextTagEntry
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditDefaultsOnly)
+	FGameplayTag Tag;
+
+	UPROPERTY(EditDefaultsOnly)
+	bool bRemoveOnEnd = true;
+};
+
+
 UCLASS(Blueprintable)
 class CONTEXTFRAMEWORK_API UContextDataAsset : public UPrimaryDataAsset
 {
@@ -22,6 +38,9 @@ public:
 	FGameplayTag ContextTag;
 
 	UPROPERTY(EditDefaultsOnly)
+	TArray<FContextTagEntry> StateTags;
+	
+	UPROPERTY(EditDefaultsOnly)
 	FGameplayTagContainer BlockedActions;
 
 	UPROPERTY(EditDefaultsOnly)
@@ -31,5 +50,24 @@ public:
 	bool bCanBeInterrupted = true;
 
 	UPROPERTY(EditDefaultsOnly)
-	UContextCameraSetupDataAsset* CameraSetupData = nullptr;
+	TObjectPtr<UAnimMontage> EnterMontage;
+	
+	UPROPERTY(EditDefaultsOnly)
+	TObjectPtr<UAnimMontage> EndMontage;
+
+	UPROPERTY(EditDefaultsOnly)
+	FVector TargetCameraOrActorOffset;
+
+	UPROPERTY(EditDefaultsOnly)
+	bool bLockMovement = true;
+
+	UPROPERTY(EditDefaultsOnly)
+	TObjectPtr<UContextCameraSetupDataAsset> CameraSetupData = nullptr;
+	
+	UPROPERTY(EditDefaultsOnly)
+	TObjectPtr<UContextInputMappingDataAsset> InputMappingData = nullptr;
+	
+	UPROPERTY(EditDefaultsOnly)
+	int32 Priority = 0;
 };
+

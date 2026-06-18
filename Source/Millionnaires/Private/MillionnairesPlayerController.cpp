@@ -8,6 +8,7 @@
 
 #include "MillionnairesPlayerController.h"
 
+#include "ContextComponent.h"
 #include "ContextInputRouterComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
@@ -24,6 +25,7 @@
 #include "Camera/CameraComponent.h"
 #include "UI/InputChallengeWidget.h"
 #include "InputActionValue.h"
+#include "ContextCameraComponent.h"
 #include "Characters/Player/MillionnairePlayerBase.h"
 
 AMillionnairesPlayerController::AMillionnairesPlayerController()
@@ -147,44 +149,15 @@ void AMillionnairesPlayerController::SetPlayerMode_Implementation(EPlayerMode Ne
 
 void AMillionnairesPlayerController::HandleLookInput(FVector2D Value)
 {
-    switch (CurrentMode)
+    if (CameraComp && CameraComp->MustReceiveLookInput())
     {
-    case EPlayerMode::Gameplay:
-        AddYawInput(Value.X);
-        AddPitchInput(Value.Y);
-        break;
-
-    case EPlayerMode::Inspect:
-        {
-            const float Sensitivity = .8f;
-
-            InspectRotation.Yaw   += Value.X * Sensitivity;
-            InspectRotation.Pitch += Value.Y * Sensitivity;
-
-            InspectRotation.Yaw   = FMath::Clamp(InspectRotation.Yaw,   -15.f, 15.f);
-            InspectRotation.Pitch = FMath::Clamp(InspectRotation.Pitch, -15.f, 15.f);
-
-            if (!GetViewTarget()) return;
-
-            if (Cam)
-            {
-                FRotator FinalRot = InspectBaseRotation + InspectRotation;
-                Cam->SetWorldRotation(FinalRot);
-            }
-        }
-        break;
-
-    case EPlayerMode::Traversal:
-        {
-            
-            AddYawInput(Value.X);
-            AddPitchInput(Value.Y);
-        }
-        break;
-
-    default:
-        break;
+        CameraComp->ConsumeLookInput(Value);
+        return;
     }
+    
+    AddYawInput(Value.X);
+    AddPitchInput(Value.Y);
+     
 }
 
 bool AMillionnairesPlayerController::CanPerform_Implementation(EPlayerAction Action) const
@@ -258,6 +231,13 @@ void AMillionnairesPlayerController::BeginPlay()
         EnterDispatchPhase();
     else
         EnterMissionPhase(nullptr);
+
+    if (APawn* Pawnn = GetPawn())
+    {
+        CameraComp = Pawnn->FindComponentByClass<UContextCameraComponent>();
+    }
+
+    InputRouterComponent->CurrentReceiver = GetPawn();
 }
 
 void AMillionnairesPlayerController::SetupInputComponent()
@@ -278,16 +258,28 @@ void AMillionnairesPlayerController::SetupInputComponent()
                 if (Ctx) Subsystem->AddMappingContext(Ctx, 0);
     }
     
-    // --- Bindings ---
     if (UEnhancedInputComponent* EI = Cast<UEnhancedInputComponent>(InputComponent))
     {
-        for (const FInputTagMapping& M : InputMappingDataAsset->Mappings)
+        TSet<TPair<const UInputAction*, ETriggerEvent>> BoundPairs;
+
+        for (const UContextInputMappingDataAsset* DataAsset : InputDataAssets)
         {
-            for (ETriggerEvent Event : M.Events)
+            if (!DataAsset) continue;
+
+            for (const FInputTagMapping& M : DataAsset->Mappings)
             {
-                EI->BindAction(M.Action, Event, this,&AMillionnairesPlayerController::OnInput);
+                for (ETriggerEvent Event : M.Events)
+                {
+                    auto Key = MakeTuple(M.Action.Get(), Event);
+                    if (!BoundPairs.Contains(Key))
+                    {
+                        BoundPairs.Add(Key);
+                        EI->BindAction(M.Action, Event, this, &AMillionnairesPlayerController::OnInput);
+                    }
+                }
             }
         }
+    
         /*
         // Existant
         if (ExitAction)
@@ -356,14 +348,29 @@ void AMillionnairesPlayerController::SetupInputComponent()
     } 
 }
 
+void AMillionnairesPlayerController::OnPossess(APawn* InPawn)
+{
+    Super::OnPossess(InPawn);
+
+    UContextComponent* ContextComp =
+        InPawn->FindComponentByClass<UContextComponent>();
+
+    InputRouterComponent->Initialize(ContextComp);
+}
+
 void AMillionnairesPlayerController::OnInput(const FInputActionInstance& Instance)
 {
-    InputRouterComponent->CurrentReceiver = GetPawn();
+    const UInputAction* Action = Instance.GetSourceAction();
     
-    if (InputRouterComponent)
+    if (Action == LookAction || Action == MouseLookAction)
     {
-        InputRouterComponent->HandleInputReceived(Instance);
+        FVector2D V = Instance.GetValue().Get<FVector2D>();
+        HandleLookInput(V);
+        return;
     }
+
+    if (InputRouterComponent)
+        InputRouterComponent->HandleInputReceived(Instance);
 }
 
 #pragma endregion

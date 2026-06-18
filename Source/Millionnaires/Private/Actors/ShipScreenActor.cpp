@@ -64,7 +64,11 @@ void AShipScreenActor::Interact_Implementation(AActor* Interactor)
 	FActiveContext Context;
 
 	Context.Definition = ContextDataAsset;
-	Context.ViewTarget = ScreenCamera;
+	Context.Source = this;
+	Context.ViewTarget = this;
+	Context.SnapTarget = CameraViewPoint;
+	Context.InteractionPoint = WidgetComponent;
+	Context.LookTarget = WidgetComponent;
 
 	Contexts->AddContext(Context);
 	/*

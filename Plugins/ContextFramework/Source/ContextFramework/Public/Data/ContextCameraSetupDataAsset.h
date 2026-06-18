@@ -33,4 +33,16 @@ class CONTEXTFRAMEWORK_API UContextCameraSetupDataAsset : public UPrimaryDataAss
 
 	UPROPERTY(EditDefaultsOnly)
 	float CameraPitchMax = 89.f;
+	
+	UPROPERTY(EditDefaultsOnly)
+	float NeckYawLimit= 35.f;
+
+	UPROPERTY(EditDefaultsOnly)
+	float NeckPitchLimit= 25.f;
+
+	UPROPERTY(EditDefaultsOnly)
+	float NeckResponsiveness = 6.f;
+
+	UPROPERTY(EditDefaultsOnly)
+	float NeckDeadZone = 1.5f;
 };

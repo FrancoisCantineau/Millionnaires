@@ -11,9 +11,26 @@
 struct FActiveContext;
 class UContextDataAsset;
 
+UENUM()
+enum class EContextState : uint8
+{
+	None,
+	Transitioning,
+	Active,
+};
+
+struct FContextTagChange
+{
+	FGameplayTag Tag;
+	bool bAdded;
+};
+
+
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnContextAdded, const FActiveContext&);
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnContextRemoved,const FActiveContext&);
+
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnContextTagChanged, const FContextTagChange&);
 
 
 
@@ -32,6 +49,14 @@ public:
 
 	bool HasContext(UContextDataAsset* ContextData) const;
 	
+	const FActiveContext* GetTopContext() const;
+	
+	UFUNCTION(BlueprintCallable)
+	FActiveContext GetTopContextBP() const;
+
+	void SetContextState(EContextState ContextState){CurrentState = ContextState;};
+
+	EContextState GetContextState(){return CurrentState;};
 	
 
 protected:
@@ -40,12 +65,17 @@ protected:
 	
 	TArray<FActiveContext> ActiveContexts;
 
+	void ApplyContextToInput(const FActiveContext& Context);
+	
+	EContextState CurrentState = EContextState::Active;
+
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	FOnContextAdded OnContextAdded;
 	FOnContextRemoved OnContextRemoved;
+	FOnContextTagChanged OnContextTagChanged;
 
 		
 };

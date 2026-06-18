@@ -1,0 +1,11 @@
+﻿#pragma once
+
+#include "NativeGameplayTags.h"
+
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Crouched);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Ladder);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Crawl);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Default);
+
+
+

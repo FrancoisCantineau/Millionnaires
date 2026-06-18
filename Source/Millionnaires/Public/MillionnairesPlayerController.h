@@ -20,6 +20,7 @@
 
 #include "MillionnairesPlayerController.generated.h"
 
+class UContextCameraComponent;
 class UContextInputMappingDataAsset;
 class UContextInputRouterComponent;
 class UInputChallengeWidget;
@@ -69,6 +70,8 @@ public:
 
 protected:
 
+    virtual void OnPossess(APawn* InPawn) override;
+    
     // -------------------------------------------------
     //  INPUT ACTIONS
     // -------------------------------------------------
@@ -77,7 +80,10 @@ protected:
     void OnInput(const FInputActionInstance& Instance);
     
     UPROPERTY(EditDefaultsOnly)
-    UContextInputMappingDataAsset* InputMappingDataAsset;
+    TArray<UContextInputMappingDataAsset*> InputDataAssets;
+
+    UPROPERTY()
+    UContextCameraComponent* CameraComp = nullptr;
     
     UPROPERTY(EditAnywhere)
     UContextInputRouterComponent* InputRouterComponent;
