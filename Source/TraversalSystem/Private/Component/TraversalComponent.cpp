@@ -2,6 +2,7 @@
 
 #include "TraversalActor.h"
 #include "ContextComponent.h"
+#include "ContextTransitionComponent.h"
 #include "Data/ContextStructData.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -25,6 +26,12 @@ void UTraversalComponent::BeginPlay()
 
     OwnerCharacter    = Cast<ACharacter>(GetOwner());
     ContextComponent  = GetOwner()->FindComponentByClass<UContextComponent>();
+
+    if (ContextComponent)
+    {
+        ContextComponent->OnContextStateChanged.AddUObject(this,&UTraversalComponent::OnContextStateChanged);
+        ContextComponent->OnContextRemoved.AddUObject(this, &UTraversalComponent::OnTraversalForcedRemoved);
+    }
 }
 
 // ============================================================
@@ -36,35 +43,29 @@ void UTraversalComponent::StartTraversal(ATraversalActor* Target)
     if (!Target || !OwnerCharacter) return;
 
     CurrentTarget = Target;
-    EntryPoint    = Target->GetEntryPointForCharacter(OwnerCharacter);
 
-    // Freeze character
+    FTraversalEntryInfo EntryInfo = Target->GetEntryInfo(OwnerCharacter, this);
+    EntryPoint = EntryInfo.EntryPoint;
+
     SetMovementEnabled(false);
-    OwnerCharacter->bUseControllerRotationYaw          = false;
+    OwnerCharacter->bUseControllerRotationYaw = false;
     OwnerCharacter->GetCharacterMovement()->bOrientRotationToMovement = false;
     OwnerCharacter->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
     State = ETraversalState::Approaching;
 
-    // Push context — la transition (position + rotation) est gérée par ContextTransitionComponent
     if (ContextComponent)
     {
         FActiveContext Context;
-        Context.Definition    = Target->GetContextData();
-        Context.Source        = Target;
-        Context.SnapTarget    = Target->GetEntryPointForCharacter(OwnerCharacter);       
-        Context.InputReceiver = this;
+        Context.Definition      = Target->GetContextData();
+        Context.Source          = Target;
+        Context.SnapTarget      = EntryInfo.EntryPoint;
+        Context.InputReceiver   = this;
+        Context.TransitionData.EnterMontage = EntryInfo.EnterTransition;
 
-        // On passe la EntryRotation directement dans le contexte pour que
-        // ContextTransitionComponent utilise la bonne orientation
-       // Context.EntryRotation = Target->GetEntryRotation(OwnerCharacter);
-
-        ContextComponent->AddContext(Context);
-        OnTransitionFinished();
-       
-        // → ContextTransitionComponent::HandleContextAdded sera appelé
-        // → il gère le blend position/rotation puis appelle OnTransitionFinished()
+        CurrentContextHandle = ContextComponent->AddContext(Context);
     }
+    OwnerCharacter->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
 }
 
 // ============================================================
@@ -86,26 +87,25 @@ void UTraversalComponent::OnTransitionFinished()
 // EXIT
 // ============================================================
 
-void UTraversalComponent::ExitTraversal()
+void UTraversalComponent::RequestExitTraversal(UAnimMontage* ExitMontage)
 {
-    if (!OwnerCharacter) return;
+    if (Exiting || bIsPlayingMontage)
+        return;
     
-    
-    CurrentTarget = nullptr;
-    State         = ETraversalState::None;
+    UContextTransitionComponent* Transition =
+    GetOwner()->FindComponentByClass<UContextTransitionComponent>();
 
-    OwnerCharacter->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-    OwnerCharacter->bUseControllerRotationYaw = true;
-    OwnerCharacter->GetCharacterMovement()->bOrientRotationToMovement = true;
-    OwnerCharacter->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+    if (!Transition)
+        return;
 
-   
+
+    Exiting = true;
+
+    Transition->RequestContextExit(
+        CurrentContextHandle,
+        ExitMontage);
 }
 
-void UTraversalComponent::StopTraversal()
-{
-    ExitTraversal();
-}
 
 // ============================================================
 // MOVEMENT HELPER
@@ -127,8 +127,12 @@ void UTraversalComponent::SetMovementEnabled(bool bEnabled)
 
 void UTraversalComponent::HandleInput_Implementation(FGameplayTag Tag, const FInputActionValue& Value)
 {
-    FVector2D MoveVector = Value.Get<FVector2D>();
-    SetTraversalInput(MoveVector);
+    if (State == ETraversalState::Traversing)
+    {
+        FVector2D MoveVector = Value.Get<FVector2D>();
+        SetTraversalInput(MoveVector);
+    }
+   
 }
 
 void UTraversalComponent::SetTraversalInput(FVector2D Input)
@@ -245,7 +249,7 @@ void UTraversalComponent::RequestMontage(
     bool bEntry,
     bool bExit)
 {
-    if (!CurrentTarget || bIsPlayingMontage) return;
+    if (!CurrentTarget || bIsPlayingMontage || Exiting) return;
 
     UAnimMontage* Montage = CurrentTarget->GetMontageForContext(
         Input, CurrentHand,
@@ -276,3 +280,39 @@ void UTraversalComponent::OnMontageCompleted(UAnimMontage*, bool bInterrupted)
 {
     bIsPlayingMontage = false;
 }
+
+void UTraversalComponent::OnContextStateChanged(const FActiveContext& Context, EContextState ContextState)
+{
+    if (Context.Handle != CurrentContextHandle)
+        return;
+
+    switch (ContextState)
+    {
+    case EContextState::Active:
+        OnTransitionFinished();
+        break;
+
+    case EContextState::Exiting:
+        State = ETraversalState::None;
+        break;
+
+    case EContextState::StartExit:
+        State = ETraversalState::None;
+        break;
+    }
+}
+
+void UTraversalComponent::OnTraversalForcedRemoved(const FActiveContext& Context)
+{
+    if (Context.Handle == CurrentContextHandle)
+    {
+        CurrentContextHandle = FContextHandle();
+        CurrentTarget = nullptr;
+        Exiting = false;
+
+
+       OwnerCharacter->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+  
+    }
+}
+

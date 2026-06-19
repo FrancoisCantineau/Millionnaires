@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "Components/ActorComponent.h"
+#include "Data/ContextStructData.h"
 #include "ContextComponent.generated.h"
 
 
@@ -17,7 +18,10 @@ enum class EContextState : uint8
 	None,
 	Transitioning,
 	Active,
+	Exiting,
+	StartExit,
 };
+
 
 struct FContextTagChange
 {
@@ -26,9 +30,12 @@ struct FContextTagChange
 };
 
 
+
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnContextAdded, const FActiveContext&);
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnContextRemoved,const FActiveContext&);
+
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnContextStateChanged, const FActiveContext&, EContextState);
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnContextTagChanged, const FContextTagChange&);
 
@@ -43,9 +50,9 @@ public:
 	// Sets default values for this component's properties
 	UContextComponent();
 
-	void AddContext(const FActiveContext& ContextData);
+	FContextHandle AddContext(FActiveContext ContextData);
 
-	void RemoveContext(const FActiveContext& ContextData);
+	bool RemoveContext(FContextHandle ContextHandle);
 
 	bool HasContext(UContextDataAsset* ContextData) const;
 	
@@ -54,7 +61,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	FActiveContext GetTopContextBP() const;
 
-	void SetContextState(EContextState ContextState){CurrentState = ContextState;};
+	void SetContextState(EContextState ContextState);
 
 	EContextState GetContextState(){return CurrentState;};
 	
@@ -75,6 +82,7 @@ public:
 
 	FOnContextAdded OnContextAdded;
 	FOnContextRemoved OnContextRemoved;
+	FOnContextStateChanged OnContextStateChanged;
 	FOnContextTagChanged OnContextTagChanged;
 
 		

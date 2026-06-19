@@ -26,6 +26,13 @@ struct CONTEXTFRAMEWORK_API FContextTagEntry
 	bool bRemoveOnEnd = true;
 };
 
+UENUM(BlueprintType)
+enum class EContextLifetimePolicy : uint8
+{
+	Manual,
+	RemoveOnEnterEnd
+};
+
 
 UCLASS(Blueprintable)
 class CONTEXTFRAMEWORK_API UContextDataAsset : public UPrimaryDataAsset
@@ -39,6 +46,9 @@ public:
 
 	UPROPERTY(EditDefaultsOnly)
 	TArray<FContextTagEntry> StateTags;
+	
+	UPROPERTY(EditDefaultsOnly)
+	EContextLifetimePolicy LifetimePolicy = EContextLifetimePolicy::Manual;
 	
 	UPROPERTY(EditDefaultsOnly)
 	FGameplayTagContainer BlockedActions;

@@ -149,6 +149,7 @@ void AMillionnairePlayerBase::BeginPlay()
         if (IsValid(QuestTrackerWidget))
         {
             QuestTrackerWidget->AddToViewport();
+            QuestTrackerWidget->AddToViewport();
             QuestTrackerWidget->InitializeTracker(QuestManagerComponent);
         }
     }
@@ -167,6 +168,11 @@ void AMillionnairePlayerBase::BeginPlay()
         EPlayerAction::Interact
     );
 });
+
+    FActiveContext DefaultContext;
+    DefaultContext.Definition = DefaultContextData;
+    DefaultContext.InputReceiver = this;
+    ContextComponent->AddContext(DefaultContext);
 }
 
 // -------------------------------------------------

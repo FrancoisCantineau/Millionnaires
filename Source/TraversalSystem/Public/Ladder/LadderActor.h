@@ -46,4 +46,6 @@ public:
     virtual FText GetInteractionDisplayName_Implementation() const override;
 
     virtual void HandleTraversalInput(UTraversalComponent* Component, const FVector2D& Input) override;
+
+    virtual FTraversalEntryInfo GetEntryInfo(ACharacter* Character, UTraversalComponent* Component) const override;
 };

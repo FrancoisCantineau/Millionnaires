@@ -1,9 +1,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "InputReceiverInterface.h"
+#include "ContextComponent.h"
+#include "Interfaces/InputReceiverInterface.h"
 #include "Components/ActorComponent.h"
 #include "TraversalInterface.h"
+#include "Data/ContextStructData.h"
 #include "TraversalComponent.generated.h"
 
 class UContextDataAsset;
@@ -17,6 +19,8 @@ class TRAVERSALSYSTEM_API UTraversalComponent : public UActorComponent, public I
     GENERATED_BODY()
 
 public:
+    
+    
     UTraversalComponent();
 
     virtual void BeginPlay() override;
@@ -26,8 +30,7 @@ public:
 
     // API publique
     void StartTraversal(ATraversalActor* Target);
-    void StopTraversal();
-    void ExitTraversal();
+    void RequestExitTraversal(UAnimMontage* ExitMontage);
 
     void SetTraversalInput(FVector2D RawInput);
     void OnTraversalNotify(ETraversalNotifyType EventType);
@@ -55,24 +58,7 @@ public:
     bool TraceInDirection(const FVector& Direction, float Distance);
     bool TraceFromPoint(USceneComponent* StartPoint,const FVector& Direction,float Distance);
     void UpdateExitPoint(const FVector& Direction,float Offset);
-
-    // ---- Config ----
     
-    UPROPERTY(EditAnywhere, Category = "Traversal")
-    float ApproachDuration = 0.25f;
-
-    UPROPERTY(EditAnywhere, Category = "Traversal")
-    float TraversalSpeed = 1.f;
-
-    UPROPERTY(EditAnywhere, Category = "Traversal|Trace")
-    float BoundsTraceLength = 50.f;
-
-    UPROPERTY(EditAnywhere, Category = "Traversal|Trace")
-    float VerticalTraceLength = 100.f;
-
-    UPROPERTY(EditAnywhere, Category = "Traversal|Trace")
-    float ExitZOffset = 77.f;
-
     UPROPERTY(EditAnywhere, Category = "Traversal|Debug")
     bool bDrawDebug = false;
 
@@ -83,6 +69,11 @@ private:
     void SetMovementEnabled(bool bEnabled);
     void PlayMontage(UAnimMontage* Montage);
     void OnMontageCompleted(UAnimMontage* Montage, bool bInterrupted);
+
+    void OnContextStateChanged(const FActiveContext& Context, EContextState ContextState);
+
+    
+    void OnTraversalForcedRemoved(const FActiveContext& Context);
 
     UPROPERTY()
     ACharacter* OwnerCharacter = nullptr;
@@ -98,4 +89,8 @@ private:
     USceneComponent* EntryPoint = nullptr;
 
     bool bIsPlayingMontage = false;
+
+    bool Exiting = false;
+
+    FContextHandle CurrentContextHandle;
 };

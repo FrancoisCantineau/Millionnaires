@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "InputActionValue.h"
-#include "InputReceiverInterface.h"
+#include "Interfaces/InputReceiverInterface.h"
 #include "MillionnairesCharacter.h"
 #include "Logging/LogMacros.h"
 #include "QuestManagerComponent.h"
@@ -160,6 +160,9 @@ protected:
 
     UPROPERTY(EditAnywhere,BlueprintReadWrite)
     UTraversalComponent* ATraversalComponent;
+
+    UPROPERTY(EditAnywhere,BlueprintReadWrite)
+    TObjectPtr<UContextDataAsset> DefaultContextData;
     
 #pragma endregion
 

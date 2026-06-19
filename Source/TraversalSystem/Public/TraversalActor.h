@@ -9,6 +9,19 @@
 
 class UArrowComponent;
 
+USTRUCT(BlueprintType)
+struct FTraversalEntryInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	TObjectPtr<USceneComponent> EntryPoint = nullptr;
+
+	UPROPERTY()
+	TObjectPtr<UAnimMontage> EnterTransition = nullptr;
+};
+
+
 UCLASS(Abstract)
 class TRAVERSALSYSTEM_API ATraversalActor : public AActor, public IInteractionInterface
 {
@@ -18,6 +31,8 @@ public:
 	ATraversalActor();
 
 protected:
+
+	
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Traversal")
 	TObjectPtr<UContextDataAsset> TraversalContextDefinition;
@@ -53,6 +68,7 @@ public:
 	UArrowComponent* GetEndPoint()      const { return EndPoint; }
 	UArrowComponent* GetExitPoint()     const { return ExitPoint; }
 	TObjectPtr<UContextDataAsset> GetContextData () const { return TraversalContextDefinition;}
+	virtual FTraversalEntryInfo GetEntryInfo(ACharacter* Character, UTraversalComponent* Component) const;
 
 	USceneComponent* GetEntryPointForCharacter(ACharacter* Character);
 	

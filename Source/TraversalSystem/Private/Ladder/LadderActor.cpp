@@ -79,6 +79,22 @@ void ALadderActor::HandleTraversalInput(UTraversalComponent* Component, const FV
 	Input.Y > 0.f ? MoveForward(Component) : MoveBackward(Component);
 }
 
+FTraversalEntryInfo ALadderActor::GetEntryInfo(ACharacter* Character, UTraversalComponent* Component) const
+{
+	FTraversalEntryInfo Info;
+	Info.EntryPoint = const_cast<ALadderActor*>(this)->GetEntryPointForCharacter(Character);
+
+	bool bFromBottom = (Info.EntryPoint == StartPoint);
+	ETraversalHand Hand = Component->GetCurrentHand();
+
+	Info.EnterTransition = bFromBottom
+		? (Hand == ETraversalHand::Right ? AnimSet.EnterStartRight  : AnimSet.EnterStartLeft)
+		: (Hand == ETraversalHand::Right ? AnimSet.EnterEndRight : AnimSet.EnterEndLeft);
+
+	return Info;
+}
+
+
 void ALadderActor::MoveForward(UTraversalComponent* Component)
 {
 	if (!Component) return;
@@ -96,8 +112,8 @@ void ALadderActor::MoveForward(UTraversalComponent* Component)
 
 	if (!bCanExit)
 	{
-		Component->RequestMontage(1.f, true, false, false, true);
-		Component->ExitTraversal();
+		
+		Component->RequestExitTraversal(GetMontageForContext(1.f,Component->GetCurrentHand(), true, false, false, true));
 	}
 	else
 		Component->RequestMontage(1.f, false, false, false, false);
@@ -114,8 +130,7 @@ void ALadderActor::MoveBackward(UTraversalComponent* Component)
 	bool bBlocked = Component->TraceInDirection(-FVector::UpVector, 150);
 	if (bBlocked)
 	{
-		Component->RequestMontage(-1.f, true, false, true, false);
-		Component->ExitTraversal();
+		Component->RequestExitTraversal(GetMontageForContext(-1.f,Component->GetCurrentHand(), true, false, true, false));
 		return;
 	}
 

@@ -8,6 +8,8 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerController.h"
 
+#include "GameFramework/CharacterMovementComponent.h"
+
 UContextCameraComponent::UContextCameraComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
@@ -86,10 +88,6 @@ void UContextCameraComponent::HandleContextAdded(const FActiveContext& Context)
 	CurrentCameraData = Context.Definition->CameraSetupData;
 	CachedFocusTarget = Context.LookTarget;
 
-	// Fallback : direction actuelle, roll forcé à 0 (caméra "droite")
-	FRotator CurrentWorldRot = Camera->GetComponentRotation();
-	BaseWorldRotation = FRotator(CurrentWorldRot.Pitch, CurrentWorldRot.Yaw, 0.f);
-
 	LookOffset = FRotator::ZeroRotator;
 
 	Camera->bUsePawnControlRotation = false;
@@ -101,6 +99,13 @@ void UContextCameraComponent::HandleContextAdded(const FActiveContext& Context)
 
 void UContextCameraComponent::HandleContextRemoved(const FActiveContext& Context)
 {
+	if (!Context.Definition || !Context.Definition->CameraSetupData)
+	{
+		return;
+	}
+	
+	InputReceiver = false;
+	
 	APlayerController* PC = GetPlayerController();
 	if (!PC)
 	{
@@ -129,24 +134,26 @@ void UContextCameraComponent::HandleContextRemoved(const FActiveContext& Context
 
 	if (Camera)
 	{
+		FRotator WorldRot = Camera->GetComponentRotation();
+		WorldRot.Roll = 0.f;
+
+		// Rotation du socket en world space
+		FQuat SocketWorldQuat = Camera->GetAttachParent()
+			? Camera->GetAttachParent()->GetSocketQuaternion(Camera->GetAttachSocketName())
+			: FQuat::Identity;
+
+		// Rotation relative correcte pour regarder WorldRot depuis ce socket
+		FQuat TargetWorldQuat = WorldRot.Quaternion();
+		FQuat RelativeQuat = SocketWorldQuat.Inverse() * TargetWorldQuat;
+		RelativeQuat.Normalize();
+
+		Camera->SetRelativeRotation(RelativeQuat.Rotator());
 		Camera->bUsePawnControlRotation = true;
+
+		PC->SetControlRotation(WorldRot);
 	}
 }
 
-void UContextCameraComponent::ApplyCameraConstraints(
-	APlayerController* PC,
-	const UContextCameraSetupDataAsset* Data)
-{
-	if (!PC || !Data)
-	{
-		return;
-	}
-
-	PC->PlayerCameraManager->ViewYawMin   = BaseContextYaw + Data->CameraYawMin;
-	PC->PlayerCameraManager->ViewYawMax   = BaseContextYaw + Data->CameraYawMax;
-	PC->PlayerCameraManager->ViewPitchMin = Data->CameraPitchMin;
-	PC->PlayerCameraManager->ViewPitchMax = Data->CameraPitchMax;
-}
 
 void UContextCameraComponent::ResetCameraConstraints(APlayerController* PC)
 {
@@ -155,8 +162,8 @@ void UContextCameraComponent::ResetCameraConstraints(APlayerController* PC)
 		return;
 	}
 
-	PC->PlayerCameraManager->ViewYawMin   = -180.f;
-	PC->PlayerCameraManager->ViewYawMax   =  180.f;
+	PC->PlayerCameraManager->ViewYawMin = 0.f;
+	PC->PlayerCameraManager->ViewYawMax = 359.999f;
 	PC->PlayerCameraManager->ViewPitchMin = -89.f;
 	PC->PlayerCameraManager->ViewPitchMax =  89.f;
 }
@@ -173,7 +180,7 @@ APlayerController* UContextCameraComponent::GetPlayerController() const
 }
 
 // ======================================================
-// 🎯 UPDATE (IMPORTANT : effet visible du FocusPoint)
+// 🎯 UPDATE (focus point)
 // ======================================================
 
 void UContextCameraComponent::UpdateFocus(APlayerController* PC)
@@ -207,9 +214,9 @@ void UContextCameraComponent::UpdateFocus(APlayerController* PC)
 }
 
 // ======================================================
-// 🎯 TICK : calcule la rotation cible en WORLD SPACE propre,
-// puis la convertit en rotation RELATIVE au bone "head"
-// (la caméra reste attachée, sa position suit le bone normalement)
+// 🎯 TICK : la base suit l'orientation ACTUELLE de l'actor
+// chaque frame (donc pendant snap + montage aussi),
+// LookOffset s'ajoute par-dessus avec les contraintes neck
 // ======================================================
 
 void UContextCameraComponent::TickComponent(
@@ -232,8 +239,10 @@ void UContextCameraComponent::TickComponent(
 
 	FVector HeadLocation = Mesh->GetBoneLocation(TEXT("head"));
 
-	// --- Cible en world space propre (roll = 0 toujours) ---
-	FRotator BaseRot = BaseWorldRotation;
+	// --- Base = orientation actuelle de l'actor, recalculée chaque frame ---
+	FRotator BaseRot = Character->GetActorRotation();
+	BaseRot.Roll  = 0.f;
+	BaseRot.Pitch = 0.f; // le pitch vient uniquement du LookOffset
 
 	if (CachedFocusTarget.IsValid())
 	{

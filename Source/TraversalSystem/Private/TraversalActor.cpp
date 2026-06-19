@@ -54,6 +54,14 @@ void ATraversalActor::MoveRight(UTraversalComponent*) {}
 
 // ============================================================
 
+FTraversalEntryInfo ATraversalActor::GetEntryInfo(ACharacter* Character, UTraversalComponent* Component) const
+{
+	FTraversalEntryInfo Info;
+	Info.EntryPoint = const_cast<ATraversalActor*>(this)->GetEntryPointForCharacter(Character);
+	Info.EnterTransition = nullptr;
+	return Info;
+}
+
 USceneComponent* ATraversalActor::GetEntryPointForCharacter(ACharacter* Character)
 {
 	FVector Loc = Character->GetActorLocation();

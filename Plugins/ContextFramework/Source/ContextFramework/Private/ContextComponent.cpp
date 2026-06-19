@@ -19,66 +19,77 @@ UContextComponent::UContextComponent()
 	// ...
 }
 
-void UContextComponent::AddContext(const FActiveContext& ContextData)
+FContextHandle UContextComponent::AddContext(FActiveContext ContextData)
 {
-	if (!ContextData.Definition) return;
+	if (!ContextData.Definition) return FContextHandle();
 	
 	if (HasContext(ContextData.Definition))
 	{
-		return;
+		return FContextHandle();
 	}
-	for (const FContextTagEntry& Entry : ContextData.Definition->StateTags)
-	{
-		FContextTagChange TagChange;
-		TagChange.Tag = Entry.Tag;
-		TagChange.bAdded = true;
-
-		OnContextTagChanged.Broadcast(TagChange);
-	}
+	
+	ContextData.Handle.GenerateNewGuid();
 	
 	ActiveContexts.Add(ContextData);
 
 	OnContextAdded.Broadcast(ContextData);
 	
 	ApplyContextToInput(ContextData);
+
+	return ContextData.Handle;
 }
 
-void UContextComponent::RemoveContext(const FActiveContext& ContextData)
+bool UContextComponent::RemoveContext(FContextHandle ContextHandle)
 {
-	if (!HasContext(ContextData.Definition))
-	{
-		return;
-	}
+	const int32 Index = ActiveContexts.IndexOfByPredicate(
+	   [&ContextHandle](const FActiveContext& Context)
+	   {
+		   return Context.Handle == ContextHandle;
+	   });
 
-	ActiveContexts.Remove(ContextData);
+	if (Index == INDEX_NONE) return false;
+
+	FActiveContext ContextData = ActiveContexts[Index];
+	ActiveContexts.RemoveAt(Index);
 
 	OnContextRemoved.Broadcast(ContextData);
 
-	if (!ContextData.Definition) return;
-
-	for (const FContextTagEntry& Entry : ContextData.Definition->StateTags)
+	if (ContextData.Definition)
 	{
-		if (Entry.bRemoveOnEnd)
+		for (const FContextTagEntry& Entry : ContextData.Definition->StateTags)
 		{
-			FContextTagChange TagChange;
-			TagChange.Tag = Entry.Tag;
-			TagChange.bAdded = false;
-
-			OnContextTagChanged.Broadcast(TagChange);
-		}
-	}
-	
-	if (APlayerController* PC = Cast<APlayerController>(GetOwner()->GetInstigatorController()))
-	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem =
-			ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
-		{
-			if (ContextData.Definition->InputMappingData->MappingContext)
+			if (Entry.bRemoveOnEnd)
 			{
-				Subsystem->RemoveMappingContext(ContextData.Definition->InputMappingData->MappingContext);
+				FContextTagChange TagChange;
+				TagChange.Tag = Entry.Tag;
+				TagChange.bAdded = false;
+				OnContextTagChanged.Broadcast(TagChange);
+			}
+		}
+
+		if (APlayerController* PC = Cast<APlayerController>(GetOwner()->GetInstigatorController()))
+		{
+			if (UEnhancedInputLocalPlayerSubsystem* Subsystem =
+				ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+			{
+				if (ContextData.Definition->InputMappingData &&
+					ContextData.Definition->InputMappingData->MappingContext)
+				{
+					Subsystem->RemoveMappingContext(ContextData.Definition->InputMappingData->MappingContext);
+				}
 			}
 		}
 	}
+
+	const FActiveContext* NewTop = GetTopContext();
+	if (NewTop)
+	{
+		ApplyContextToInput(*NewTop);
+	}
+	
+	SetContextState(EContextState::Active);
+
+	return true;
 }
 
 bool UContextComponent::HasContext(UContextDataAsset* ContextData) const
@@ -144,5 +155,36 @@ FActiveContext UContextComponent::GetTopContextBP() const
 	return ActiveContexts.IsEmpty()
 	   ? FActiveContext()
 	   : ActiveContexts.Last();
+}
+
+void UContextComponent::SetContextState(EContextState ContextState)
+{
+	CurrentState = ContextState;
+
+	const FActiveContext* Top = GetTopContext();
+	if (!Top) return;
+
+	if (ContextState == EContextState::Exiting && Top->Definition)
+	{
+		for (const FContextTagEntry& Entry : Top->Definition->StateTags)
+		{
+			FContextTagChange TagChange;
+			TagChange.Tag = Entry.Tag;
+			TagChange.bAdded = false;
+			OnContextTagChanged.Broadcast(TagChange);
+		}
+	}
+	if (ContextState == EContextState::Active && Top->Definition)
+	{
+		for (const FContextTagEntry& Entry : Top->Definition->StateTags)
+		{
+			FContextTagChange TagChange;
+			TagChange.Tag = Entry.Tag;
+			TagChange.bAdded = true;
+			OnContextTagChanged.Broadcast(TagChange);
+		}
+	}
+
+	OnContextStateChanged.Broadcast(*Top, ContextState);
 }
 

@@ -20,12 +20,22 @@ public:
 	// Sets default values for this component's properties
 	UContextTransitionComponent();
 
+	void RequestContextExit(FContextHandle Handle, UAnimMontage* ExitMontage);
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
 	UFUNCTION()
 	void OnEnterMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+	void OnEnterMontageBlendingOut(UAnimMontage*, bool bInterrupted);
+
+	void OnExitMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+	FContextHandle PendingExitHandle;
+	void OnExitMontageBlendingOut(UAnimMontage*, bool bInterrupted);
+
+	void PlayExitMontage(UAnimMontage* Montage);
+
 	
 	UPROPERTY()
 	TObjectPtr<UContextComponent> ContextComponent;

@@ -154,9 +154,13 @@ void AMillionnairesPlayerController::HandleLookInput(FVector2D Value)
         CameraComp->ConsumeLookInput(Value);
         return;
     }
-    
+    UE_LOG(LogTemp, Warning,
+    TEXT("ControlRot = %s"),
+    *GetControlRotation().ToString());
     AddYawInput(Value.X);
     AddPitchInput(Value.Y);
+
+    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "coucou");
      
 }
 
@@ -236,8 +240,6 @@ void AMillionnairesPlayerController::BeginPlay()
     {
         CameraComp = Pawnn->FindComponentByClass<UContextCameraComponent>();
     }
-
-    InputRouterComponent->CurrentReceiver = GetPawn();
 }
 
 void AMillionnairesPlayerController::SetupInputComponent()

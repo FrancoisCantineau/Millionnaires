@@ -8,7 +8,7 @@
 #include "InputAction.h"
 #include "Data/ContextStructData.h"
 #include "Data/ContextDataAsset.h"
-#include "InputReceiverInterface.h"
+#include "Interfaces/InputReceiverInterface.h"
 
 
 
@@ -110,7 +110,7 @@ void UContextInputRouterComponent::OnContextAdded(const FActiveContext& Context)
 }
 void UContextInputRouterComponent::OnContextRemoved(const FActiveContext& Context)
 {
-	if (Context.Source == CurrentReceiver)
+	if (Context.InputReceiver == CurrentReceiver)
 	{
 		ActiveMapping = nullptr;
 		CurrentReceiver = nullptr;
@@ -127,7 +127,7 @@ void UContextInputRouterComponent::OnContextRemoved(const FActiveContext& Contex
 			NewTopContext->Definition->InputMappingData.Get();
 
 		ActiveMapping = Mapping;
-		CurrentReceiver = NewTopContext->Source;
+		CurrentReceiver = NewTopContext->InputReceiver;
 	}
 
 	BuildActionMap();
