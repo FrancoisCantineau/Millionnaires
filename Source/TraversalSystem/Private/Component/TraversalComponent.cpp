@@ -153,7 +153,7 @@ void UTraversalComponent::OnTraversalNotify(ETraversalNotifyType EventType)
 // TRACE
 // ============================================================
 
-bool UTraversalComponent::TraceInDirection(const FVector& Direction, float Distance)
+bool UTraversalComponent::TraceInDirectionForObstacle(const FVector& Direction, float Distance)
 {
     if (!OwnerCharacter) return false;
 
@@ -182,16 +182,8 @@ bool UTraversalComponent::TraceInDirection(const FVector& Direction, float Dista
     return bHit;
 }
 
-bool UTraversalComponent::TraceFromPoint(USceneComponent* StartPoint,const FVector& Direction,float Distance)
+bool UTraversalComponent::TraceFromPoint(FVector StartPoint, FVector EndPoint)
 {
-    if (!StartPoint)
-    {
-        return false;
-    }
-
-    FVector Start = StartPoint->GetComponentLocation();
-    FVector End   = Start + Direction.GetSafeNormal() * Distance;
-
     FHitResult Hit;
 
     FCollisionQueryParams Params;
@@ -199,15 +191,15 @@ bool UTraversalComponent::TraceFromPoint(USceneComponent* StartPoint,const FVect
 
     bool bHit = GetWorld()->LineTraceSingleByChannel(
         Hit,
-        Start,
-        End,
+        StartPoint,
+        EndPoint,
         ECC_Visibility,
         Params
     );
 
     if (bDrawDebug)
     {
-        DrawDebugLine(GetWorld(),Start,End,bHit ? FColor::Red : FColor::Green,false,2.f,0,2.f);
+        DrawDebugLine(GetWorld(),StartPoint,EndPoint,bHit ? FColor::Red : FColor::Green,false,2.f,0,2.f);
 
         if (bHit)
         {

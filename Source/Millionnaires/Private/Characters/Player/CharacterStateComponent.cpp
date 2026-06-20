@@ -17,12 +17,6 @@ void UCharacterStateComponent::ResolveState()
 		CurrentState = ELocomotionState::Ladder;
 		return;
 	}
-	
-	if (ActiveStates.HasTag(TAG_State_Default))
-	{
-		CurrentState = ELocomotionState::Default;
-		return;
-	}
 
 	if (ActiveStates.HasTag(TAG_State_Crawl))
 	{
@@ -33,6 +27,12 @@ void UCharacterStateComponent::ResolveState()
 	if (ActiveStates.HasTag(TAG_State_Crouched))
 	{
 		CurrentState = ELocomotionState::Crouch;
+		return;
+	}
+
+	if (ActiveStates.HasTag(TAG_State_Default))
+	{
+		CurrentState = ELocomotionState::Default;
 		return;
 	}
 

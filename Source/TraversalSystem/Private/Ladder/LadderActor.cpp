@@ -8,7 +8,7 @@
 ALadderActor::ALadderActor()
 {
 	TraversalType = ETraversalType::Ladder;
-	TraversalAxis = FVector::UpVector;
+	TraversalDirection = FVector::UpVector;
 
 	InteractionVolume = CreateDefaultSubobject<UBoxComponent>(TEXT("InteractionVolume"));
 	InteractionVolume->SetupAttachment(RootComponent);
@@ -99,24 +99,29 @@ void ALadderActor::MoveForward(UTraversalComponent* Component)
 {
 	if (!Component) return;
 
-	bool bBlocked = Component->TraceInDirection(FVector::UpVector, StepSpacing);
+	const FVector Direction = GetTraversalDirection(Component);
+
+	bool bBlocked = Component->TraceInDirectionForObstacle(Direction, ObstacleTraceDistance);
 	if (bBlocked) return;
 
-	Component->UpdateExitPoint(FVector::UpVector, 120);
+	Component->UpdateExitPoint(Direction, ExitPointDistance);
+
+	FVector StartTracePosition = GetExitPoint()->GetComponentLocation();
+	FVector EndTracePosition = StartTracePosition + GetExitPoint()->GetForwardVector() * ExitTraceDistance;
+	
+	if (!ExitPoint) return;
 
 	bool bCanExit = Component->TraceFromPoint(
-		GetExitPoint(),         
-		GetExitPoint()->GetForwardVector(),
-		100.f
-	);
+		StartTracePosition, EndTracePosition);
 
 	if (!bCanExit)
 	{
-		
-		Component->RequestExitTraversal(GetMontageForContext(1.f,Component->GetCurrentHand(), true, false, false, true));
+		Component->RequestExitTraversal(GetMontageForContext(1.f, Component->GetCurrentHand(), true, false, false, true));
 	}
 	else
+	{
 		Component->RequestMontage(1.f, false, false, false, false);
+	}
 }
 
 // ============================================================
@@ -127,7 +132,7 @@ void ALadderActor::MoveBackward(UTraversalComponent* Component)
 {
 	if (!Component) return;
 
-	bool bBlocked = Component->TraceInDirection(-FVector::UpVector, 150);
+	bool bBlocked = Component->TraceInDirectionForObstacle(-FVector::UpVector, 150);
 	if (bBlocked)
 	{
 		Component->RequestExitTraversal(GetMontageForContext(-1.f,Component->GetCurrentHand(), true, false, true, false));

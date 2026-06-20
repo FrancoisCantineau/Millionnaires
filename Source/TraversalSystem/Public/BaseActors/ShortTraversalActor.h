@@ -4,14 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "TraversalActor.h"
-#include "BaseActors/ShortTraversalActor.h"
-#include "SmallGapTraversalActor.generated.h"
+#include "ShortTraversalActor.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class TRAVERSALSYSTEM_API ASmallGapTraversalActor : public AShortTraversalActor
+class TRAVERSALSYSTEM_API AShortTraversalActor : public ATraversalActor
 {
 	GENERATED_BODY()
 

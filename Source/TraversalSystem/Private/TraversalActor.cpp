@@ -46,6 +46,33 @@ void ATraversalActor::HandleTraversalInput(
 	}
 }
 
+FVector ATraversalActor::GetTraversalDirection(const UTraversalComponent* Component)
+{
+	ACharacter* OwnerCharacter = Component ? Component->GetOwnerCharacter() : nullptr;
+
+	switch (DirectionSource)
+	{
+	case ETraversalDirectionSource::FixedLocal:
+		return GetActorTransform().TransformVectorNoScale(TraversalDirection.GetSafeNormal());
+
+	case ETraversalDirectionSource::FixedWorld:
+		return TraversalDirection.GetSafeNormal();
+
+	case ETraversalDirectionSource::PlayerForward:
+		return OwnerCharacter ? OwnerCharacter->GetActorForwardVector() : GetActorForwardVector();
+
+	case ETraversalDirectionSource::PlayerUp:
+		return OwnerCharacter ? OwnerCharacter->GetActorUpVector() : GetActorUpVector();
+
+	case ETraversalDirectionSource::PlayerRight:
+		return OwnerCharacter ? OwnerCharacter->GetActorRightVector() : GetActorRightVector();
+
+	case ETraversalDirectionSource::Custom:
+	default:
+		return GetActorForwardVector();
+	}
+}
+
 // DEFAULTS
 void ATraversalActor::MoveForward(UTraversalComponent*) {}
 void ATraversalActor::MoveBackward(UTraversalComponent*) {}

@@ -25,6 +25,8 @@ public:
 
     virtual void BeginPlay() override;
 
+    ACharacter* GetOwnerCharacter() const {return OwnerCharacter;};
+    
     // IInputReceiverInterface
     virtual void HandleInput_Implementation(FGameplayTag Tag, const FInputActionValue& Value) override;
 
@@ -55,8 +57,8 @@ public:
         bool bExit     = false);
 
     // Trace générique dans une direction
-    bool TraceInDirection(const FVector& Direction, float Distance);
-    bool TraceFromPoint(USceneComponent* StartPoint,const FVector& Direction,float Distance);
+    bool TraceInDirectionForObstacle(const FVector& Direction, float Distance);
+    bool TraceFromPoint(FVector StartPoint, FVector EndPoint);
     void UpdateExitPoint(const FVector& Direction,float Offset);
     
     UPROPERTY(EditAnywhere, Category = "Traversal|Debug")
