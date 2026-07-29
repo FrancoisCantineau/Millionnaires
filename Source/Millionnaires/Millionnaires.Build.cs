@@ -26,6 +26,7 @@ public class Millionnaires : ModuleRules
 			"GameplayTags",
 			"GameplayAbilities",
 			"GameplayTasks",
+			"GameplayOrchestrator",
 
 			// Systems custom
 			"InventorySystem",
@@ -45,6 +46,7 @@ public class Millionnaires : ModuleRules
 			"InputGlyphCore",
 			
 			"ContextFramework",
+			
 
 		});
 		

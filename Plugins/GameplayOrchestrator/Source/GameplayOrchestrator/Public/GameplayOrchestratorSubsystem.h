@@ -3,9 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "GameplayOrchestratorSubsystem.generated.h"
 
+class UGameplaySequence;
+struct FGameplayEventDefinition;
+struct FEventContext;
 /**
  * 
  */
@@ -16,9 +20,19 @@ class GAMEPLAYORCHESTRATOR_API UGameplayOrchestratorSubsystem : public UGameInst
 
 public :
 
+	void PublishEvent(FGameplayTag EventTag,FEventContext Context);
+
 	UFUNCTION(BlueprintCallable)
-	void PublishEvent();
+	void ExecuteSequence(UGameplaySequence* Sequence,
+	const FEventContext& Context);
 	
 	UFUNCTION(BlueprintCallable)
 	void RegisterListener();
+	
+private:
+
+	TMap<FGameplayTag, TArray<FGameplayEventDefinition>> Triggers;
+	
+	
+
 };

@@ -25,6 +25,7 @@ public class MillionnairesTarget : TargetRules
 			"ItemSystem",
 			"DayNightCycleSystem",
 			"TraversalSystem",
+			
 		});
 	}
 }
