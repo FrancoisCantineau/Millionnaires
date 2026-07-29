@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "GameplayOrchestrator",
+	"Description": "GameplayOrchestratorPlugin",
+	"Category": "Other",
+	"CreatedBy": "Francki.C",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "GameplayOrchestrator",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
