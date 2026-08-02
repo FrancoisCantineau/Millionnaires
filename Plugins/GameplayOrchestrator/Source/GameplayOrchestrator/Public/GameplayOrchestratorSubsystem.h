@@ -7,8 +7,8 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "GameplayOrchestratorSubsystem.generated.h"
 
+class UGameplayEventDefinition;
 class UGameplaySequence;
-struct FGameplayEventDefinition;
 struct FEventContext;
 /**
  * 
@@ -31,7 +31,10 @@ public :
 	
 private:
 
-	TMap<FGameplayTag, TArray<FGameplayEventDefinition>> Triggers;
+	TMap<FGameplayTag, TArray<UGameplayEventDefinition>> Triggers;
+
+	UPROPERTY(EditAnywhere)
+	TArray<TObjectPtr<UGameplayEventDefinition>> RegisteredEvents;
 	
 	
 
