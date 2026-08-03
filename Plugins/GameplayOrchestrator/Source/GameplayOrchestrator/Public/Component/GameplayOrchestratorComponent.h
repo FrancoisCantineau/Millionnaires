@@ -32,7 +32,7 @@ public:
 	 * Local events for THIS actor only. Not shared by Registry.
 	 * Evaluated directly by EmitEvent (no bus subscription).
 	 */
-	UPROPERTY(EditAnywhere, Instanced, BlueprintReadWrite, Category = "Gameplay Orchestrator")
+	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "Gameplay Orchestrator")
 	TArray<TObjectPtr<UGameplayEventDefinition>> LocalEvents;
 
 	/**

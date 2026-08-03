@@ -21,6 +21,7 @@ public class Millionnaires : ModuleRules
 			"Slate",
 			"SlateCore",
 			"Niagara",
+			"SaveFramework",
 
 			// Gameplay
 			"GameplayTags",
