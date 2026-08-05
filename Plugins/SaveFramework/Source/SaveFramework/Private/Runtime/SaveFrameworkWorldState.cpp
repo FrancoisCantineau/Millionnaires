@@ -7,22 +7,7 @@
 USaveGuidComponent* USaveFrameworkWorldState::FindLoadedComponent(const FGuid& TargetId) const
 {
 	const USaveableRegistrySubsystem* Registry = GetGameInstance() ? GetGameInstance()->GetSubsystem<USaveableRegistrySubsystem>() : nullptr;
-	if (!Registry)
-	{
-		return nullptr;
-	}
-
-	for (const TWeakObjectPtr<USaveGuidComponent>& WeakComp : Registry->GetRegisteredComponents())
-	{
-		if (USaveGuidComponent* Comp = WeakComp.Get())
-		{
-			if (Comp->GetSaveId() == TargetId)
-			{
-				return Comp;
-			}
-		}
-	}
-	return nullptr;
+	return Registry ? Registry->FindByGuid(TargetId) : nullptr;
 }
 
 void USaveFrameworkWorldState::SetState(const FGuid& TargetId, const FSaveableStatePatch& Patch)
@@ -84,23 +69,21 @@ void USaveFrameworkWorldState::ApplyCustomState(const FGuid& TargetId, const FIn
 	}
 }
 
-bool USaveFrameworkWorldState::ConsumePendingState(const FGuid& TargetId, FSaveableGenericState& OutState)
+bool USaveFrameworkWorldState::ClaimState(const FGuid& TargetId, FSaveableGenericState& OutState)
 {
 	if (const FSaveableGenericState* Found = PendingStates.Find(TargetId))
 	{
 		OutState = *Found;
-		PendingStates.Remove(TargetId);
 		return true;
 	}
 	return false;
 }
 
-bool USaveFrameworkWorldState::ConsumePendingCustomState(const FGuid& TargetId, FInstancedStruct& OutState)
+bool USaveFrameworkWorldState::ClaimCustomState(const FGuid& TargetId, FInstancedStruct& OutState)
 {
 	if (const FInstancedStruct* Found = PendingCustomStates.Find(TargetId))
 	{
 		OutState = *Found;
-		PendingCustomStates.Remove(TargetId);
 		return true;
 	}
 	return false;

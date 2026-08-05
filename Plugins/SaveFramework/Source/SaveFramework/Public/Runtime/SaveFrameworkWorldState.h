@@ -61,6 +61,21 @@ struct FSaveableStatePatch
 };
 
 /**
+ * CONTRACT: USaveFrameworkWorldState is the source of truth ONLY for
+ * actors that are NOT currently loaded. For a loaded actor, the actor
+ * itself is the live source of truth (its real transform, its own
+ * in-memory custom state) — this subsystem holds nothing for it.
+ *
+ * State only ever lives here as a handoff at the loaded/unloaded boundary:
+ * SaveGuidComponent writes it here right before an actor unloads (EndPlay),
+ * and reads + clears it right after it loads again (BeginPlay). This is
+ * deliberately NOT "the state stays here forever, actors just consult it":
+ * keeping a second permanent copy in sync with a live, freely-changing
+ * actor (physics, gameplay) would require pushing every single change
+ * through this subsystem — expensive, and easy to forget for one code
+ * path. A single source of truth at a time, handed off at the boundary,
+ * avoids that class of staleness bug entirely.
+ *
  * Single entry point for systems (like an event orchestrator) that need to
  * change an actor's state by GUID, without ever needing to know whether
  * that actor is currently loaded.
@@ -103,13 +118,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SaveFramework")
 	void ApplyCustomState(const FGuid& TargetId, const FInstancedStruct& CustomState);
 
-	/** Called by SaveGuidComponent when it loads. Returns true and fills OutState if a generic change was pending (and consumes it). */
-	bool ConsumePendingState(const FGuid& TargetId, FSaveableGenericState& OutState);
+	/** Called by SaveGuidComponent when it loads. If this actor had state waiting for it, transfers ownership to the caller (returns true, fills OutState) and clears it here — the actor becomes the source of truth from this point on. */
+	bool ClaimState(const FGuid& TargetId, FSaveableGenericState& OutState);
 
-	/** Same as above, for a pending custom state. */
-	bool ConsumePendingCustomState(const FGuid& TargetId, FInstancedStruct& OutState);
+	/** Same as above, for a waiting custom state. */
+	bool ClaimCustomState(const FGuid& TargetId, FInstancedStruct& OutState);
 
-	/** Read-only access so USaveFrameworkSubsystem can persist pending changes even for actors that haven't loaded yet. */
+	/** Read-only access so USaveFrameworkSubsystem can persist state left here for actors that haven't loaded yet. */
 	const TMap<FGuid, FSaveableGenericState>& GetAllPendingStates() const { return PendingStates; }
 	const TMap<FGuid, FInstancedStruct>& GetAllPendingCustomStates() const { return PendingCustomStates; }
 

@@ -34,6 +34,23 @@ ce besoin n'existe pas concrètement sur un projet.
 - `USaveFrameworkSaveGame` — conteneur de données pur (générique + custom par acteur)
 - `USaveFrameworkSubsystem` — `SaveGame(SlotName)` / `LoadGame(SlotName)`, lit le Registry, écrit générique + custom
 
+## Le contrat du WorldState
+
+`USaveFrameworkWorldState` est la source de vérité **uniquement pour ce qui
+est déchargé**. Un acteur chargé reste maître de son propre état (sa vraie
+transform, son propre custom en mémoire) — le WorldState ne garde rien
+pour lui en double. L'état n'existe dans le WorldState que le temps d'une
+transition : `SaveGuidComponent` l'y dépose juste avant de décharger
+(`EndPlay`), et le récupère + l'efface juste après avoir rechargé
+(`BeginPlay`).
+
+Ce n'est **pas** "l'état reste en permanence, les acteurs viennent juste le
+consulter" — ce modèle-là obligerait à répercuter chaque changement de
+gameplay (une caisse poussée par la physique, par exemple) dans le
+WorldState en continu pour rester synchronisé, sous peine d'un état
+périmé pendant que l'acteur est chargé. Une seule vérité à la fois, remise
+à la frontière chargé/déchargé, évite complètement cette classe de bug.
+
 ## Comment un orchestrator bouge un acteur non chargé
 
 ```
@@ -50,7 +67,7 @@ USaveFrameworkWorldState.SetState(Guid, Patch)  // ex: FSaveableStatePatch::Make
         (l'acteur charge, plus tard, peu importe quand ni pourquoi)
                 │
                 ▼
-        SaveGuidComponent::BeginPlay() → consomme l'état en attente → s'applique
+        SaveGuidComponent::BeginPlay() → reprend possession de son état laissé en dépôt → s'applique
 ```
 
 L'orchestrator n'appelle jamais un acteur ou un composant directement — il
@@ -92,7 +109,7 @@ Les deux canaux fonctionnent à l'identique, chargé ou pas :
 
 - Un changement fait via `USaveFrameworkWorldState` (générique OU custom) sur un
   acteur déchargé est **écrit sur disque** dès le prochain `SaveGame()`,
-  consommé ou pas — rien n'est perdu si le jeu ferme avant que l'acteur ne
+  récupéré par l'acteur ou pas — rien n'est perdu si le jeu ferme avant que l'acteur ne
   recharge.
 - Un `LoadGame()` réinjecte dans le `USaveFrameworkWorldState` l'état (générique
   ET custom) de tout acteur pas encore chargé, pour qu'il s'applique

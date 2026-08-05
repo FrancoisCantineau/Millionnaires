@@ -106,18 +106,7 @@ void USaveFrameworkSubsystem::LoadGame(const FString& SlotName)
 		const FGuid& Id = Pair.Key;
 		const FSaveFrameworkRecord& Record = Pair.Value;
 
-		USaveGuidComponent* LoadedComp = nullptr;
-		for (const TWeakObjectPtr<USaveGuidComponent>& WeakComp : Registry->GetRegisteredComponents())
-		{
-			if (USaveGuidComponent* Comp = WeakComp.Get())
-			{
-				if (Comp->GetSaveId() == Id)
-				{
-					LoadedComp = Comp;
-					break;
-				}
-			}
-		}
+		USaveGuidComponent* LoadedComp = Registry->FindByGuid(Id);
 
 		if (LoadedComp)
 		{
@@ -136,8 +125,12 @@ void USaveFrameworkSubsystem::LoadGame(const FString& SlotName)
 			// Actor isn't loaded: hand its state to the WorldState so both
 			// channels get applied automatically whenever it eventually
 			// loads — including later in this same session.
-			WorldState->SetState(Id, FSaveableStatePatch::MakeTransform(Record.Transform));
-			WorldState->SetState(Id, FSaveableStatePatch::MakeActive(Record.bActive));
+			FSaveableStatePatch Patch;
+			Patch.bHasTransform = true;
+			Patch.Transform = Record.Transform;
+			Patch.bHasActive = true;
+			Patch.bActive = Record.bActive;
+			WorldState->SetState(Id, Patch);
 
 			// Custom state may be empty (actor never implemented ISaveable) —
 			// harmless to queue it regardless, SaveGuidComponent only
