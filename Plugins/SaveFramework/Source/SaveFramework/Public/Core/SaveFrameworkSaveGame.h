@@ -24,9 +24,13 @@ struct FSaveFrameworkRecord
 };
 
 /**
- * Pure data container — no logic. Extend this later by splitting Records
- * into separate versioned blocks (Inventory, Quests...) once a single flat
- * map stops being enough.
+ * Pure data container — no logic.
+ *
+ * Records: per-actor state, keyed by GUID (from SaveGuidComponent).
+ * GlobalRecords: per-system state, keyed by the FName chosen when that
+ * system registered with UGlobalSaveableRegistrySubsystem — a quest
+ * manager, an economy system, a procedural generator's result. No
+ * per-instance identity here, just one entry per registered system.
  */
 UCLASS()
 class SAVEFRAMEWORK_API USaveFrameworkSaveGame : public USaveGame
@@ -39,4 +43,7 @@ public:
 
 	UPROPERTY()
 	TMap<FGuid, FSaveFrameworkRecord> Records;
+
+	UPROPERTY()
+	TMap<FName, FInstancedStruct> GlobalRecords;
 };

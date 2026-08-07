@@ -2,6 +2,7 @@
 #include "Core/ISaveable.h"
 #include "Core/SaveFrameworkSaveGame.h"
 #include "Core/SaveableRegistrySubsystem.h"
+#include "Core/GlobalSaveableRegistrySubsystem.h"
 #include "Core/SaveGuidComponent.h"
 #include "Runtime/SaveFrameworkWorldState.h"
 #include "Kismet/GameplayStatics.h"
@@ -76,6 +77,20 @@ void USaveFrameworkSubsystem::SaveGame(const FString& SlotName)
 		Record.State = Pair.Value;
 	}
 
+	// 3) Session-long global systems (a quest manager, an economy system...)
+	// — no load/unload cycle, no WorldState involved, just capture directly.
+	if (UGlobalSaveableRegistrySubsystem* GlobalRegistry = GetGameInstance()->GetSubsystem<UGlobalSaveableRegistrySubsystem>())
+	{
+		for (const auto& Pair : GlobalRegistry->GetRegistered())
+		{
+			UObject* Obj = Pair.Value.Get();
+			if (Obj && Obj->Implements<USaveable>())
+			{
+				SaveGameObject->GlobalRecords.Add(Pair.Key, ISaveable::Execute_CaptureState(Obj));
+			}
+		}
+	}
+
 	UGameplayStatics::SaveGameToSlot(SaveGameObject, SlotName, 0);
 }
 
@@ -136,6 +151,22 @@ void USaveFrameworkSubsystem::LoadGame(const FString& SlotName)
 			// harmless to queue it regardless, SaveGuidComponent only
 			// consumes it if the actor implements ISaveable when it loads.
 			WorldState->ApplyCustomState(Id, Record.State);
+		}
+	}
+
+	// Session-long global systems.
+	if (UGlobalSaveableRegistrySubsystem* GlobalRegistry = GetGameInstance()->GetSubsystem<UGlobalSaveableRegistrySubsystem>())
+	{
+		for (const auto& Pair : SaveGameObject->GlobalRecords)
+		{
+			if (const TWeakObjectPtr<UObject>* Found = GlobalRegistry->GetRegistered().Find(Pair.Key))
+			{
+				UObject* Obj = Found->Get();
+				if (Obj && Obj->Implements<USaveable>())
+				{
+					ISaveable::Execute_RestoreState(Obj, Pair.Value);
+				}
+			}
 		}
 	}
 }

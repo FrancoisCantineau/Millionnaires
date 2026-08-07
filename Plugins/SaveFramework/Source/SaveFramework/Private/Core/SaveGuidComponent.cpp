@@ -33,7 +33,21 @@ void USaveGuidComponent::BeginPlay()
 
 void USaveGuidComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (UGameInstance* GameInstance = GetWorld() ? GetWorld()->GetGameInstance() : nullptr)
+	{
+		if (USaveableRegistrySubsystem* Registry = GameInstance->GetSubsystem<USaveableRegistrySubsystem>())
+		{
+			Registry->UnregisterSaveable(this);
+		}
+	}
 	DepositStateIntoWorldState();
+
+	Super::EndPlay(EndPlayReason);
+}
+
+void USaveGuidComponent::SimulateUnload()
+{
+	UE_LOG(LogTemp, Warning, TEXT("SaveFramework [DEBUG]: SimulateUnload on %s"), GetOwner() ? *GetOwner()->GetName() : TEXT("?"));
 
 	if (UGameInstance* GameInstance = GetWorld() ? GetWorld()->GetGameInstance() : nullptr)
 	{
@@ -43,18 +57,21 @@ void USaveGuidComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		}
 	}
 
-	Super::EndPlay(EndPlayReason);
-}
-
-void USaveGuidComponent::SimulateUnload()
-{
-	UE_LOG(LogTemp, Warning, TEXT("SaveFramework [DEBUG]: SimulateUnload on %s"), GetOwner() ? *GetOwner()->GetName() : TEXT("?"));
 	DepositStateIntoWorldState();
 }
 
 void USaveGuidComponent::SimulateReload()
 {
 	UE_LOG(LogTemp, Warning, TEXT("SaveFramework [DEBUG]: SimulateReload on %s"), GetOwner() ? *GetOwner()->GetName() : TEXT("?"));
+
+	if (UGameInstance* GameInstance = GetWorld() ? GetWorld()->GetGameInstance() : nullptr)
+	{
+		if (USaveableRegistrySubsystem* Registry = GameInstance->GetSubsystem<USaveableRegistrySubsystem>())
+		{
+			Registry->RegisterSaveable(this);
+		}
+	}
+
 	ClaimStateFromWorldState();
 }
 

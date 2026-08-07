@@ -33,6 +33,45 @@ ce besoin n'existe pas concrètement sur un projet.
 - `FSaveableActorReference` — référence design-friendly (drag-drop d'acteur en éditeur, même dans un niveau non chargé), résolue en GUID stable — à utiliser depuis un orchestrator ou tout autre système externe
 - `USaveFrameworkSaveGame` — conteneur de données pur (générique + custom par acteur)
 - `USaveFrameworkSubsystem` — `SaveGame(SlotName)` / `LoadGame(SlotName)`, lit le Registry, écrit générique + custom
+- `UGlobalSaveableRegistrySubsystem` — pour les systèmes qui vivent toute la session (pas d'acteur, pas de GUID) : quêtes, économie, résultat d'une génération procédurale
+
+## Systèmes globaux (session entière, pas d'acteur)
+
+Certaines données n'appartiennent à aucun acteur placé — un manager de
+quêtes, un système d'économie, le résultat d'une génération procédurale de
+niveau. Ces systèmes vivent toute la session (typiquement un
+`GameInstanceSubsystem`), donc pas de notion de "chargé/déchargé", pas
+besoin du WorldState. Ils réutilisent `ISaveable` tel quel — le contrat
+(`CaptureState`/`RestoreState`) est identique à celui des acteurs, seule
+l'identité change : un `FName` unique choisi à l'enregistrement, au lieu
+d'un GUID.
+
+```cpp
+UCLASS()
+class UMyPersistentSystem : public UGameInstanceSubsystem, public ISaveable
+{
+	GENERATED_BODY()
+
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override
+	{
+		if (UGlobalSaveableRegistrySubsystem* Registry = GetGameInstance()->GetSubsystem<UGlobalSaveableRegistrySubsystem>())
+		{
+			Registry->RegisterGlobalSaveable(TEXT("MyPersistentSystem"), this);
+		}
+	}
+
+	virtual FInstancedStruct CaptureState_Implementation() const override { /* ... */ }
+	virtual void RestoreState_Implementation(const FInstancedStruct& InState) override { /* ... */ }
+};
+```
+
+`SaveGame()`/`LoadGame()` traitent ces entrées exactement comme les
+acteurs, dans une map séparée (`GlobalRecords`, clé `FName` plutôt que
+`FGuid`) — même mécanique, deux échelles différentes.
+
+Ne pas enregistrer un objet ici juste parce que c'est possible : le
+critère, c'est un état persistant qui n'est pas déjà couvert par un autre
+système (un `GameMode` ou un `HUD` n'en ont généralement pas besoin).
 
 ## Le contrat du WorldState
 
