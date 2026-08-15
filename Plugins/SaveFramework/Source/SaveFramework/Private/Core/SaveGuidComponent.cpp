@@ -8,6 +8,8 @@
 USaveGuidComponent::USaveGuidComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
+	
+	SetIsReplicatedByDefault(false);
 }
 
 void USaveGuidComponent::BeginPlay()
@@ -150,6 +152,24 @@ void USaveGuidComponent::ClaimStateFromWorldState()
 	}
 }
 
+void USaveGuidComponent::EnsureValidSaveId()
+{
+	if (!SaveId.IsValid())
+	{
+#if WITH_EDITOR
+		Modify();
+#endif
+		SaveId = FGuid::NewGuid();
+#if WITH_EDITOR
+		if (AActor* Owner = GetOwner())
+		{
+			Owner->Modify();
+			Owner->MarkPackageDirty();
+		}
+#endif
+	}
+}
+
 void USaveGuidComponent::ApplyTransform(const FTransform& NewTransform)
 {
 	if (AActor* Owner = GetOwner())
@@ -168,19 +188,62 @@ void USaveGuidComponent::ApplyActive(bool bNewActive)
 }
 
 #if WITH_EDITOR
+
 void USaveGuidComponent::OnRegister()
 {
 	Super::OnRegister();
 
-	const UWorld* World = GetWorld();
-	if (!SaveId.IsValid() && World && World->WorldType == EWorldType::Editor)
-	{
-		SaveId = FGuid::NewGuid();
-
-		if (AActor* Owner = GetOwner())
-		{
-			Owner->Modify();
-		}
-	}
+	EnsurePersistentSaveId();
 }
+
+void USaveGuidComponent::EnsurePersistentSaveId()
+{
+	if (SaveId.IsValid())
+	{
+		return; // Déjà un GUID valide, on ne touche à rien !
+	}
+
+	AActor* Owner = GetOwner();
+	if (!Owner)
+	{
+		return;
+	}
+
+	UWorld* World = Owner->GetWorld();
+	if (!World || World->WorldType != EWorldType::Editor)
+	{
+		return;
+	}
+
+	// Ne jamais générer pour les CDO / templates / archetypes
+	if (Owner->HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject) ||
+		HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject))
+	{
+		return;
+	}
+
+	// Marquer comme modifié pour forcer la sauvegarde
+	Modify();
+	Owner->Modify();
+
+	// Générer le GUID
+	SaveId = FGuid::NewGuid();
+
+	// FORCER la sauvegarde immédiate dans le package
+	if (UPackage* Package = Owner->GetOutermost())
+	{
+		Package->MarkPackageDirty();
+	}
+	Owner->MarkPackageDirty();
+	MarkPackageDirty();
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("SaveFramework: Generated and SAVED SaveId %s for %s"),
+		*SaveId.ToString(),
+		*Owner->GetPathName()
+	);
+}
+
 #endif

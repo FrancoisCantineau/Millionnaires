@@ -65,8 +65,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SaveFramework|Debug")
 	void SimulateReload();
 
+	UFUNCTION(BlueprintCallable, CallInEditor, Category = "SaveFramework")
+	void EnsureValidSaveId();
+
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SaveFramework")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SaveFramework",SaveGame)
 	FGuid SaveId;
 
 	/** See class comment. Turn off for actors whose raw transform mid-EndPlay wouldn't mean anything on its own. */
@@ -83,8 +86,11 @@ private:
 	/** Shared by BeginPlay and SimulateReload — claims and applies any state waiting in the WorldState. */
 	void ClaimStateFromWorldState();
 
+	
+
 protected:
 #if WITH_EDITOR
 	virtual void OnRegister() override;
+	void EnsurePersistentSaveId();
 #endif
 };

@@ -81,6 +81,17 @@ bool USaveFrameworkWorldState::ClaimState(const FGuid& TargetId, FSaveableGeneri
 
 bool USaveFrameworkWorldState::ClaimCustomState(const FGuid& TargetId, FInstancedStruct& OutState)
 {
+
+	for (const auto& [Guid, Struct] : PendingCustomStates)
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("%s -> %s"),
+			*Guid.ToString(),
+			Struct.GetScriptStruct()
+				? *Struct.GetScriptStruct()->GetName()
+				: TEXT("Invalid"));
+	}
+	
 	if (const FInstancedStruct* Found = PendingCustomStates.Find(TargetId))
 	{
 		OutState = *Found;

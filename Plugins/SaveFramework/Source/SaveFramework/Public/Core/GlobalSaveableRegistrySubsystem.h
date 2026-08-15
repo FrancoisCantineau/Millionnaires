@@ -23,7 +23,9 @@ class SAVEFRAMEWORK_API UGlobalSaveableRegistrySubsystem : public UGameInstanceS
 
 public:
 	/** Object must implement ISaveable, or it will be silently skipped by SaveGame()/LoadGame(). Key must be unique project-wide. */
+	UFUNCTION(BlueprintCallable, Category = "Save")
 	void RegisterGlobalSaveable(FName Key, UObject* Object);
+	UFUNCTION(BlueprintCallable, Category = "Save")
 	void UnregisterGlobalSaveable(FName Key);
 
 	const TMap<FName, TWeakObjectPtr<UObject>>& GetRegistered() const { return Registered; }
