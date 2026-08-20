@@ -1,4 +1,4 @@
-﻿#include "Event/GameplayEventBus.h"
+#include "Event/GameplayEventBus.h"
 
 void UGameplayEventBus::Broadcast(FGameplayTag EventTag, const FEventContext& Context)
 {

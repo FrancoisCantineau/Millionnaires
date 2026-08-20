@@ -1,0 +1,16 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "GameplayCore",
+	"Description": "Shared, dependency-free primitives (event bus, event context) used by GameplayOrchestrator, QuestSystem, and future gameplay plugins.",
+	"Category": "Gameplay",
+	"CreatedBy": "Fran\u00e7ois",
+	"Modules": [
+		{
+			"Name": "GameplayCore",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

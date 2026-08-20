@@ -12,7 +12,6 @@
 #include "DropComponent.h"
 #include "InputActionValue.h"
 #include "NavigationSystem.h"
-#include "QuestManagerComponent.h"
 #include "UI/MultiInventoryWidget.h"
 #include "UI/InteractionWidget.h"
 #include "UI/InventoryWidget.h"
@@ -114,7 +113,6 @@ AMillionnairePlayerBase::AMillionnairePlayerBase()
     InteractionComponent->bShowDebugTrace = false;
     ConsumableComponent  = CreateDefaultSubobject<UConsumableComponent>(TEXT("ConsumableComponent"));
     FlashlightComponent  = CreateDefaultSubobject<UFlashlightEquipmentComponent>(TEXT("FlashlightComponent"));
-    QuestManagerComponent = CreateDefaultSubobject<UQuestManagerComponent>(TEXT("QuestManagerComponent"));
     ATraversalComponent = CreateDefaultSubobject<UTraversalComponent>(TEXT("TraversalComponent"));
 }
 
@@ -143,7 +141,7 @@ void AMillionnairePlayerBase::BeginPlay()
     if (ConsumableComponent)
         ConsumableComponent->CacheInventoryComponents();
 
-    if (QuestTrackerWidgetClass && IsValid(QuestManagerComponent))
+   /* if (QuestTrackerWidgetClass && IsValid(QuestManagerComponent))
     {
         QuestTrackerWidget = CreateWidget<UQuestTrackerWidget>(GetWorld(), QuestTrackerWidgetClass);
         if (IsValid(QuestTrackerWidget))
@@ -152,7 +150,7 @@ void AMillionnairePlayerBase::BeginPlay()
             QuestTrackerWidget->AddToViewport();
             QuestTrackerWidget->InitializeTracker(QuestManagerComponent);
         }
-    }
+    }*/
 
     InteractionComponent->CanInteractDelegate.BindLambda([this]() -> bool
 {

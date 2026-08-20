@@ -39,6 +39,7 @@ public class GameplayOrchestrator : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
+				"GameplayCore",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

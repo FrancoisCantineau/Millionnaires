@@ -1,14 +1,19 @@
 #include "QuestObjective.h"
-#include "QuestManagerComponent.h"
 
 UQuestObjective::UQuestObjective()
 {
 	CurrentState = EQuestObjectiveState::Inactive;
 }
 
-void UQuestObjective::Initialize(UQuestManagerComponent* InQuestManager)
+void UQuestObjective::Initialize(UObject* InOwner)
 {
-	QuestManager = InQuestManager;
+	Owner = TScriptInterface<IQuestObjectiveOwnerInterface>(InOwner);
+	OwnerObject = InOwner;
+}
+
+UWorld* UQuestObjective::GetWorld() const
+{
+	return OwnerObject.IsValid() ? OwnerObject->GetWorld() : nullptr;
 }
 
 /*
@@ -23,6 +28,46 @@ void UQuestObjective::ObjectiveActivate()
 	}
 
 	CurrentState = EQuestObjectiveState::Active;
+
+	if (bHasTimeLimit)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().SetTimer(TimeLimitHandle, this, &UQuestObjective::OnTimeLimitExpired, TimeLimitSeconds, false);
+		}
+	}
+}
+
+void UQuestObjective::OnTimeLimitExpired()
+{
+	if (CurrentState == EQuestObjectiveState::Active)
+	{
+		ObjectiveFail();
+	}
+}
+
+float UQuestObjective::GetRemainingTime() const
+{
+	if (!bHasTimeLimit)
+	{
+		return 0.0f;
+	}
+	if (UWorld* World = GetWorld())
+	{
+		return World->GetTimerManager().GetTimerRemaining(TimeLimitHandle);
+	}
+	return 0.0f;
+}
+
+TArray<FQuestDisplayField> UQuestObjective::GetDisplayFields() const
+{
+	// Timer display is no longer here: a text snapshot would freeze at whatever value it had
+	// when last captured (activation or completion), never counting down live. Instead, the
+	// client computes it itself each frame from ActivationServerTime + TimeLimitSeconds -
+	// both of which are cheap, one-shot values (see UQuestComponent / FQuestObjectiveRuntimeState).
+	// Kept as an empty base implementation so future objective types still have a generic
+	// label/value list available for anything that genuinely IS a one-shot snapshot.
+	return TArray<FQuestDisplayField>();
 }
 
 /*
@@ -36,11 +81,19 @@ void UQuestObjective::ObjectiveComplete()
 		return;
 	}
 
+	if (bHasTimeLimit)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(TimeLimitHandle);
+		}
+	}
+
 	CurrentState = EQuestObjectiveState::Completed;
 
-	if (QuestManager)
+	if (Owner)
 	{
-		QuestManager->OnObjectiveCompleted(this);
+		Owner->OnObjectiveCompleted(this);
 	}
 }
 
@@ -55,15 +108,31 @@ void UQuestObjective::ObjectiveFail()
 		return;
 	}
 
+	if (bHasTimeLimit)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(TimeLimitHandle);
+		}
+	}
+
 	CurrentState = EQuestObjectiveState::Failed;
 
-	if (QuestManager)
+	if (Owner)
 	{
-		QuestManager->OnObjectiveFailed(this);
+		Owner->OnObjectiveFailed(this);
 	}
 }
 
 void UQuestObjective::TickObjective(float DeltaTime)
 {
 	// Override in child classes for custom tick logic
+}
+
+void UQuestObjective::NotifyProgressChanged()
+{
+	if (Owner)
+	{
+		Owner->OnObjectiveProgressChanged(this);
+	}
 }

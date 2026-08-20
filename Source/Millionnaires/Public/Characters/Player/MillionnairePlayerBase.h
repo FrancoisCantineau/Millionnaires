@@ -5,8 +5,6 @@
 #include "Interfaces/InputReceiverInterface.h"
 #include "MillionnairesCharacter.h"
 #include "Logging/LogMacros.h"
-#include "QuestManagerComponent.h"
-#include "UI/QuestTrackerWidget.h"
 #include "ItemData.h"
 #include "InventoryInterface.h"
 #include "TraversalInterface.h"
@@ -96,7 +94,7 @@ protected:
 #pragma endregion
 
 #pragma region Quests
-
+/*
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Quest")
     UQuestManagerComponent* QuestManagerComponent;
 
@@ -104,7 +102,7 @@ protected:
     TSubclassOf<UQuestTrackerWidget> QuestTrackerWidgetClass;
 
     UPROPERTY()
-    UQuestTrackerWidget* QuestTrackerWidget;
+    UQuestTrackerWidget* QuestTrackerWidget;*/
 
 #pragma endregion
 
@@ -235,7 +233,7 @@ public:
     FORCEINLINE UInventoryComponent* GetSelectedInventoryComponent() const { return SelectedInventoryComponent; }
     FORCEINLINE UConsumableComponent* GetConsumableComponent() const { return ConsumableComponent; }
     FORCEINLINE UFlashlightEquipmentComponent* GetFlashlightComponent() const { return FlashlightComponent; }
-    FORCEINLINE UQuestManagerComponent* GetQuestManager() const { return QuestManagerComponent; }
+   // FORCEINLINE UQuestManagerComponent* GetQuestManager() const { return QuestManagerComponent; }
 
 #pragma endregion
 

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
@@ -13,22 +13,22 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGameplayEventReceived, const FEve
  * Doesn't stock persistant state and doesn't know anything about gameplay logic.
  */
 UCLASS()
-class GAMEPLAYORCHESTRATOR_API UGameplayEventBus : public UGameInstanceSubsystem
+class GAMEPLAYCORE_API UGameplayEventBus : public UGameInstanceSubsystem
 {
 	GENERATED_BODY()
 
 public:
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Orchestrator|Event Bus")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Core|Event Bus")
 	void Broadcast(FGameplayTag EventTag, const FEventContext& Context);
 
 	/** Helper : build and publish a FEventContext in a call. */
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Orchestrator|Event Bus", meta = (DefaultToSelf = "Sender"))
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Core|Event Bus", meta = (DefaultToSelf = "Sender"))
 	void PublishEvent(FGameplayTag EventTag, AActor* Sender, AActor* Instigator = nullptr);
 
 	FDelegateHandle SubscribeNative(FGameplayTag EventTag, TFunction<void(const FEventContext&)> Callback);
 	void Unsubscribe(FGameplayTag EventTag, FDelegateHandle Handle);
 
-	UPROPERTY(BlueprintAssignable, Category = "Gameplay Orchestrator|Event Bus")
+	UPROPERTY(BlueprintAssignable, Category = "Gameplay Core|Event Bus")
 	FOnGameplayEventReceived OnEventReceived;
 
 private:

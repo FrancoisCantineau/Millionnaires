@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
@@ -9,10 +9,8 @@
  * A Sender/Instigator invalid is a normal use case to handle : context can survive to its emitter unload.
  */
 
-class UGameplayActionBase;
-
 USTRUCT(BlueprintType)
-struct FEventContext
+struct GAMEPLAYCORE_API FEventContext
 {
 	GENERATED_BODY()
 

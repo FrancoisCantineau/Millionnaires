@@ -15,9 +15,8 @@ public class QuestSystem : ModuleRules
 				"UMG",
 				"Slate",
 				"SlateCore",
-				"InputCore",
-				"GameInterfaces",
-				"AudioMixer",
+				"GameplayCore",
+				"GameplayTags",
 			}
 		);
 	}
