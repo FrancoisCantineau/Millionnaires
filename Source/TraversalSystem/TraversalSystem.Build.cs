@@ -18,7 +18,8 @@ public class TraversalSystem : ModuleRules
 				"GameInterfaces",
 				"GameplayTags", 
 				"ContextFramework",
-				"EnhancedInput"
+				"EnhancedInput",
+				"GameplayCore"
 			}
 		);
 	}

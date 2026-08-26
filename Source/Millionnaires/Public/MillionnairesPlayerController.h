@@ -3,7 +3,14 @@
  * Created by:  "0nnen"
  * Last Updated by: "0nnen"
  * Class: "MillionnairesPlayerController" - Header
- * Notes: Player controller managing input mapping, dispatch/mission phases and mouse/camera setup.
+ * Notes: Player controller managing input routing, dispatch/mission phases and mouse/camera setup.
+ *
+ * CLEANUP NOTE: gameplay action handlers (Move/Jump/Interact/Inventory/DropItem/consumables/
+ * Flashlight) used to live here, calling directly into the Pawn. They've since moved onto the
+ * Pawn itself (it now receives its own input via ContextFramework directly) - removed from here
+ * to avoid two places doing the same job. The Controller still OWNS the blocking authority
+ * (SetPlayerMode/CanPerform via IControllerInterface) - the Pawn is expected to query
+ * CanPerform() before acting, so that part stays here even though the action handlers moved.
  */
 
 #pragma once
@@ -29,7 +36,6 @@ class UCameraComponent;
 class UInputMappingContext;
 class UUserWidget;
 class UCharacterDefinition;
-class AMillionnairePlayerBase;
 
 /**
  * High-level game phases for Millionaire.
@@ -43,7 +49,7 @@ enum class EMillionairesGamePhase : uint8
 
 /**
  *  First person Player Controller
- *  Manages the input mapping context.
+ *  Manages input routing (via ContextFramework) and the mode/blocking authority the Pawn queries.
  *  Overrides the Player Camera Manager class.
  *  Also handles transitions between Dispatch (top-down) and Mission (first person) phases.
  */
@@ -59,46 +65,40 @@ public:
 
     UFUNCTION()
     void HandleLookInput(FVector2D Value);
-
-    virtual void SetPlayerMode_Implementation(EPlayerMode NewMode, AActor* ContextActor = nullptr) override;
-    virtual bool CanPerform_Implementation(EPlayerAction Action) const override;
-
-    UFUNCTION(BlueprintCallable)
-    void StartInputChallenge(UInputChallengeDefinition* Definition);
-
+    
     FORCEINLINE UInputChallengeComponent* GetChallengeComponent() const { return ChallengeComponent; }
 
 protected:
 
     virtual void OnPossess(APawn* InPawn) override;
-    
+
     // -------------------------------------------------
-    //  INPUT ACTIONS
+    //  INPUT ROUTING
     // -------------------------------------------------
-#pragma region INPUT_ACTIONS
+#pragma region INPUT_ROUTING
 
     void OnInput(const FInputActionInstance& Instance);
-    
+
     UPROPERTY(EditDefaultsOnly)
     TArray<UContextInputMappingDataAsset*> InputDataAssets;
 
     UPROPERTY()
     UContextCameraComponent* CameraComp = nullptr;
-    
+
     UPROPERTY(EditAnywhere)
     UContextInputRouterComponent* InputRouterComponent;
-    
+
     UPROPERTY(EditAnywhere, Category = "Input|Input Mappings")
     TArray<UInputMappingContext*> DefaultMappingContexts;
 
     UPROPERTY(EditAnywhere, Category = "Input|Input Mappings")
     TArray<UInputMappingContext*> MobileExcludedMappingContexts;
-    
+
+    /** TODO: not currently bound to anything (was part of the removed legacy binding block) -
+     *  decide whether "exit current mode" should be rebound through the InputDataAssets path,
+     *  or dropped along with HandleExitPressed if it's no longer needed. */
     UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
     TObjectPtr<UInputAction> ExitAction;
-    
-    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
-    TObjectPtr<UInputAction> MoveAction;
 
     UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
     TObjectPtr<UInputAction> LookAction;
@@ -106,57 +106,15 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
     TObjectPtr<UInputAction> MouseLookAction;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
-    TObjectPtr<UInputAction> JumpAction;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
-    TObjectPtr<UInputAction> InteractAction;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
-    TObjectPtr<UInputAction> InventoryAction;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
-    TObjectPtr<UInputAction> DropItemAction;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
-    TObjectPtr<UInputAction> UseHealthAction;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
-    TObjectPtr<UInputAction> UseFoodAction;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
-    TObjectPtr<UInputAction> UseBatteryAction;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
-    TObjectPtr<UInputAction> ToggleFlashlightAction;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Input|Actions")
-    TObjectPtr<UInputAction> EquipFlashlightAction;
-
 #pragma endregion
 
     // -------------------------------------------------
-    //  INPUT HANDLERS
+    //  MODE / EXIT
     // -------------------------------------------------
-#pragma region INPUT_HANDLERS
+#pragma region MODE
 
-    void OnMoveInput(const FInputActionValue& Value);
-    void OnMoveCompleted(const FInputActionValue& Value);
-    void OnLookInput(const FInputActionValue& Value);
-    void OnJumpStarted();
-    void OnJumpCompleted();
-    void OnInteractPressed();
-    void OnInventoryPressed();
-    void OnDropItemPressed();
-    void OnUseHealthPressed();
-    void OnUseFoodPressed();
-    void OnUseBatteryPressed();
-    void OnToggleFlashlightPressed();
-    void OnEquipFlashlightPressed();
+    /** See ExitAction TODO above - currently unreachable, kept for when that's decided. */
     void HandleExitPressed();
-    bool RouteAction(UInputAction* Action);
-    void OnActionStarted(UInputAction* Action);
-    void OnActionCompleted(UInputAction* Action);
 
 #pragma endregion
 
@@ -174,7 +132,6 @@ protected:
 
     TArray<EPlayerAction> BlockedActions;
 
-
     void LockCamera(float YawRange = 75.f, float PitchMin = -89.f, float PitchMax = 89.f);
     void UnlockCamera();
 #pragma endregion
@@ -186,13 +143,7 @@ protected:
 
     UPROPERTY(VisibleAnywhere, Category = "Challenge")
     TObjectPtr<UInputChallengeComponent> ChallengeComponent;
-
-    UFUNCTION()
-    void OnChallengeBegan(UInputChallengeDefinition* Definition);
-
-    UFUNCTION()
-    void OnChallengeOver();
-
+    
     UPROPERTY(EditDefaultsOnly)
     TSubclassOf<UInputChallengeWidget> ChallengeWidgetClass;
 
@@ -292,9 +243,4 @@ protected:
 
 #pragma endregion
 
-private:
-    
-    AMillionnairePlayerBase* GetPlayerPawn() const;
-    
 };
-

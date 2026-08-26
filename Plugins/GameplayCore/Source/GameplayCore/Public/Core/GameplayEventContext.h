@@ -14,12 +14,12 @@ struct GAMEPLAYCORE_API FEventContext
 {
 	GENERATED_BODY()
 
-public :
+	public :
 
-	/** The specific tag for This event (Ex : "Event.Door.Closed"). Used as a routing key for the GameplayEventSubsystem */
-	UPROPERTY(BlueprintReadWrite)
+		/** The specific tag for This event (Ex : "Event.Door.Closed"). Used as a routing key for the GameplayEventSubsystem */
+		UPROPERTY(BlueprintReadWrite)
 	FGameplayTag EventTag;
-	
+    
 	UPROPERTY(BlueprintReadWrite)
 	TWeakObjectPtr<AActor> Sender;
 
@@ -33,9 +33,15 @@ public :
 	double WorldTimeSeconds = 0.0;
 
 	/** Free additionnal tags. */
-	
+    
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Event Context")
 	FGameplayTagContainer AdditionalTags;
+
+	/** Free generic payload, for events that need to carry an object the bus itself doesn't
+	 *  need to understand (e.g. an IInputReceiverInterface implementer for a context push
+	 *  request). Nullptr for most events - only set it when EventTag's contract says so. */
+	UPROPERTY(BlueprintReadWrite, Category = "Event Context")
+	TWeakObjectPtr<UObject> Payload;
 
 	FEventContext() = default;
 
@@ -49,5 +55,5 @@ public :
 		Ctx.WorldTimeSeconds = (InSender && InSender->GetWorld()) ? InSender->GetWorld()->GetTimeSeconds() : 0.0;
 		return Ctx;
 	}
-	
+    
 };

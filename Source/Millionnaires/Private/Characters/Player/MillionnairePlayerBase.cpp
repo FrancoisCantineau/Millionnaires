@@ -52,7 +52,7 @@ static FAutoConsoleCommand CCmdDamage(
         Stats->ModifyHealth(-20.0f);
         float HealthAfter = Stats->GetCurrentHealth();
 
-        UE_LOG(LogTemp, Warning, TEXT("✓ DAMAGE APPLIED: %.1f -> %.1f (%.1f damage)"),
+        UE_LOG(LogTemp, Warning, TEXT("DAMAGE APPLIED: %.1f -> %.1f (%.1f damage)"),
             HealthBefore, HealthAfter, HealthBefore - HealthAfter);
     })
 );
@@ -152,20 +152,14 @@ void AMillionnairePlayerBase::BeginPlay()
         }
     }*/
 
+    // CLEANUP: was routing through IControllerInterface::Execute_CanPerform(PC, EPlayerAction::Interact) -
+    // a round-trip through the Controller for something ActionComponent (already on this Pawn,
+    // already consulted the same way by DoJumpStart below) answers directly. Same pattern, no
+    // detour through the Controller needed.
     InteractionComponent->CanInteractDelegate.BindLambda([this]() -> bool
-{
-    APlayerController* PC = Cast<APlayerController>(GetController());
-
-    if (!PC || !PC->Implements<UControllerInterface>())
     {
-        return true;
-    }
-
-    return IControllerInterface::Execute_CanPerform(
-        PC,
-        EPlayerAction::Interact
-    );
-});
+        return ActionComponent && ActionComponent->CanPerform(TAG_Action_Interact);
+    });
 
     FActiveContext DefaultContext;
     DefaultContext.Definition = DefaultContextData;
@@ -195,7 +189,7 @@ void AMillionnairePlayerBase::Tick(float DeltaTime)
     }
 }
 
-void AMillionnairePlayerBase::HandleInput_Implementation(FGameplayTag Tag, const FInputActionValue& Value)
+void AMillionnairePlayerBase::HandleInput_Implementation(FGameplayTag Tag, const FInputActionValue& Value, ETriggerEvent TriggerEvent)
 {
     if (Tag ==  (TAG_Action_Jump))
     {
@@ -216,7 +210,7 @@ void AMillionnairePlayerBase::HandleInput_Implementation(FGameplayTag Tag, const
 }
 
 // -------------------------------------------------
-//  INPUT SETUP — vide, tout est sur le Controller
+//  INPUT SETUP - vide, tout est sur le Controller
 // -------------------------------------------------
 
 void AMillionnairePlayerBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -225,7 +219,7 @@ void AMillionnairePlayerBase::SetupPlayerInputComponent(UInputComponent* PlayerI
 }
 
 // -------------------------------------------------
-//  VERBES — exécution pure, pas de décision
+//  VERBES - exécution pure, pas de décision
 // -------------------------------------------------
 #pragma region Verbes
 
@@ -468,8 +462,6 @@ bool AMillionnairePlayerBase::HasSpaceForItemInAnyInventory_Implementation(
 
 void AMillionnairePlayerBase::TryStartTraversal(ATraversalActor* Target)
 {
-    UE_LOG(LogTemp, Warning, TEXT("TraversalComponent: %p"), ATraversalComponent);
-    UE_LOG(LogTemp, Warning, TEXT("TraversalComponent2: %p"), ATraversalComponent);
     if (!ATraversalComponent) return;
 
     ATraversalComponent->StartTraversal(Target);

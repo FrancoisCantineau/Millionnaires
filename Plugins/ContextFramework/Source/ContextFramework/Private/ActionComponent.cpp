@@ -78,14 +78,8 @@ void UActionComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 	
 void UActionComponent::BlockAction(const FGameplayTag& ActionTag)
 {
-	UE_LOG(LogTemp, Warning, TEXT("this = %p"), this);
-	UE_LOG(LogTemp, Warning, TEXT("Valid = %d"), ActionTag.IsValid());
-	UE_LOG(LogTemp, Warning, TEXT("Map Num = %d"), BlockCounters.Num());
-	//BlockCounters[ActionTag]++;
 	int32& Counter = BlockCounters.FindOrAdd(ActionTag);
 	Counter++;
-
-	UE_LOG(LogTemp, Warning, TEXT("Counter = %d"), Counter);
 }
 
 void UActionComponent::UnblockAction(const FGameplayTag& ActionTag)
@@ -107,16 +101,5 @@ void UActionComponent::UnblockAction(const FGameplayTag& ActionTag)
 
 bool UActionComponent::CanPerform(const FGameplayTag& ActionTag) const
 {
-	UE_LOG(LogTemp, Warning, TEXT("---- BlockCounters Dump ----"));
-
-	for (const TPair<FGameplayTag, int32>& Pair : BlockCounters)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Tag: %s | Count: %d"),
-			*Pair.Key.ToString(),
-			Pair.Value);
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("---- End Dump ----"));
-
 	return !BlockCounters.Contains(ActionTag);
 }

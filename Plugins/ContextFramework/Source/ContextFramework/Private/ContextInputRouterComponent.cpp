@@ -54,6 +54,11 @@ void UContextInputRouterComponent::TickComponent(float DeltaTime, ELevelTick Tic
 void UContextInputRouterComponent::HandleInputReceived(
 	const FInputActionInstance& Instance)
 {
+	if (!CachedContextComponent)
+	{
+		return;
+	}
+
 	const UInputAction* Action = Instance.GetSourceAction();
 
 	const FGameplayTag* Tag = ActionToTagMap.Find(Action);
@@ -69,7 +74,8 @@ void UContextInputRouterComponent::HandleInputReceived(
 		IInputReceiverInterface::Execute_HandleInput(
 			CurrentReceiver,
 			*Tag,
-			Instance.GetValue()
+			Instance.GetValue(),
+			Instance.GetTriggerEvent()
 		);
 	}
 }

@@ -38,6 +38,7 @@ public:
 
 	virtual int32 GetProgressCurrent() const override { return CurrentCount; }
 	virtual int32 GetProgressTarget() const override { return TargetCount; }
+	virtual void SetProgressCurrent(int32 Value) override { CurrentCount = FMath::Clamp(Value, 0, TargetCount); }
 
 protected:
 

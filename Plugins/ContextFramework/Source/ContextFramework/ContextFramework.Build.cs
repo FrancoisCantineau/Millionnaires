@@ -40,6 +40,7 @@ public class ContextFramework : ModuleRules
 				"SlateCore",
 				"GameplayTags",
 				"EnhancedInput",
+				"GameplayCore",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

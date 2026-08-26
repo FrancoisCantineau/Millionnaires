@@ -5,6 +5,7 @@
 #include "GameplayTagContainer.h"
 #include "QuestObjectiveOwnerInterface.h"
 #include "QuestRuntimeState.h"
+#include "QuestSaveData.h"
 #include "QuestComponent.generated.h"
 
 class UQuestDefinition;
@@ -54,6 +55,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Quest")
 	bool StartQuest(UQuestDefinition* Definition);
 
+	/** Server-only. Force-fails an active quest directly - for scripted causes (a story beat, an
+	 *  Orchestrator sequence) rather than an objective failing on its own via
+	 *  IQuestObjectiveOwnerInterface::OnObjectiveFailed. No-op if the quest isn't Active. */
+	UFUNCTION(BlueprintCallable, Category = "Quest")
+	bool FailQuestById(FName QuestId);
+
+	/** Server-only. Force-completes an active quest directly, skipping normal per-objective
+	 *  completion - for scripted resolutions (a cutscene, an Orchestrator sequence) where the
+	 *  outcome is decided externally rather than earned by finishing each objective. No-op if
+	 *  the quest isn't Active. */
+	UFUNCTION(BlueprintCallable, Category = "Quest")
+	bool CompleteQuestById(FName QuestId);
+
 	/** Safe to call on client or server - reads the replicated snapshot. */
 	UFUNCTION(BlueprintPure, Category = "Quest")
 	bool GetQuestState(FName QuestId, FQuestRuntimeState& OutState) const;
@@ -67,6 +81,22 @@ public:
 	 *  since it's just loading the same packaged DataAsset, not something that needs to cross the network. */
 	UFUNCTION(BlueprintPure, Category = "Quest")
 	UQuestDefinition* GetQuestDefinition(FName QuestId) const;
+
+	/** QuestSystem's own save contract - see FQuestSaveData. Server-only (has no meaning on a
+	 *  client, which never owns the authoritative state to begin with). A project's save system
+	 *  calls this to get something to write to disk - QuestSystem has no opinion on HOW or WHEN
+	 *  that happens, or which save plugin (if any) is used. */
+	UFUNCTION(BlueprintCallable, Category = "Quest")
+	FQuestSaveData CaptureSaveData() const;
+
+	/** Restores from a previously captured FQuestSaveData. Server-only. Recreates live
+	 *  UQuestObjective instances for any quest/objective that was Active when saved (definitions
+	 *  must already be registered via RegisterQuestDefinition before calling this - same
+	 *  requirement as StartQuest). KNOWN LIMITATION: a timed objective's countdown restarts from
+	 *  its full TimeLimitSeconds rather than resuming from where it was - the elapsed time isn't
+	 *  currently part of the saved payload. Fine for now, flagged rather than silently wrong. */
+	UFUNCTION(BlueprintCallable, Category = "Quest")
+	void RestoreSaveData(const FQuestSaveData& SaveData);
 
 	//~ IQuestObjectiveOwnerInterface (server-only, since only the server ever creates live instances)
 	virtual void OnObjectiveCompleted(UQuestObjective* Objective) override;

@@ -119,6 +119,7 @@ void UContextComponent::BeginPlay()
 void UContextComponent::ApplyContextToInput(const FActiveContext& Context)
 {
 	if (!Context.Definition) return;
+	if (!Context.Definition->InputMappingData) return;
 
 	UInputMappingContext* IMC = Context.Definition->InputMappingData->MappingContext;
 	if (!IMC) return;

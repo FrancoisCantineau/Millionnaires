@@ -175,7 +175,7 @@ public:
     //  VERBES — appelés par le Controller
     // -------------------------------------------------
 
-    virtual void HandleInput_Implementation(FGameplayTag Tag, const FInputActionValue& Value) override;
+    virtual void HandleInput_Implementation(FGameplayTag Tag, const FInputActionValue& Value, ETriggerEvent TriggerEvent) override;
     
     UFUNCTION(BlueprintCallable, Category = "Input")
     virtual void DoMove(float Right, float Forward);

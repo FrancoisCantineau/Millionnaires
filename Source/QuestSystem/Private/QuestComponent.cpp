@@ -129,6 +129,73 @@ bool UQuestComponent::StartQuest(UQuestDefinition* Definition)
 	return true;
 }
 
+bool UQuestComponent::FailQuestById(FName QuestId)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UQuestComponent::FailQuestById - called on a client, ignored. Route this through a server RPC in gameplay code."));
+		return false;
+	}
+
+	FQuestRuntimeState* QuestState = ActiveQuestStates.FindByPredicate(
+		[&QuestId](const FQuestRuntimeState& Q) { return Q.QuestId == QuestId; });
+
+	if (!QuestState || QuestState->State != EQuestState::Active)
+	{
+		return false;
+	}
+
+	// Same simplification as OnObjectiveFailed: mark every still-open objective Failed too,
+	// so a UI reading per-objective state doesn't show stale "InProgress" entries on a quest
+	// that's actually done.
+	for (FQuestObjectiveRuntimeState& ObjState : QuestState->Objectives)
+	{
+		if (ObjState.State == EQuestObjectiveState::Active || ObjState.State == EQuestObjectiveState::Inactive)
+		{
+			ObjState.State = EQuestObjectiveState::Failed;
+		}
+	}
+
+	QuestState->State = EQuestState::Failed;
+
+	OnQuestStateChanged.Broadcast(QuestId);
+	return true;
+}
+
+bool UQuestComponent::CompleteQuestById(FName QuestId)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UQuestComponent::CompleteQuestById - called on a client, ignored. Route this through a server RPC in gameplay code."));
+		return false;
+	}
+
+	FQuestRuntimeState* QuestState = ActiveQuestStates.FindByPredicate(
+		[&QuestId](const FQuestRuntimeState& Q) { return Q.QuestId == QuestId; });
+
+	if (!QuestState || QuestState->State != EQuestState::Active)
+	{
+		return false;
+	}
+
+	// Same reasoning as FailQuestById: force every still-open objective Completed too, so a UI
+	// reading per-objective state doesn't show stale "InProgress" entries on a quest that's
+	// actually done. This intentionally bypasses each objective's own completion condition -
+	// that's the whole point of a forced/scripted resolution.
+	for (FQuestObjectiveRuntimeState& ObjState : QuestState->Objectives)
+	{
+		if (ObjState.State == EQuestObjectiveState::Active || ObjState.State == EQuestObjectiveState::Inactive)
+		{
+			ObjState.State = EQuestObjectiveState::Completed;
+		}
+	}
+
+	QuestState->State = EQuestState::Completed;
+
+	OnQuestStateChanged.Broadcast(QuestId);
+	return true;
+}
+
 void UQuestComponent::ActivateEligibleObjectives(FQuestRuntimeState& QuestState)
 {
 	TObjectPtr<UQuestDefinition>* DefinitionPtr = AvailableQuests.Find(QuestState.QuestId);
@@ -314,6 +381,71 @@ UQuestDefinition* UQuestComponent::GetQuestDefinition(FName QuestId) const
 		return *Found;
 	}
 	return nullptr;
+}
+
+FQuestSaveData UQuestComponent::CaptureSaveData() const
+{
+	FQuestSaveData SaveData;
+	SaveData.Quests = ActiveQuestStates;
+	return SaveData;
+}
+
+void UQuestComponent::RestoreSaveData(const FQuestSaveData& SaveData)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UQuestComponent::RestoreSaveData - called on a client, ignored."));
+		return;
+	}
+
+	// Discard any live instances from before the load (there shouldn't normally be any at this
+	// point, e.g. right after level load, but this keeps restore safe to call more than once).
+	ServerOnlyLiveInstances.Empty();
+
+	ActiveQuestStates = SaveData.Quests;
+
+	for (FQuestRuntimeState& QuestState : ActiveQuestStates)
+	{
+		if (QuestState.State != EQuestState::Active)
+		{
+			continue;
+		}
+
+		UQuestDefinition* Definition = GetQuestDefinition(QuestState.QuestId);
+		if (!Definition)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("UQuestComponent::RestoreSaveData - '%s' has no registered definition, its objectives won't resume. Call RegisterQuestDefinition before RestoreSaveData."), *QuestState.QuestId.ToString());
+			continue;
+		}
+
+		for (FQuestObjectiveRuntimeState& ObjState : QuestState.Objectives)
+		{
+			if (ObjState.State != EQuestObjectiveState::Active)
+			{
+				continue;
+			}
+
+			const FQuestObjectiveEntry* Entry = Definition->Objectives.FindByPredicate(
+				[&ObjState](const FQuestObjectiveEntry& E) { return E.ObjectiveId == ObjState.ObjectiveId; });
+			if (!Entry || !Entry->ObjectiveTemplate)
+			{
+				continue;
+			}
+
+			// Recreate the live instance and fast-forward its progress to the saved value.
+			// KNOWN LIMITATION: this calls ObjectiveActivate(), which (re)starts any time limit
+			// from full TimeLimitSeconds - a timed objective effectively gets its countdown reset
+			// on load rather than resuming from where it was. Not solved here, see header comment.
+			UQuestObjective* Instance = DuplicateObject<UQuestObjective>(Entry->ObjectiveTemplate, this);
+			Instance->Initialize(this);
+			Instance->ObjectiveActivate();
+			Instance->SetProgressCurrent(ObjState.ProgressCurrent);
+
+			ServerOnlyLiveInstances.Add(Instance, TPair<FName, FName>(QuestState.QuestId, ObjState.ObjectiveId));
+		}
+	}
+
+	OnQuestStateChanged.Broadcast(NAME_None);
 }
 
 void UQuestComponent::OnRep_ActiveQuestStates()

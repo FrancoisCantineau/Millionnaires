@@ -1,4 +1,12 @@
 ﻿#include "InputChallengeComponent.h"
+#include "UI/InputChallengeWidget.h"
+#include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerController.h"
+#include "Blueprint/UserWidget.h"
+#include "Kismet/GameplayStatics.h"
+#include "Event/GameplayEventBus.h"
+#include "Core/GameplayEventContext.h"
+#include "Tags/CoreGameplayTags.h"
 
 UInputChallengeComponent::UInputChallengeComponent()
 {
@@ -9,8 +17,13 @@ void UInputChallengeComponent::StartChallenge(UInputChallengeDefinition* Definit
 {
     if (!Definition) return;
 
+    if (State == EInputChallengeState::Running)
+    {
+        AbortChallenge(); // <- si AbortChallenge fait bien le Pop (voir plus bas), l'ordre est correct :
+                           //    on quitte l'ancien contexte AVANT de pousser le nouveau
+    }
+
     ActiveDefinition = Definition;
-    bIsActive        = true;
     CurrentCount     = 0;
     SequenceIndex    = 0;
     RemainingTime    = Definition->TimeLimit;
@@ -21,13 +34,104 @@ void UInputChallengeComponent::StartChallenge(UInputChallengeDefinition* Definit
     OnChallengeStarted.Broadcast(Definition);
     OnProgress.Broadcast(0.f);
     OnExpectedActionChanged.Broadcast(GetCurrentExpectedAction());
+
+    CreateChallengeWidget();
+
+    if (Definition->bUseSlowMotion && GetWorld())
+    {
+        UGameplayStatics::SetGlobalTimeDilation(GetWorld(), Definition->SlowMotionScale);
+    }
+
+    PushChallengeContext();
+}
+
+void UInputChallengeComponent::PushChallengeContext()
+{
+    UGameInstance* GameInstance = GetWorld() ? GetWorld()->GetGameInstance() : nullptr;
+    UGameplayEventBus* Bus = GameInstance ? GameInstance->GetSubsystem<UGameplayEventBus>() : nullptr;
+    if (!Bus) return;
+
+    FEventContext Ctx = FEventContext::Make(TAG_Request_Context_Push, GetOwner(), GetOwner());
+    Ctx.AdditionalTags.AddTag(TAG_Context_Challenge);
+    Ctx.Payload = this;
+    Bus->Broadcast(TAG_Request_Context_Push, Ctx);
+}
+
+void UInputChallengeComponent::PopChallengeContext()
+{
+    UGameInstance* GameInstance = GetWorld() ? GetWorld()->GetGameInstance() : nullptr;
+    UGameplayEventBus* Bus = GameInstance ? GameInstance->GetSubsystem<UGameplayEventBus>() : nullptr;
+    if (!Bus) return;
+
+    FEventContext Ctx = FEventContext::Make(TAG_Request_Context_Pop, GetOwner(), GetOwner());
+    Ctx.AdditionalTags.AddTag(TAG_Context_Challenge);
+    Bus->Broadcast(TAG_Request_Context_Pop, Ctx);
+}
+
+void UInputChallengeComponent::CreateChallengeWidget()
+{
+    // The definition's own style takes priority - lets a specific challenge look different
+    // from the component's default without the caller ever choosing a widget class.
+    TSubclassOf<UInputChallengeWidget> ClassToUse = (ActiveDefinition && ActiveDefinition->WidgetClassOverride)
+        ? ActiveDefinition->WidgetClassOverride : WidgetClass;
+
+    if (!ClassToUse)
+    {
+        return;
+    }
+
+    // Resolve a PlayerController regardless of whether this component lives on a Pawn or a
+    // PlayerController directly (either is a reasonable place to put it - see design discussion).
+    APlayerController* PC = nullptr;
+    if (APlayerController* AsPC = Cast<APlayerController>(GetOwner()))
+    {
+        PC = AsPC;
+    }
+    else if (APawn* AsPawn = Cast<APawn>(GetOwner()))
+    {
+        PC = Cast<APlayerController>(AsPawn->GetController());
+    }
+
+    if (!PC)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("UInputChallengeComponent::CreateChallengeWidget - couldn't resolve a PlayerController from '%s'. WidgetClass won't be shown."), GetOwner() ? *GetOwner()->GetName() : TEXT("(no owner)"));
+        return;
+    }
+
+    ActiveWidget = CreateWidget<UInputChallengeWidget>(PC, ClassToUse);
+    if (ActiveWidget)
+    {
+        ActiveWidget->Init(this);
+        ActiveWidget->AddToViewport();
+    }
+}
+
+void UInputChallengeComponent::CleanupChallengeWidget()
+{
+    if (ActiveWidget)
+    {
+        ActiveWidget->RemoveFromParent();
+        ActiveWidget = nullptr;
+    }
+}
+
+void UInputChallengeComponent::RestoreTimeDilation()
+{
+    if (ActiveDefinition && ActiveDefinition->bUseSlowMotion && GetWorld())
+    {
+        UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.0f);
+    }
 }
 
 void UInputChallengeComponent::AbortChallenge()
 {
-    if (!bIsActive) return;
+    if (State != EInputChallengeState::Running) return;
 
-    bIsActive = false;
+    State = EInputChallengeState::Idle;
+    bHolding = false;
+    CleanupChallengeWidget();
+    RestoreTimeDilation();
+    PopChallengeContext();
     OnChallengeEnded.Broadcast();
 }
 
@@ -35,7 +139,7 @@ void UInputChallengeComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
     FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-    if (!bIsActive || !ActiveDefinition)
+    if (State != EInputChallengeState::Running || !ActiveDefinition)
         return;
 
     if (ActiveDefinition->TimeLimit > 0.f)
@@ -79,7 +183,10 @@ float UInputChallengeComponent::GetProgressPercent() const
     case EInputChallengeType::Spam:
         return FMath::Clamp((float)CurrentCount / ActiveDefinition->RequiredCount, 0.f, 1.f);
     case EInputChallengeType::Sequence:
-        return FMath::Clamp((float)SequenceIndex / ActiveDefinition->ExpectedActions.Num(), 0.f, 1.f);
+        return FMath::Clamp((float)SequenceIndex / ActiveDefinition->ExpectedInputs.Num(), 0.f, 1.f);
+    case EInputChallengeType::Hold:
+        return ActiveDefinition->HoldDuration > 0.f
+            ? FMath::Clamp(CurrentHoldTime / ActiveDefinition->HoldDuration, 0.f, 1.f) : 0.f;
     default:
         return 0.f;
     }
@@ -88,7 +195,7 @@ float UInputChallengeComponent::GetProgressPercent() const
 
 void UInputChallengeComponent::HandleInputPressed(UInputAction* Action)
 {
-    if (!bIsActive || !ActiveDefinition || !Action)
+    if (State != EInputChallengeState::Running || !ActiveDefinition || !Action)
         return;
 
     switch (ActiveDefinition->Type)
@@ -106,6 +213,10 @@ void UInputChallengeComponent::HandleInputPressed(UInputAction* Action)
                     Succeed();
                 }
             }
+            else
+            {
+                OnMistake.Broadcast();
+            }
             break;
         }
 
@@ -121,20 +232,25 @@ void UInputChallengeComponent::HandleInputPressed(UInputAction* Action)
                     GetCurrentExpectedAction()
                 );
 
-                if (SequenceIndex >= ActiveDefinition->ExpectedActions.Num())
+                if (SequenceIndex >= ActiveDefinition->ExpectedInputs.Num())
                 {
                     Succeed();
                 }
             }
-            else if (ActiveDefinition->bResetOnMistake)
+            else
             {
-                SequenceIndex = 0;
+                OnMistake.Broadcast();
 
-                OnProgress.Broadcast(0.f);
+                if (ActiveDefinition->bResetOnMistake)
+                {
+                    SequenceIndex = 0;
 
-                OnExpectedActionChanged.Broadcast(
-                    GetCurrentExpectedAction()
-                );
+                    OnProgress.Broadcast(0.f);
+
+                    OnExpectedActionChanged.Broadcast(
+                        GetCurrentExpectedAction()
+                    );
+                }
             }
 
             break;
@@ -155,7 +271,14 @@ void UInputChallengeComponent::HandleInputPressed(UInputAction* Action)
 
 void UInputChallengeComponent::HandleInputReleased(UInputAction* Action)
 {
-    if (!ActiveDefinition) return;
+    if (State != EInputChallengeState::Running || !ActiveDefinition) return;
+
+    // Release only means something for a Hold challenge - Spam/Sequence never set bHolding,
+    // so CurrentHoldTime stays at 0.f for them. Without this guard, a mistakenly non-zero
+    // HoldDuration left on a Spam/Sequence definition would auto-Fail the challenge the moment
+    // the player releases the expected key, even though nothing was ever supposed to be held.
+    if (ActiveDefinition->Type != EInputChallengeType::Hold)
+        return;
 
     if (Action != GetCurrentExpectedAction())
         return;
@@ -172,22 +295,63 @@ void UInputChallengeComponent::HandleInputReleased(UInputAction* Action)
 
 UInputAction* UInputChallengeComponent::GetCurrentExpectedAction() const
 {
-    if (!bIsActive || !ActiveDefinition) return nullptr;
+    if (State != EInputChallengeState::Running || !ActiveDefinition) return nullptr;
     switch (ActiveDefinition->Type)
     {
     case EInputChallengeType::Spam:
-        return ActiveDefinition->ExpectedActions.IsValidIndex(0)
-            ? ActiveDefinition->ExpectedActions[0] : nullptr;
-    case EInputChallengeType::Sequence:
-        return ActiveDefinition->ExpectedActions.IsValidIndex(SequenceIndex)
-            ? ActiveDefinition->ExpectedActions[SequenceIndex] : nullptr;
-
     case EInputChallengeType::Hold:
-        return ActiveDefinition->ExpectedActions.IsValidIndex(0)
-            ? ActiveDefinition->ExpectedActions[0] : nullptr;
-        
+        return ActiveDefinition->ExpectedInputs.IsValidIndex(0)
+            ? ActiveDefinition->ExpectedInputs[0].Action : nullptr;
+    case EInputChallengeType::Sequence:
+        return ActiveDefinition->ExpectedInputs.IsValidIndex(SequenceIndex)
+            ? ActiveDefinition->ExpectedInputs[SequenceIndex].Action : nullptr;
     default:
         return nullptr;
+    }
+}
+
+UInputAction* UInputChallengeComponent::ResolveActionFromTag(FGameplayTag Tag) const
+{
+    if (!ActiveDefinition || !Tag.IsValid())
+    {
+        return nullptr;
+    }
+
+    for (const FExpectedInputEntry& Entry : ActiveDefinition->ExpectedInputs)
+    {
+        if (Entry.Tag == Tag)
+        {
+            return Entry.Action;
+        }
+    }
+    return nullptr;
+}
+
+void UInputChallengeComponent::HandleInput_Implementation(FGameplayTag Tag, const FInputActionValue& Value, ETriggerEvent TriggerEvent)
+{
+    UInputAction* Action = ResolveActionFromTag(Tag);
+    if (!Action)
+    {
+        return;
+    }
+
+    switch (TriggerEvent)
+    {
+    case ETriggerEvent::Started:
+        HandleInputPressed(Action);
+        break;
+	case ETriggerEvent::Completed:
+        HandleInputReleased(Action);
+        break;
+
+	case ETriggerEvent::Triggered:
+        HandleInputPressed(Action);
+        break;
+    case ETriggerEvent::Canceled:
+        HandleInputReleased(Action);
+        break;
+    default:
+        break;
     }
 }
 
@@ -196,10 +360,13 @@ UInputAction* UInputChallengeComponent::GetCurrentExpectedAction() const
 void UInputChallengeComponent::Succeed()
 {
     State = EInputChallengeState::Success;
-    
-    bIsActive = false;
+
     bHolding = false;
+    CleanupChallengeWidget();
+    RestoreTimeDilation();
     
+    PopChallengeContext();
+
     OnSuccess.Broadcast();
     OnChallengeEnded.Broadcast();
 }
@@ -208,9 +375,12 @@ void UInputChallengeComponent::Fail()
 {
     State = EInputChallengeState::Failed;
 
-    bIsActive = false;
     bHolding = false;
+    CleanupChallengeWidget();
+    RestoreTimeDilation();
     
+    PopChallengeContext();
+
     OnFailure.Broadcast();
     OnChallengeEnded.Broadcast();
 }

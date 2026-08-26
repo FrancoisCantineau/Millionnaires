@@ -101,6 +101,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Quest")
 	virtual int32 GetProgressTarget() const { return -1; }
 
+	/** For restoring saved progress onto a freshly-activated instance (e.g. a loaded Counter
+	 *  jumping straight to 2/5 instead of starting from 0). No-op on the base class - only
+	 *  meaningful for objective types that track numeric progress. */
+	virtual void SetProgressCurrent(int32 Value) {}
+
 	/** Any extra label/value text this objective wants shown (e.g. time remaining). Only ever
 	 *  called server-side, where the live instance actually exists - see UQuestComponent.
 	 *  Override and call Super() first if a subclass wants to add its own fields on top. */

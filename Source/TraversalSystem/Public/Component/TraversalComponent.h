@@ -28,7 +28,7 @@ public:
     ACharacter* GetOwnerCharacter() const {return OwnerCharacter;};
     
     // IInputReceiverInterface
-    virtual void HandleInput_Implementation(FGameplayTag Tag, const FInputActionValue& Value) override;
+    virtual void HandleInput_Implementation(FGameplayTag Tag, const FInputActionValue& Value, ETriggerEvent TriggerEvent) override;
 
     // API publique
     void StartTraversal(ATraversalActor* Target);

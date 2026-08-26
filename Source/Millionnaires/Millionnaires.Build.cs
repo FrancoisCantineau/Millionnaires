@@ -47,6 +47,7 @@ public class Millionnaires : ModuleRules
 			"InputGlyphCore",
 			
 			"ContextFramework",
+			"GameplayCore"
 			
 
 		});

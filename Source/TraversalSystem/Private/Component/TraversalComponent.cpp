@@ -125,7 +125,7 @@ void UTraversalComponent::SetMovementEnabled(bool bEnabled)
 // INPUT
 // ============================================================
 
-void UTraversalComponent::HandleInput_Implementation(FGameplayTag Tag, const FInputActionValue& Value)
+void UTraversalComponent::HandleInput_Implementation(FGameplayTag Tag, const FInputActionValue& Value, ETriggerEvent TriggerEvent)
 {
     if (State == ETraversalState::Traversing)
     {
