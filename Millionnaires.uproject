@@ -97,8 +97,11 @@
 		},
 		{
 			"Name": "ContextFramework",
-			"Enabled" : true
+			"Enabled": true
 		}
+	],
+	"AdditionalPluginDirectories": [
+		"Source"
 	],
 	"TargetPlatforms": [
 		"Linux",
