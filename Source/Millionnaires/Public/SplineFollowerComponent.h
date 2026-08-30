@@ -63,6 +63,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "SplineFollower")
 	ESplineFollowerState GetState() const { return State; }
 
+	/** Fired whenever the state machine transitions — hook brake screech/sparks on entering
+	 *  Braking/EmergencyBraking, an acceleration/traction sound on Accelerating, an ambient
+	 *  cruising loop on Cruising, etc. Fires once per transition, not every Tick. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "SplineFollower")
+	void OnStateChanged(ESplineFollowerState OldState, ESplineFollowerState NewState);
+
 	/** Current distance traveled along the spline, in cm. Used by AMetroWagon to compute its own trailing position. */
 	UFUNCTION(BlueprintPure, Category = "SplineFollower")
 	float GetDistanceAlongSpline() const { return DistanceAlongSpline; }

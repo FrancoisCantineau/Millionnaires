@@ -10,18 +10,28 @@
 class USphereComponent;
 class UAudioComponent;
 class USoundBase;
+class USoundEffectSourcePresetChain;
 
 /**
- * A physical speaker. Only actually plays when ALL of these are true:
- *  - The control-room PA is broadcasting (UMusicBroadcastSubsystem::IsBroadcasting())
- *  - The player is within ActivationRadius of this speaker (proximity, not a logical zone —
- *    this exists purely so not every speaker on the map plays at once)
- *  - This speaker's zone doesn't currently have an active power-affecting incident
+ * A physical speaker with three independent, layered audio channels, each on its own
+ * AudioComponent, in increasing priority:
  *
- * The actual fade/pitch-slowdown/muffled-speaker-filter effects are NOT implemented here —
- * OnMusicStarted/OnMusicStopped/OnPowerLost/OnPowerRestored/OnFlicker are Blueprint events for
- * you to drive with Timelines (fade curves, a LowPassFilterFrequency lerp for the speaker's
- * muffled tone, a PitchMultiplier lerp for the "dying down" effect on power loss).
+ *  - Music     (AudioComp)          — looping background music, follows the player like the
+ *                                     others, gated by UMusicBroadcastSubsystem::IsBroadcasting().
+ *  - Voice     (BroadcastAudioComp) — an ongoing/live voice broadcast (PA announcer, a haunting
+ *                                     voice, etc.) that also follows the player across speakers,
+ *                                     and ducks Music while active.
+ *  - OneShot   (OneShotAudioComp)   — a single generic sound (voice line, SFX, alarm...), ducks
+ *                                     BOTH Music and Voice while it plays, then restores them.
+ *                                     Overlapping one-shots queue rather than cutting each other off.
+ *
+ * All three channels only ever play while the player is within ActivationRadius of THIS speaker
+ * and this speaker's zone doesn't have an active power-affecting incident — Music and Voice
+ * additionally require their respective subsystem-level broadcast to be active.
+ *
+ * Addressing a speaker: hold a direct reference and call PlayOneShot()/etc. on it for a SINGLE
+ * speaker; use the subsystem's zone-scoped functions (PlayOneShot(Sound, Zone), RequestVoiceBroadcast
+ * with a Zone) for a whole zone; leave Zone invalid on those for every speaker on the map.
  */
 UCLASS()
 class MILLIONNAIRES_API AMusicSpeaker : public AActor
@@ -45,26 +55,55 @@ protected:
 	void OnBroadcastStateChangedDelegate(bool bIsBroadcasting, USoundBase* Track);
 
 	UFUNCTION()
+	void OnVoiceBroadcastStateChangedDelegate(bool bIsActive, USoundBase* Voice, FGameplayTag Zone);
+
+	UFUNCTION()
+	void OnOneShotRequestedDelegate(USoundBase* Sound, FGameplayTag Zone);
+
+	UFUNCTION()
+	void OnOneShotFinished();
+
+	UFUNCTION()
 	void OnIncidentTriggeredDelegate(FShipIncident Incident);
 
 	UFUNCTION()
 	void OnIncidentResolvedDelegate(FShipIncident Incident);
 
 public:
-	/** The AudioComponent actually playing the track — use this directly in Blueprint for
-	 *  FadeIn/FadeOut/SetPitchMultiplier/SetLowPassFilterEnabled calls. */
+	/** Music/background layer. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "MusicSpeaker")
 	TObjectPtr<UAudioComponent> AudioComp;
 
-	/** How close the player needs to be for this speaker to turn on at all. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MusicSpeaker")
-	float ActivationRadius = 1500.f;
+	/** Voice/PA layer — ducks AudioComp while active. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "MusicSpeaker")
+	TObjectPtr<UAudioComponent> BroadcastAudioComp;
 
-	/** Identifies this speaker's electrical zone, for incident matching (mirrors ULightBaseComponent's ZoneType). */
+	/** One-shot layer — ducks both of the above while playing. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "MusicSpeaker")
+	TObjectPtr<UAudioComponent> OneShotAudioComp;
+
+	/** How close the player needs to be for this speaker to turn on. Leave at -1 to use
+	 *  UMusicBroadcastSubsystem::DefaultActivationRadius instead of setting one per speaker. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MusicSpeaker")
+	float ActivationRadius = -1.f;
+
+	/** Identifies this speaker's electrical zone — used for both incident matching and
+	 *  zone-scoped Voice/OneShot targeting. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MusicSpeaker")
 	FGameplayTag ZoneType;
 
-	/** Roughly how often (seconds, average) a flicker/dropout can occur while playing. */
+	/** Volume multiplier applied to a layer while something higher-priority is ducking it. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MusicSpeaker")
+	float DuckVolume = 0.2f;
+
+	/** Optional Source Effect Chain (Bit Crusher, Ring Modulator, etc.) applied to everything
+	 *  this speaker plays, for a degraded/robotic PA tone. Create the chain asset in the Content
+	 *  Browser (right-click > Sounds > Source Effects) and assign it here — left empty, speakers
+	 *  play with no extra processing. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MusicSpeaker")
+	TObjectPtr<USoundEffectSourcePresetChain> RoboticEffectChain;
+
+	/** Roughly how often (seconds, average) a flicker/dropout can occur while Music is playing. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MusicSpeaker|Flicker")
 	float FlickerAverageInterval = 20.f;
 
@@ -72,25 +111,39 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MusicSpeaker|Flicker")
 	float FlickerChance = 0.3f;
 
-	/** Fired when this speaker should start playing (all conditions met). Play AudioComp here with your fade-in/LPF setup. */
-	UFUNCTION(BlueprintImplementableEvent, Category = "MusicSpeaker")
+	/** Plays Sound once on THIS speaker specifically, queueing if another one-shot is already
+	 *  playing here. Default C++ behavior: ducks Music+Voice, plays, restores them when done
+	 *  (including through a queue of several). Override in Blueprint only for custom behavior. */
+	UFUNCTION(BlueprintNativeEvent, Category = "MusicSpeaker")
+	void PlayOneShot(USoundBase* Sound);
+	virtual void PlayOneShot_Implementation(USoundBase* Sound);
+
+	/** Fired when Music starts/stops on this speaker. Default C++ behavior already plays/fades
+	 *  AudioComp — these are for an extra Blueprint flourish (lights, VFX) if you want one. */
+	UFUNCTION(BlueprintNativeEvent, Category = "MusicSpeaker")
 	void OnMusicStarted(USoundBase* Track);
+	virtual void OnMusicStarted_Implementation(USoundBase* Track);
 
-	/** Fired when this speaker should stop (any condition became false). */
-	UFUNCTION(BlueprintImplementableEvent, Category = "MusicSpeaker")
+	UFUNCTION(BlueprintNativeEvent, Category = "MusicSpeaker")
 	void OnMusicStopped();
+	virtual void OnMusicStopped_Implementation();
 
-	/** Fired when this speaker's zone loses power while it was playing — implement the fade-out + slowdown effect. */
-	UFUNCTION(BlueprintImplementableEvent, Category = "MusicSpeaker")
+	/** Fired when this speaker's zone loses power while Music was playing. Default: fade-out.
+	 *  Override in Blueprint for a pitch-slowdown "dying down" effect if you want one. */
+	UFUNCTION(BlueprintNativeEvent, Category = "MusicSpeaker")
 	void OnPowerLost();
+	virtual void OnPowerLost_Implementation();
 
-	/** Fired when power is restored — only actually resume playback if still in-range and broadcasting. */
-	UFUNCTION(BlueprintImplementableEvent, Category = "MusicSpeaker")
+	/** Fired when power is restored and Music actually resumes. Default: no-op (OnMusicStarted
+	 *  already handles the resume) — this is only for an extra flourish. */
+	UFUNCTION(BlueprintNativeEvent, Category = "MusicSpeaker")
 	void OnPowerRestored();
+	virtual void OnPowerRestored_Implementation();
 
-	/** Fired occasionally while playing, for a brief volume dip / static burst — purely cosmetic. */
-	UFUNCTION(BlueprintImplementableEvent, Category = "MusicSpeaker")
+	/** Fired occasionally while Music is playing. Default: a brief volume dip. */
+	UFUNCTION(BlueprintNativeEvent, Category = "MusicSpeaker")
 	void OnFlicker();
+	virtual void OnFlicker_Implementation();
 
 private:
 	UPROPERTY(VisibleAnywhere, Category = "MusicSpeaker")
@@ -99,12 +152,24 @@ private:
 	bool bPlayerInRange = false;
 	bool bPowerCutInMyZone = false;
 
+	bool bIsCurrentlyPlayingMusic = false;
+	bool bIsCurrentlyPlayingVoice = false;
+
+	FGameplayTag VoiceZoneFilter;
+
+	/** How many active layers currently want Music ducked (Voice starting, OneShot playing, etc). */
+	int32 MusicDuckRequests = 0;
+	/** How many active layers currently want Voice ducked (OneShot playing). */
+	int32 VoiceDuckRequests = 0;
+
+	TArray<TObjectPtr<USoundBase>> OneShotQueue;
+	bool bOneShotSessionActive = false;
+
 	FTimerHandle FlickerTimerHandle;
 
-	/** Re-evaluates whether this speaker should be playing right now and fires the appropriate event on change. */
-	void RefreshPlaybackState();
-
-	bool bIsCurrentlyPlaying = false;
+	void RefreshMusicPlaybackState();
+	void RefreshVoicePlaybackState();
+	void UpdateDuckedVolumes();
 
 	void ScheduleNextFlickerCheck();
 	void CheckFlicker();

@@ -338,7 +338,12 @@ void USplineFollowerComponent::AdvanceAlongSpline(float DeltaTime)
 	}
 	else
 	{
+		const ESplineFollowerState PreviousState = State;
 		UpdateStateMachine(DeltaTime, SplineLength);
+		if (State != PreviousState)
+		{
+			OnStateChanged(PreviousState, State);
+		}
 	}
 
 	DistanceAlongSpline += CurrentSpeed * DeltaTime;
@@ -435,7 +440,7 @@ float USplineFollowerComponent::GetEstimatedTimeToStation(AMetroStation* Station
 	{
 		const int32 NextIndex = (Index + 1) % Stations.Num();
 		if (!Stations.IsValidIndex(NextIndex) || !Stations.IsValidIndex(Index))
-		{ 
+		{
 			return -1.f;
 		}
 

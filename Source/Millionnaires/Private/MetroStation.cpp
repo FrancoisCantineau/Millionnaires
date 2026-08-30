@@ -9,7 +9,7 @@ AMetroStation::AMetroStation()
 	Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	SetRootComponent(Root);
 }
-	
+
 UMetroLineComponent* AMetroStation::GetLineComponent() const
 {
 	if (AActor* Parent = GetAttachParentActor())
