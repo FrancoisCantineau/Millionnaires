@@ -47,9 +47,10 @@ public class Millionnaires : ModuleRules
 			"InputGlyphCore",
 			
 			"ContextFramework",
-			"GameplayCore"
+			"GameplayCore",
 			
 
+			"DialogueSystem",
 		});
 		
 		if (Target.bBuildEditor)

@@ -1,0 +1,20 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Dialogue System",
+	"Description": "Data-driven dialogue plugin: linear and branching conversations, subtitles, and voice lines. Decoupled from UI/audio playback by design.",
+	"Category": "Gameplay",
+	"CreatedBy": "Fran\u00e7ois",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "DialogueSystem",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
