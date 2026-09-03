@@ -18,7 +18,6 @@ public class MillionnairesTarget : TargetRules
 	{
 		ExtraModuleNames.AddRange(new string[]
 		{
-			"InventorySystem",
 			"InteractionSystem",
 			"GameInterfaces",
 			"UMG",

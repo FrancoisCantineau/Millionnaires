@@ -26,6 +26,6 @@ class GAMEPLAYCORE_API IInputReceiverInterface
 
 public:
 
-	UFUNCTION(BlueprintNativeEvent)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void HandleInput(FGameplayTag Tag, const FInputActionValue& Value, ETriggerEvent TriggerEvent);
 };

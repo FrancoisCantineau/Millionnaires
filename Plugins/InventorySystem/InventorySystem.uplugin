@@ -1,0 +1,20 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Inventory System",
+	"Description": "Reusable item inventory: unique and stackable items, slot management, save contract. No UI, no dependency on any other system.",
+	"Category": "Gameplay",
+	"CreatedBy": "Fran\u00e7ois",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "InventorySystem",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

@@ -186,27 +186,6 @@ FText UInteractionComponent::GetFocusedInteractionText() const
    {
       return FText::GetEmpty();
    }
-    
-   // Special case: if focused actor is an item, check inventory space
-   AItemActor* ItemActor = Cast<AItemActor>(FocusedActor);
-   if (ItemActor && !ItemActor->ItemHandle.IsNull())
-   {
-      IInventoryInterface* InventoryInterface = Cast<IInventoryInterface>(GetOwner());
-       
-      if (InventoryInterface)
-      {
-         const bool bHasSpace = IInventoryInterface::Execute_HasSpaceForItemInAnyInventory(
-             GetOwner(),
-             ItemActor->ItemHandle,
-             ItemActor->StackAmount
-         );
-          
-         if (!bHasSpace)
-         {
-            return FText::FromString("Inventory Full!");
-         }
-      }
-   }
    
    return IInteractionInterface::Execute_GetInteractionDisplayName(FocusedActor);
 }

@@ -61,9 +61,6 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     URestrictedInventoryComponent* ConsumableInventoryComponent;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-    UDropComponent* DropComponent;
-
 #pragma endregion
 
 #pragma region Interaction
@@ -81,8 +78,6 @@ protected:
 
 #pragma region Consumable
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-    UConsumableComponent* ConsumableComponent;
 
 #pragma endregion
 
@@ -117,12 +112,7 @@ protected:
 #pragma endregion
 
 #pragma region UI
-
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "UI")
-    TSubclassOf<UMultiInventoryWidget> MultiInventoryWidgetClass;
-
-    UPROPERTY()
-    UMultiInventoryWidget* MultiInventoryWidget;
+    
 
     UPROPERTY(BlueprintReadOnly, Category = "UI")
     bool bIsInventoryOpen = false;
@@ -228,10 +218,8 @@ public:
     FORCEINLINE URestrictedInventoryComponent* GetGeneralInventory() const { return GeneralInventoryComponent; }
     FORCEINLINE URestrictedInventoryComponent* GetEquipmentInventory() const { return EquipmentInventoryComponent; }
     FORCEINLINE URestrictedInventoryComponent* GetConsumableInventory() const { return ConsumableInventoryComponent; }
-    FORCEINLINE UDropComponent* GetDropComponent() const { return DropComponent; }
     FORCEINLINE int32 GetSelectedSlotIndex() const { return SelectedSlotIndex; }
     FORCEINLINE UInventoryComponent* GetSelectedInventoryComponent() const { return SelectedInventoryComponent; }
-    FORCEINLINE UConsumableComponent* GetConsumableComponent() const { return ConsumableComponent; }
     FORCEINLINE UFlashlightEquipmentComponent* GetFlashlightComponent() const { return FlashlightComponent; }
    // FORCEINLINE UQuestManagerComponent* GetQuestManager() const { return QuestManagerComponent; }
 

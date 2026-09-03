@@ -17,11 +17,6 @@
 			]
 		},
 		{
-			"Name": "InventorySystem",
-			"Type": "Runtime",
-			"LoadingPhase": "Default"
-		},
-		{
 			"Name": "InteractionSystem",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
@@ -62,6 +57,10 @@
 			"TargetAllowList": [
 				"Editor"
 			]
+		},
+		{
+			"Name": "InventorySystem",
+			"Enabled": true
 		},
 		{
 			"Name": "StateTree",

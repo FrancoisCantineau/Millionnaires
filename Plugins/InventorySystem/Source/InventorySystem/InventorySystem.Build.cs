@@ -1,8 +1,8 @@
 using UnrealBuildTool;
 
-public class DialogueSystem : ModuleRules
+public class InventorySystem : ModuleRules
 {
-	public DialogueSystem(ReadOnlyTargetRules Target) : base(Target)
+	public InventorySystem(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 

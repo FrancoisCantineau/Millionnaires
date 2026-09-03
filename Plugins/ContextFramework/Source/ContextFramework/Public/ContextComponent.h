@@ -50,8 +50,10 @@ public:
 	// Sets default values for this component's properties
 	UContextComponent();
 
+	UFUNCTION(BlueprintCallable)
 	FContextHandle AddContext(FActiveContext ContextData);
 
+	UFUNCTION(BlueprintCallable)
 	bool RemoveContext(FContextHandle ContextHandle);
 
 	bool HasContext(UContextDataAsset* ContextData) const;

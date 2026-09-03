@@ -9,18 +9,12 @@
 #include "InteractionComponent.h"
 #include "InventoryComponent.h"
 #include "RestrictedInventoryComponent.h"
-#include "DropComponent.h"
 #include "InputActionValue.h"
 #include "NavigationSystem.h"
-#include "UI/MultiInventoryWidget.h"
 #include "UI/InteractionWidget.h"
-#include "UI/InventoryWidget.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/FlashlightEquipmentComponent.h"
 #include "Components/Characters/CharacterStatsComponent.h"
-#include "Consumable/ConsumableComponent.h"
-#include "Characters/Player/PlayerControllerInterface.h"
-#include "Controller/ControllerInterface.h"
 #include "Component/TraversalComponent.h"
 #include "System/Tags/MillionnaireGameplayTags_Actions.h"
 
@@ -92,26 +86,18 @@ AMillionnairePlayerBase::AMillionnairePlayerBase()
 
     GeneralInventoryComponent = CreateDefaultSubobject<URestrictedInventoryComponent>(TEXT("GeneralInventory"));
     GeneralInventoryComponent->NumSlots = 20;
-    GeneralInventoryComponent->CategoryFilter.Categories = { EItemCategory::Equipment, EItemCategory::Consumable };
-    GeneralInventoryComponent->CategoryFilter.bWhitelistMode = false;
     GeneralInventoryComponent->ComponentTags.Add(FName("General"));
 
     EquipmentInventoryComponent = CreateDefaultSubobject<URestrictedInventoryComponent>(TEXT("EquipmentInventory"));
     EquipmentInventoryComponent->NumSlots = 10;
-    EquipmentInventoryComponent->CategoryFilter.Categories = { EItemCategory::Equipment };
-    EquipmentInventoryComponent->CategoryFilter.bWhitelistMode = true;
     EquipmentInventoryComponent->ComponentTags.Add(FName("Equipment"));
 
     ConsumableInventoryComponent = CreateDefaultSubobject<URestrictedInventoryComponent>(TEXT("ConsumableInventory"));
     ConsumableInventoryComponent->NumSlots = 8;
-    ConsumableInventoryComponent->CategoryFilter.Categories = { EItemCategory::Consumable };
-    ConsumableInventoryComponent->CategoryFilter.bWhitelistMode = true;
     ConsumableInventoryComponent->ComponentTags.Add(FName("Consumable"));
-
-    DropComponent        = CreateDefaultSubobject<UDropComponent>(TEXT("DropComponent"));
+    
     InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
     InteractionComponent->bShowDebugTrace = false;
-    ConsumableComponent  = CreateDefaultSubobject<UConsumableComponent>(TEXT("ConsumableComponent"));
     FlashlightComponent  = CreateDefaultSubobject<UFlashlightEquipmentComponent>(TEXT("FlashlightComponent"));
     ATraversalComponent = CreateDefaultSubobject<UTraversalComponent>(TEXT("TraversalComponent"));
 }
@@ -137,9 +123,7 @@ void AMillionnairePlayerBase::BeginPlay()
         if (DayNightWidget)
             DayNightWidget->AddToViewport();
     }
-
-    if (ConsumableComponent)
-        ConsumableComponent->CacheInventoryComponents();
+    
 
    /* if (QuestTrackerWidgetClass && IsValid(QuestManagerComponent))
     {
@@ -272,32 +256,8 @@ void AMillionnairePlayerBase::DoInteract()
 void AMillionnairePlayerBase::OnInventoryPressed()
 {
     InitializeInventoryWidget();
-    if (!MultiInventoryWidget) return;
 
-    if (bIsInventoryOpen)
-    {
-        MultiInventoryWidget->RemoveFromParent();
-        bIsInventoryOpen = false;
-
-        if (APlayerController* PC = Cast<APlayerController>(GetController()))
-        {
-            PC->SetInputMode(FInputModeGameOnly());
-            PC->bShowMouseCursor = false;
-        }
-    }
-    else
-    {
-        MultiInventoryWidget->AddToViewport();
-        bIsInventoryOpen = true;
-
-        if (APlayerController* PC = Cast<APlayerController>(GetController()))
-        {
-            FInputModeGameAndUI InputMode;
-            InputMode.SetWidgetToFocus(MultiInventoryWidget->TakeWidget());
-            PC->SetInputMode(InputMode);
-            PC->bShowMouseCursor = true;
-        }
-    }
+    
 }
 
 void AMillionnairePlayerBase::SelectInventorySlot(int32 SlotIndex, UInventoryComponent* InventoryComp)
@@ -309,42 +269,12 @@ void AMillionnairePlayerBase::SelectInventorySlot(int32 SlotIndex, UInventoryCom
 
 void AMillionnairePlayerBase::OnDropItemPressed()
 {
-    if (!SelectedInventoryComponent || !DropComponent) return;
-    if (SelectedSlotIndex == INDEX_NONE) return;
-    if (!SelectedInventoryComponent->IsValidSlotIndex(SelectedSlotIndex)) return;
-
-    FItemSlot Slot = SelectedInventoryComponent->GetSlot(SelectedSlotIndex);
-    if (Slot.IsEmpty()) return;
-
-    bool bDropSuccess = DropComponent->DropFromInventory(SelectedInventoryComponent, SelectedSlotIndex);
-    if (bDropSuccess && SelectedInventoryComponent->GetSlot(SelectedSlotIndex).IsEmpty())
-    {
-        SelectedSlotIndex = INDEX_NONE;
-        SelectedInventoryComponent = nullptr;
-    }
+   
 }
 
 void AMillionnairePlayerBase::InitializeInventoryWidget()
 {
-    if (!MultiInventoryWidgetClass || MultiInventoryWidget) return;
-
-    MultiInventoryWidget = CreateWidget<UMultiInventoryWidget>(GetWorld(), MultiInventoryWidgetClass);
-    if (!MultiInventoryWidget) return;
-
-    MultiInventoryWidget->InitializeAllInventories(
-        EquipmentInventoryComponent,
-        ConsumableInventoryComponent,
-        GeneralInventoryComponent);
-
-    auto BindSlot = [&](UInventoryWidget* Widget)
-    {
-        if (Widget)
-            Widget->OnSlotSelected.AddDynamic(this, &AMillionnairePlayerBase::SelectInventorySlot);
-    };
-
-    BindSlot(MultiInventoryWidget->EquipmentInventory);
-    BindSlot(MultiInventoryWidget->ConsumableInventory);
-    BindSlot(MultiInventoryWidget->GeneralInventory);
+   
 }
 
 #pragma endregion
@@ -356,40 +286,22 @@ void AMillionnairePlayerBase::InitializeInventoryWidget()
 
 void AMillionnairePlayerBase::OnUseHealthPressed()
 {
-    if (!ConsumableComponent) return;
-    FGameplayTagContainer HealthTags;
-    HealthTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Consumable.Health")));
-    ConsumableComponent->ConsumeFirstItemWithTags(HealthTags);
+   
 }
 
 void AMillionnairePlayerBase::OnUseFoodPressed()
 {
-    if (!ConsumableComponent) return;
-    FGameplayTagContainer FoodTags;
-    FoodTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Consumable.Food")));
-    ConsumableComponent->ConsumeFirstItemWithTags(FoodTags);
+   
 }
 
 void AMillionnairePlayerBase::OnUseBatteryPressed()
 {
-    if (!ConsumableComponent) return;
-    FGameplayTagContainer BatteryTags;
-    BatteryTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Consumable.Battery")));
-    ConsumableComponent->ConsumeFirstItemWithTags(BatteryTags);
+   
 }
 
 void AMillionnairePlayerBase::UseConsumableFromSlot(int32 SlotIndex, UInventoryComponent* InventoryComp)
 {
-    if (!ConsumableComponent || !InventoryComp) return;
-    if (!InventoryComp->IsValidSlotIndex(SlotIndex)) return;
-
-    FItemSlot Slot = InventoryComp->GetSlot(SlotIndex);
-    if (Slot.IsEmpty()) return;
-
-    const FItemData* ItemData = Slot.GetItemData();
-    if (!ItemData || !ItemData->bIsConsumable) return;
-
-    ConsumableComponent->ConsumeItemFromSlot(InventoryComp, SlotIndex);
+   
 }
 
 #pragma endregion
@@ -413,23 +325,6 @@ void AMillionnairePlayerBase::OnEquipFlashlightPressed()
     {
         FlashlightComponent->UnequipFlashlight();
         return;
-    }
-
-    if (!ConsumableComponent) return;
-
-    for (UInventoryComponent* Inventory : ConsumableComponent->GetAllInventories())
-    {
-        if (!Inventory) continue;
-        const TArray<FItemSlot>& Slots = Inventory->GetAllSlots();
-        for (int32 i = 0; i < Slots.Num(); i++)
-        {
-            if (Slots[i].IsEmpty()) continue;
-            const FItemData* ItemData = Slots[i].GetItemData();
-            if (!ItemData || !ItemData->bIsFlashlight) continue;
-
-            FlashlightComponent->EquipFlashlight(Slots[i].ItemHandle, ItemData->InitialBatteryCharge);
-            return;
-        }
     }
 }
 
