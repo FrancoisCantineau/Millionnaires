@@ -48,16 +48,25 @@ void UContainerWidgetBase::RefreshSlots()
 
 	SlotsContainer->ClearChildren();
 	SlotWidgets.Reset();
+	DisplayedSlotIndices.Reset();
 
 	const TArray<FInventorySlot>& Slots = Container->GetSlots();
-	for (int32 i = 0; i < Slots.Num(); ++i)
+	for (int32 RealIndex = 0; RealIndex < Slots.Num(); ++RealIndex)
 	{
+		// Skip empty slots entirely — this is a compact list (like a dropdown), not a fixed grid,
+		// so an emptied slot doesn't leave a visible gap; everything below shifts up.
+		if (Slots[RealIndex].IsEmpty())
+		{
+			continue;
+		}
+
 		UContainerSlotWidgetBase* SlotWidget = CreateWidget<UContainerSlotWidgetBase>(this, SlotWidgetClass);
 		if (SlotWidget)
 		{
-			SlotWidget->SetupSlot(Slots[i], i);
+			SlotWidget->SetupSlot(Slots[RealIndex], RealIndex);
 			SlotsContainer->AddChild(SlotWidget);
 			SlotWidgets.Add(SlotWidget);
+			DisplayedSlotIndices.Add(RealIndex);
 		}
 	}
 
@@ -74,6 +83,11 @@ void UContainerWidgetBase::MoveSelection(int32 Delta)
 
 	SelectedIndex = (SelectedIndex + Delta + SlotWidgets.Num()) % SlotWidgets.Num();
 	UpdateHighlight();
+}
+
+int32 UContainerWidgetBase::GetSelectedSlotIndex() const
+{
+	return DisplayedSlotIndices.IsValidIndex(SelectedIndex) ? DisplayedSlotIndices[SelectedIndex] : INDEX_NONE;
 }
 
 void UContainerWidgetBase::UpdateHighlight()

@@ -45,8 +45,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	void MoveSelection(int32 Delta);
 
+	/** The REAL inventory slot index behind the currently highlighted row — use this (not a raw
+	 *  list position) when calling TakeSlot, since empty slots are skipped in the displayed list. */
 	UFUNCTION(BlueprintPure, Category = "Inventory")
-	int32 GetSelectedSlotIndex() const { return SelectedIndex; }
+	int32 GetSelectedSlotIndex() const;
 
 protected:
 	virtual void NativeDestruct() override;
@@ -61,10 +63,14 @@ private:
 	UFUNCTION()
 	void HandleInventoryChanged();
 
+	/** Position within the COMPACTED (occupied-only) list — not a raw inventory slot index. */
 	int32 SelectedIndex = 0;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UContainerSlotWidgetBase>> SlotWidgets;
+
+	/** Maps a position in SlotWidgets/the compacted list back to its real inventory slot index. */
+	TArray<int32> DisplayedSlotIndices;
 
 	void UpdateHighlight();
 };
